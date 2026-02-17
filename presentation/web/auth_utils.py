@@ -5,6 +5,10 @@ Shared utilities for authentication and onboarding checks.
 Avoids circular dependencies between decorators and onboarding blueprints.
 """
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # Onboarding version - increment when adding new required steps for existing users
 ONBOARDING_VERSION = 2
 
@@ -38,4 +42,5 @@ def needs_onboarding(settings_service) -> bool:
         return False
     except Exception:
         # If we can't determine status, assume onboarding needed for safety
+        logger.warning("Failed to check onboarding status", exc_info=True)
         return True

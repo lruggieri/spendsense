@@ -36,6 +36,15 @@ test-all: ## Run ALL tests including expensive LLM tests
 
 lint: ## Run linting checks (requires pylint)
 	$(PYTHON) -m pip install pylint
+	@echo "Disabled codes explanation:"
+	@echo "  C0111,C0103: Documentation/naming conventions"
+	@echo "  R0903,R0913,R0917: Design patterns (dataclasses, rich domain entities)"
+	@echo "  W0107: Unnecessary pass in abstract methods (ABC pattern)"
+	@echo "  W1203: F-string in logging (readability over micro-optimization)"
+	@echo "  W0718: Broad-exception-caught (intentional fallback patterns)"
+	@echo "  R0801: Duplicate-code (acceptable in blueprints with similar CRUD patterns)"
+	@echo "  R0914,R0902,R0911,R0912,R0915: Complexity metrics (tracked separately, not blocking)"
+	@echo ""
 	$(PYTHON) -m pylint domain/ application/ infrastructure/ presentation/ \
 		--disable=C0111,C0103,R0903,R0913,W0107,W1203,W0718,R0801,R0914,R0917,R0902,R0911,R0912,R0915
 

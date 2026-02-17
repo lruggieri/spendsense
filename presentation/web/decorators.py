@@ -8,7 +8,9 @@ from functools import wraps
 
 from flask import flash, g, make_response, redirect, request, session, url_for
 
+from presentation.web.auth_utils import ONBOARDING_VERSION, needs_onboarding
 from presentation.web.extensions import get_session_datasource
+from presentation.web.utils import get_user_settings_service
 
 
 def login_required(f):
@@ -66,10 +68,6 @@ def _check_onboarding_required(user_id: str):
     Returns:
         Redirect response if onboarding needed, None otherwise.
     """
-    # Import from auth_utils to avoid circular dependency
-    from presentation.web.auth_utils import ONBOARDING_VERSION, needs_onboarding
-    from presentation.web.utils import get_user_settings_service
-
     # Fast path: session cache says onboarding is complete for current version
     if session.get("onboarding_version") == ONBOARDING_VERSION:
         return None
