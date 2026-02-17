@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block title %}Fetching Gmail Transactions - SpendSense{% endblock %}
+{% block page_title %}Fetching Gmail Transactions{% endblock %}
+
+{% block extra_head %}
+<style>
+    .progress-container {
+        text-align: center;
+    }
+
+    .spinner {
+        margin: var(--spacing-xl) auto;
+    }
+
+    .spinner-icon {
+        display: inline-block;
+        width: 50px;
+        height: 50px;
+        border: 4px solid var(--gray-200);
+        border-top: 4px solid var(--primary);
+        border-radius: var(--radius-full);
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .status-message {
+        font-size: 1.125rem;
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-lg);
+        font-weight: 500;
+    }
+
+    .log-container {
+        background-color: var(--gray-50);
+        border: 1px solid var(--gray-300);
+        border-radius: var(--radius-sm);
+        padding: var(--spacing-md);
+        max-height: 400px;
+        overflow-y: auto;
+        font-family: 'Courier New', monospace;
+        font-size: 0.8125rem;
+        text-align: left;
+    }
+
+    @media (max-width: 640px) {
+        .log-container {
+            font-size: 0.75rem;
+            max-height: 300px;
+        }
+    }
+
+    .log-entry {
+        padding: var(--spacing-xs) 0;
+        border-bottom: 1px solid var(--gray-200);
+        word-break: break-word;
+    }
+
+    .log-entry:last-child {
+        border-bottom: none;
+    }
+
+    .log-entry.progress {
+        color: var(--primary);
+    }
+
+    .log-entry.success {
+        color: var(--secondary);
+        font-weight: 600;
+    }
+
+    .log-entry.error {
+        color: var(--danger);
+        font-weight: 600;
+    }
+
+    .log-time {
+        color: var(--text-muted);
+        margin-right: var(--spacing-sm);
+    }
+
+    .complete-message,
+    .error-message {
+        display: none;
+        text-align: center;
+        padding: var(--spacing-lg);
+        border-radius: var(--radius-md);
+        margin-top: var(--spacing-lg);
+    }
+
+    .complete-message {
+        background-color: var(--bg-success);
+        border: 2px solid var(--secondary);
+    }
+
+    .complete-message h2 {
+        color: #2e7d32;
+        margin-top: 0;
+    }
+
+    .error-message {
+        background-color: var(--bg-danger);
+        border: 2px solid var(--danger);
+    }
+
+    .error-message h2 {
+        color: #c62828;
+        margin-top: 0;
+    }
+
+    .results-summary {
+        background-color: white;
+        border-radius: var(--radius-sm);
+        padding: var(--spacing-md);
+        margin: var(--spacing-md) auto;
+        max-width: 500px;
+    }
+
+    .results-summary ul {
+        text-align: left;
+        margin: var(--spacing-md) 0;
+        padding-left: var(--spacing-lg);
+    }
+
+    .results-summary li {
+        margin: var(--spacing-sm) 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card progress-container">
+    <div class="spinner" id="spinner">
+        <div class="spinner-icon"></div>
+    </div>
+
+    <div class="status-message" id="status-message">
+        Initializing...
+    </div>
+
+    <div class="log-container" id="log-container">
+        <!-- Log entries will be added here -->
+    </div>
+
+    <div class="complete-message" id="complete-message">
+        <h2>✓ Fetch Completed Successfully!</h2>
+        <div class="results-summary" id="results-summary"></div>
+        <a href="{{ url_for('transactions.review', sort_by='date') }}" class="btn btn-success" style="margin-top: var(--spacing-md);">
+            Go to Review Page
+        </a>
+    </div>
+
+    <div class="error-message" id="error-message">
+        <h2>✗ Error Occurred</h2>
+        <p id="error-text" style="margin: var(--spacing-md) 0;"></p>
+        <a href="{{ url_for('gmail.fetch_gmail_page') }}" class="btn btn-danger">Try Again</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const logContainer = document.getElementById('log-container');
+    const statusMessage = document.getElementById('status-message');
+    const spinner = document.getElementById('spinner');
+    const completeMessage = document.getElementById('complete-message');
+    const errorMessage = document.getElementById('error-message');
+    const errorText = document.getElementById('error-text');
+
+    function addLogEntry(message, type = 'progress') {
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${type}`;
+
+        const now = new Date();
+        const timestamp = now.toLocaleTimeString();
+
+        entry.innerHTML = `<span class="log-time">${timestamp}</span>${escapeHtml(message)}`;
+        logContainer.appendChild(entry);
+
+        // Auto-scroll to bottom
+        logContainer.scrollTop = logContainer.scrollHeight;
+    }
+
+    function updateStatus(message) {
+        statusMessage.textContent = message;
+        addLogEntry(message, 'progress');
+    }
+
+    function showComplete(results) {
+        spinner.style.display = 'none';
+        statusMessage.style.display = 'none';
+        completeMessage.style.display = 'block';
+
+        // Display results summary if available
+        if (results && results.length > 0) {
+            const summaryDiv = document.getElementById('results-summary');
+            let summaryHTML = '<p><strong>Summary:</strong></p><ul>';
+
+            results.forEach(result => {
+                summaryHTML += `<li><strong>${escapeHtml(result.source)}:</strong> ${result.written} new transactions (${result.total} total messages, ${result.new} new)</li>`;
+            });
+
+            summaryHTML += '</ul>';
+            summaryDiv.innerHTML = summaryHTML;
+        } else {
+            document.getElementById('results-summary').innerHTML = '<p>All transactions have been fetched and categorized.</p>';
+        }
+
+        // Auto-redirect after 5 seconds
+        setTimeout(() => {
+            window.location.href = "{{ url_for('transactions.review', sort_by='date') }}";
+        }, 5000);
+    }
+
+    function showError(message) {
+        spinner.style.display = 'none';
+        statusMessage.style.display = 'none';
+        errorText.textContent = message;
+        errorMessage.style.display = 'block';
+        addLogEntry(`ERROR: ${message}`, 'error');
+    }
+
+    // Connect to Server-Sent Events stream
+    const eventSource = new EventSource("{{ url_for('gmail.fetch_gmail_execute_stream') }}");
+
+    eventSource.onmessage = function(event) {
+        try {
+            const data = JSON.parse(event.data);
+
+            if (data.status === 'progress') {
+                updateStatus(data.message);
+            } else if (data.status === 'complete') {
+                addLogEntry('✓ ' + data.message, 'success');
+                eventSource.close();
+                showComplete(data.results || []);
+            } else if (data.status === 'error') {
+                eventSource.close();
+                showError(data.message);
+            } else if (data.status === 'starting') {
+                updateStatus(data.message);
+            }
+        } catch (e) {
+            console.error('Error parsing SSE data:', e);
+        }
+    };
+
+    eventSource.onerror = function(error) {
+        console.error('SSE error:', error);
+        eventSource.close();
+        showError('Connection lost. Please try again.');
+    };
+
+    // Initial log entry
+    addLogEntry('Starting Gmail fetch process...', 'progress');
+</script>
+{% endblock %}

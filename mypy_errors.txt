@@ -1,0 +1,672 @@
+Running mypy type checker...
+python3 -m pip install mypy
+Requirement already satisfied: mypy in /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages (1.19.1)
+Requirement already satisfied: typing_extensions>=4.6.0 in /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages (from mypy) (4.15.0)
+Requirement already satisfied: mypy_extensions>=1.0.0 in /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages (from mypy) (1.1.0)
+Requirement already satisfied: pathspec>=0.9.0 in /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages (from mypy) (1.0.4)
+Requirement already satisfied: librt>=0.6.2 in /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages (from mypy) (0.7.8)
+
+[notice] A new release of pip is available: 24.3.1 -> 26.0
+[notice] To update, run: python3 -m pip install --upgrade pip
+python3 -m mypy frontend/ datasource/ logic/ entity/
+logic/gmail_utils.py: note: In function "_transform_charset":
+logic/gmail_utils.py:92: error: Need type annotation for "out_str_idx" (hint:
+"out_str_idx: list[<type>] = ...")  [var-annotated]
+        out_str_idx = []
+        ^~~~~~~~~~~
+frontend/services/__init__.py:25: note: In module imported here:
+application/services/base_service.py: note: In member "__init__" of class "BaseService":
+application/services/base_service.py:19: error: Incompatible default for
+argument "db_path" (default has type "None", argument has type "str") 
+[assignment]
+        def __init__(self, user_id: str, db_path: str = None):
+                                                        ^~~~
+application/services/base_service.py:19: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+application/services/base_service.py:19: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+logic/fetch_transactions/pattern_parser.py:12: note: In module imported here:
+domain/services/amount_parser.py: note: In function "parse_amount":
+domain/services/amount_parser.py:86: error: Incompatible types in assignment
+(expression has type "str | None", variable has type "str")  [assignment]
+        result = _parse_amount_heuristic(cleaned)
+                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+frontend/blueprints/gmail.py:32: note: In module imported here:
+domain/services/embedding_similarity_calculator.py: note: In member "calculate_similarities_batch" of class "EmbeddingSimilarityCalculator":
+domain/services/embedding_similarity_calculator.py:193: error: Incompatible
+default for argument "text_ids" (default has type "None", argument has type
+"list[str]")  [assignment]
+            text_ids: List[str] = None
+                                  ^~~~
+domain/services/embedding_similarity_calculator.py:193: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+domain/services/embedding_similarity_calculator.py:193: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+datasource/datasource_factory.py:12: note: In module imported here:
+domain/repositories/regexp_repository.py: note: In member "update_regexp" of class "RegexpRepository":
+domain/repositories/regexp_repository.py:84: error: Incompatible default for
+argument "raw" (default has type "None", argument has type "str")  [assignment]
+    ...f update_regexp(self, regexp_id: str, raw: str = None, name: str = Non...
+                                                        ^~~~
+domain/repositories/regexp_repository.py:84: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+domain/repositories/regexp_repository.py:84: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+domain/repositories/regexp_repository.py:84: error: Incompatible default for
+argument "name" (default has type "None", argument has type "str")  [assignment]
+    ...update_regexp(self, regexp_id: str, raw: str = None, name: str = None,
+                                                                        ^~~~
+domain/repositories/regexp_repository.py:85: error: Incompatible default for
+argument "visual_description" (default has type "None", argument has type "str")
+ [assignment]
+                          visual_description: str = None, category: str = ...
+                                                    ^~~~
+domain/repositories/regexp_repository.py:85: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+domain/repositories/regexp_repository.py:85: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+domain/repositories/regexp_repository.py:85: error: Incompatible default for
+argument "category" (default has type "None", argument has type "str") 
+[assignment]
+    ...        visual_description: str = None, category: str = None) -> bool:
+                                                               ^~~~
+frontend/service.py:16: note: In module imported here:
+domain/repositories/category_repository.py: note: In member "update_category" of class "CategoryRepository":
+domain/repositories/category_repository.py:62: error: Incompatible default for
+argument "name" (default has type "None", argument has type "str")  [assignment]
+        def update_category(self, category_id: str, name: str = None,
+                                                                ^~~~
+domain/repositories/category_repository.py:62: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+domain/repositories/category_repository.py:62: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+domain/repositories/category_repository.py:63: error: Incompatible default for
+argument "description" (default has type "None", argument has type "str") 
+[assignment]
+                           description: str = None, parent_id: str = None)...
+                                              ^~~~
+domain/repositories/category_repository.py:63: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+domain/repositories/category_repository.py:63: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+domain/repositories/category_repository.py:63: error: Incompatible default for
+argument "parent_id" (default has type "None", argument has type "str") 
+[assignment]
+    ...              description: str = None, parent_id: str = None) -> bool:
+                                                               ^~~~
+frontend/service.py:13: note: In module imported here:
+domain/services/classifier.py: note: In member "__post_init__" of class "Classifier":
+domain/services/classifier.py:23: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+domain/services/classifier.py: note: In member "classify" of class "Classifier":
+domain/services/classifier.py:73: error: Incompatible types in assignment
+(expression has type "str | None", variable has type "str")  [assignment]
+                category = self._classify_by_similarity(description)
+                           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+domain/services/classifier.py: note: In member "classify_batch" of class "Classifier":
+domain/services/classifier.py:137: error: Incompatible types in assignment
+(expression has type "str | None", variable has type "str")  [assignment]
+                for (tx_id, _), category in zip(similarity_batch, similari...
+                ^
+domain/services/classifier.py:141: error: Incompatible types in assignment
+(expression has type "tuple[None, None]", target has type
+"tuple[Any, CategorySource]")  [assignment]
+                        results[tx_id] = (None, None)
+                                         ^~~~~~~~~~~~
+domain/services/classifier.py:145: error: Incompatible types in assignment
+(expression has type "tuple[None, None]", target has type
+"tuple[Any, CategorySource]")  [assignment]
+                    results[tx_id] = (None, None)
+                                     ^~~~~~~~~~~~
+domain/services/classifier.py:147: error: Incompatible return value type (got
+"dict[str, tuple[Any, CategorySource]]", expected
+"dict[str, tuple[str | None, CategorySource | None]]")  [return-value]
+            return results
+                   ^~~~~~~
+domain/services/classifier.py:147: note: "dict" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance
+domain/services/classifier.py:147: note: Consider using "Mapping" instead, which is covariant in the value type
+domain/services/classifier.py:147: note: Perhaps you need a type annotation for "results"? Suggestion: "dict[str, tuple[str | None, CategorySource | None]]"
+domain/services/classifier.py: note: In member "_classify_by_similarity" of class "Classifier":
+domain/services/classifier.py:160: error: Item "None" of
+"SimilarityCalculator | None" has no attribute "calculate_similarities" 
+[union-attr]
+            similarities = self.similarity_calculator.calculate_similariti...
+                           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+domain/services/classifier.py: note: In member "_classify_batch_by_similarity" of class "Classifier":
+domain/services/classifier.py:183: error: Incompatible default for argument
+"tx_ids" (default has type "None", argument has type "list[str]")  [assignment]
+    ...lf, descriptions: list[str], tx_ids: list[str] = None) -> list[str | N...
+                                                        ^~~~
+domain/services/classifier.py:183: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+domain/services/classifier.py:183: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+domain/services/classifier.py:199: error: Item "None" of
+"SimilarityCalculator | None" has no attribute "calculate_similarities_batch" 
+[union-attr]
+            all_similarities = self.similarity_calculator.calculate_simila...
+                               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~...
+domain/services/classifier.py:199: error: Unexpected keyword argument
+"text_ids" for "calculate_similarities_batch" of "SimilarityCalculator"; did you
+mean "texts"?  [call-arg]
+            all_similarities = self.similarity_calculator.calculate_simila...
+                               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~...
+domain/services/similarity_calculator.py:38: note: "calculate_similarities_batch" of "SimilarityCalculator" defined here
+domain/services/classifier.py:206: error: Need type annotation for "results"
+(hint: "results: list[<type>] = ...")  [var-annotated]
+            results = []
+            ^~~~~~~
+logic/currency_rate_updater.py:5: error: Skipping analyzing
+"apscheduler.schedulers.background": module is installed, but missing library
+stubs or py.typed marker  [import-untyped]
+    from apscheduler.schedulers.background import BackgroundScheduler
+    ^
+logic/currency_rate_updater.py:5: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+frontend/blueprints/groups.py:11: note: In module imported here:
+domain/entities/category_tree.py: note: In member "_parse_date" of class "CategoryTree":
+domain/entities/category_tree.py:90: error: Function "builtins.any" is not
+valid as a type  [valid-type]
+        def _parse_date(self, date_input: any) -> Optional[datetime]:
+                                          ^
+domain/entities/category_tree.py:90: note: Perhaps you meant "typing.Any" instead of "any"?
+domain/entities/category_tree.py: note: In member "calculate_expenses" of class "CategoryTree":
+domain/entities/category_tree.py:169: error: Incompatible types in assignment
+(expression has type "list[Transaction]", variable has type "None") 
+[assignment]
+            self.filtered_transactions = filtered_transactions
+                                         ^~~~~~~~~~~~~~~~~~~~~
+domain/entities/category_tree.py: note: In member "print_tree" of class "CategoryTree":
+domain/entities/category_tree.py:234: error: Unsupported operand types for /
+("float" and "None")  [operator]
+            percentage = (node.total_expense / total * 100) if total > 0 e...
+                          ^
+domain/entities/category_tree.py:234: note: Right operand is of type "float | None"
+domain/entities/category_tree.py:234: error: Unsupported operand types for <
+("int" and "None")  [operator]
+    ...   percentage = (node.total_expense / total * 100) if total > 0 else 0
+                                                             ^
+domain/entities/category_tree.py:234: note: Left operand is of type "float | None"
+datasource/sqlite_embedding_datasource.py: note: In member "get_cached_embeddings" of class "SQLiteEmbeddingDataSource":
+datasource/sqlite_embedding_datasource.py:111: error: Argument 2 to "execute"
+of "LoggingCursor" has incompatible type "list[str]"; expected "tuple[Any, ...]"
+ [arg-type]
+                    """, chunk + [self.user_id])
+                         ^~~~~~~~~~~~~~~~~~~~~~
+datasource/sqlite_regexp_datasource.py: note: In member "update_regexp" of class "SQLiteRegexpDataSource":
+datasource/sqlite_regexp_datasource.py:196: error: Incompatible default for
+argument "raw" (default has type "None", argument has type "str")  [assignment]
+    ...f update_regexp(self, regexp_id: str, raw: str = None, name: str = Non...
+                                                        ^~~~
+datasource/sqlite_regexp_datasource.py:196: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+datasource/sqlite_regexp_datasource.py:196: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+datasource/sqlite_regexp_datasource.py:196: error: Incompatible default for
+argument "name" (default has type "None", argument has type "str")  [assignment]
+    ...update_regexp(self, regexp_id: str, raw: str = None, name: str = None,
+                                                                        ^~~~
+datasource/sqlite_regexp_datasource.py:197: error: Incompatible default for
+argument "visual_description" (default has type "None", argument has type "str")
+ [assignment]
+                          visual_description: str = None, category: str = ...
+                                                    ^~~~
+datasource/sqlite_regexp_datasource.py:197: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+datasource/sqlite_regexp_datasource.py:197: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+datasource/sqlite_regexp_datasource.py:197: error: Incompatible default for
+argument "category" (default has type "None", argument has type "str") 
+[assignment]
+    ...        visual_description: str = None, category: str = None) -> bool:
+                                                               ^~~~
+datasource/sqlite_regexp_datasource.py:250: error: Argument 2 to "execute" of
+"LoggingCursor" has incompatible type "list[str]"; expected "tuple[Any, ...]" 
+[arg-type]
+                cursor.execute(query, params)
+                                      ^~~~~~
+datasource/sqlite_category_datasource.py: note: In member "update_category" of class "SQLiteCategoryDataSource":
+datasource/sqlite_category_datasource.py:129: error: Incompatible default for
+argument "name" (default has type "None", argument has type "str")  [assignment]
+        def update_category(self, category_id: str, name: str = None,
+                                                                ^~~~
+datasource/sqlite_category_datasource.py:129: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+datasource/sqlite_category_datasource.py:129: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+datasource/sqlite_category_datasource.py:130: error: Incompatible default for
+argument "description" (default has type "None", argument has type "str") 
+[assignment]
+                           description: str = None, parent_id: str = None)...
+                                              ^~~~
+datasource/sqlite_category_datasource.py:130: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+datasource/sqlite_category_datasource.py:130: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+datasource/sqlite_category_datasource.py:130: error: Incompatible default for
+argument "parent_id" (default has type "None", argument has type "str") 
+[assignment]
+    ...              description: str = None, parent_id: str = None) -> bool:
+                                                               ^~~~
+datasource/sqlite_category_datasource.py:169: error: Argument 2 to "execute" of
+"LoggingCursor" has incompatible type "list[str]"; expected "tuple[Any, ...]" 
+[arg-type]
+                cursor.execute(query, params)
+                                      ^~~~~~
+datasource/sqlite_transaction_datasource.py: note: In member "get_transactions_by_date_range" of class "SQLiteTransactionDataSource":
+datasource/sqlite_transaction_datasource.py:493: error: Argument 2 to "execute"
+of "LoggingCursor" has incompatible type "list[str]"; expected "tuple[Any, ...]"
+ [arg-type]
+            cursor.execute(query, params)
+                                  ^~~~~~
+frontend/services/__init__.py:30: note: In module imported here:
+application/services/classification_service.py: note: In member "__init__" of class "ClassificationService":
+application/services/classification_service.py:38: error: Incompatible default
+for argument "db_path" (default has type "None", argument has type "str") 
+[assignment]
+                     db_path: str = None,
+                                    ^~~~
+application/services/classification_service.py:38: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+application/services/classification_service.py:38: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+application/services/classification_service.py: note: In member "_get_classifier" of class "ClassificationService":
+application/services/classification_service.py:70: error: Incompatible return
+value type (got "Classifier | None", expected "Classifier")  [return-value]
+            return self._classifier
+                   ^~~~~~~~~~~~~~~~
+application/services/classification_service.py: note: In member "classify" of class "ClassificationService":
+application/services/classification_service.py:123: error: Incompatible return
+value type (got "tuple[str | None, CategorySource | None]", expected
+"tuple[str, CategorySource]")  [return-value]
+            return classifier.classify(tx_id, description)
+                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+application/services/classification_service.py: note: In member "classify_batch" of class "ClassificationService":
+application/services/classification_service.py:136: error: Incompatible return
+value type (got "dict[str, tuple[str | None, CategorySource | None]]", expected
+"dict[str, tuple[str, CategorySource]]")  [return-value]
+            return classifier.classify_batch(transactions)
+                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+application/services/classification_service.py: note: In member "classify_transactions" of class "ClassificationService":
+application/services/classification_service.py:162: error: Incompatible types
+in assignment (expression has type "str | None", variable has type "str") 
+[assignment]
+                transactions[tx_id].category = category
+                                               ^~~~~~~~
+frontend/services/__init__.py:28: note: In module imported here:
+application/services/user_settings_service.py: note: In member "__init__" of class "UserSettingsService":
+application/services/user_settings_service.py:26: error: Incompatible default
+for argument "db_path" (default has type "None", argument has type "str") 
+[assignment]
+    ...ser_settings_datasource: UserSettingsRepository, db_path: str = None):
+                                                                       ^~~~
+application/services/user_settings_service.py:26: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+application/services/user_settings_service.py:26: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+application/services/user_settings_service.py: note: In member "update_user_settings" of class "UserSettingsService":
+application/services/user_settings_service.py:52: error: Incompatible default
+for argument "language" (default has type "None", argument has type "str") 
+[assignment]
+    ...  def update_user_settings(self, language: str = None, currency: str =...
+                                                        ^~~~
+application/services/user_settings_service.py:52: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+application/services/user_settings_service.py:52: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+application/services/user_settings_service.py:52: error: Incompatible default
+for argument "currency" (default has type "None", argument has type "str") 
+[assignment]
+    ...ings(self, language: str = None, currency: str = None, browser_setting...
+                                                        ^~~~
+application/services/user_settings_service.py:52: error: Incompatible default
+for argument "browser_settings" (default has type "None", argument has type
+"dict[Any, Any]")  [assignment]
+    ..., currency: str = None, browser_settings: dict = None) -> Tuple[bool, ...
+                                                        ^~~~
+logic/rate_limiter.py: note: In member "check_rate_limit" of class "LLMRateLimiter":
+logic/rate_limiter.py:86: error: Incompatible types in assignment (expression
+has type "str", target has type "int")  [assignment]
+                info['reset_at'] = self._get_reset_time(timestamps).strfti...
+                                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~...
+datasource/sqlite_user_settings_datasource.py: note: In member "_validate_setting" of class "SQLiteUserSettingsDataSource":
+datasource/sqlite_user_settings_datasource.py:206: error: Function
+"builtins.any" is not valid as a type  [valid-type]
+    ... _validate_setting(self, field_name: str, value: any) -> Tuple[bool, s...
+                                                        ^
+datasource/sqlite_user_settings_datasource.py:206: note: Perhaps you meant "typing.Any" instead of "any"?
+frontend/services/__init__.py:26: note: In module imported here:
+application/services/category_service.py: note: In member "__init__" of class "CategoryService":
+application/services/category_service.py:27: error: Incompatible default for
+argument "db_path" (default has type "None", argument has type "str") 
+[assignment]
+    ...d: str, category_datasource: CategoryRepository, db_path: str = None):
+                                                                       ^~~~
+application/services/category_service.py:27: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+application/services/category_service.py:27: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+application/services/category_service.py: note: In member "update_category" of class "CategoryService":
+application/services/category_service.py:170: error: Incompatible default for
+argument "name" (default has type "None", argument has type "str")  [assignment]
+    ...ate_category(self, category_id: str, name: str = None, description: st...
+                                                        ^~~~
+application/services/category_service.py:170: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+application/services/category_service.py:170: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+application/services/category_service.py:170: error: Incompatible default for
+argument "description" (default has type "None", argument has type "str") 
+[assignment]
+    ...ry_id: str, name: str = None, description: str = None, parent_id: str ...
+                                                        ^~~~
+application/services/category_service.py:170: error: Incompatible default for
+argument "parent_id" (default has type "None", argument has type "str") 
+[assignment]
+    ... None, description: str = None, parent_id: str = None) -> Tuple[bool, ...
+                                                        ^~~~
+application/services/category_service.py:210: error: Argument 2 to
+"update_category" of "CategoryRepository" has incompatible type "str | None";
+expected "str"  [arg-type]
+    ... if self.datasource.update_category(category_id, name.strip() if name ...
+                                                        ^~~~~~~~~~~~~~~~~~~~~...
+application/services/category_service.py:210: error: Argument 3 to
+"update_category" of "CategoryRepository" has incompatible type "str | None";
+expected "str"  [arg-type]
+    ...ory(category_id, name.strip() if name else None, description.strip() i...
+                                                        ^~~~~~~~~~~~~~~~~~~~~...
+frontend/services/__init__.py:31: note: In module imported here:
+application/services/fetcher_service.py: note: In member "__init__" of class "FetcherService":
+application/services/fetcher_service.py:29: error: Incompatible default for
+argument "db_path" (default has type "None", argument has type "str") 
+[assignment]
+    ...     user_settings_service: UserSettingsService, db_path: str = None):
+                                                                       ^~~~
+application/services/fetcher_service.py:29: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+application/services/fetcher_service.py:29: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+application/services/fetcher_service.py: note: In member "create_fetcher" of class "FetcherService":
+application/services/fetcher_service.py:117: error: Incompatible default for
+argument "currency_pattern" (default has type "None", argument has type "str") 
+[assignment]
+    ...                  merchant_pattern: str, currency_pattern: str = None,
+                                                                        ^~~~
+application/services/fetcher_service.py:117: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+application/services/fetcher_service.py:117: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+application/services/fetcher_service.py:118: error: Incompatible default for
+argument "default_currency" (default has type "None", argument has type "str") 
+[assignment]
+                          default_currency: str = None,
+                                                  ^~~~
+application/services/fetcher_service.py:118: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+application/services/fetcher_service.py:118: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+application/services/fetcher_service.py: note: In member "update_fetcher" of class "FetcherService":
+application/services/fetcher_service.py:185: error: Incompatible default for
+argument "name" (default has type "None", argument has type "str")  [assignment]
+        def update_fetcher(self, fetcher_id: str, name: str = None,
+                                                              ^~~~
+application/services/fetcher_service.py:185: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+application/services/fetcher_service.py:185: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+application/services/fetcher_service.py:186: error: Incompatible default for
+argument "from_emails" (default has type "None", argument has type "list[str]") 
+[assignment]
+                          from_emails: List[str] = None,
+                                                   ^~~~
+application/services/fetcher_service.py:186: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+application/services/fetcher_service.py:186: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+application/services/fetcher_service.py:187: error: Incompatible default for
+argument "subject_filter" (default has type "None", argument has type "str") 
+[assignment]
+                          subject_filter: str = None,
+                                                ^~~~
+application/services/fetcher_service.py:187: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+application/services/fetcher_service.py:187: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+application/services/fetcher_service.py:188: error: Incompatible default for
+argument "amount_pattern" (default has type "None", argument has type "str") 
+[assignment]
+                          amount_pattern: str = None,
+                                                ^~~~
+application/services/fetcher_service.py:188: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+application/services/fetcher_service.py:188: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+application/services/fetcher_service.py:189: error: Incompatible default for
+argument "merchant_pattern" (default has type "None", argument has type "str") 
+[assignment]
+                          merchant_pattern: str = None,
+                                                  ^~~~
+application/services/fetcher_service.py:189: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+application/services/fetcher_service.py:189: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+application/services/fetcher_service.py:190: error: Incompatible default for
+argument "currency_pattern" (default has type "None", argument has type "str") 
+[assignment]
+                          currency_pattern: str = None,
+                                                  ^~~~
+application/services/fetcher_service.py:190: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+application/services/fetcher_service.py:190: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+application/services/fetcher_service.py:191: error: Incompatible default for
+argument "default_currency" (default has type "None", argument has type "str") 
+[assignment]
+                          default_currency: str = None,
+                                                  ^~~~
+application/services/fetcher_service.py:191: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+application/services/fetcher_service.py:191: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+application/services/fetcher_service.py:192: error: Incompatible default for
+argument "negate_amount" (default has type "None", argument has type "bool") 
+[assignment]
+                          negate_amount: bool = None) -> Tuple[bool, str, ...
+                                                ^~~~
+application/services/fetcher_service.py:192: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+application/services/fetcher_service.py:192: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+frontend/service.py: note: In member "assign_category" of class "TransactionService":
+frontend/service.py:228: error: "None" has no attribute
+"manual_assignment_source"  [attr-defined]
+            self.classifier.manual_assignment_source.add_assignment(tx_id,...
+            ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+frontend/service.py: note: In member "assign_categories_bulk" of class "TransactionService":
+frontend/service.py:255: error: "None" has no attribute
+"manual_assignment_source"  [attr-defined]
+                self.classifier.manual_assignment_source.remove_assignment...
+                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+frontend/service.py:259: error: "None" has no attribute
+"manual_assignment_source"  [attr-defined]
+                self.classifier.manual_assignment_source.add_assignments_b...
+                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+frontend/service.py: note: In member "update_transaction" of class "TransactionService":
+frontend/service.py:359: error: Incompatible default for argument "currency"
+(default has type "None", argument has type "str")  [assignment]
+    ... description: str, comment: str, currency: str = None) -> tuple[bool, ...
+                                                        ^~~~
+frontend/service.py:359: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+frontend/service.py:359: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+frontend/service.py:423: error: "None" has no attribute "similarity_calculator"
+ [attr-defined]
+                if description_changed and self.classifier.similarity_calc...
+                                           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~...
+frontend/service.py:424: error: "None" has no attribute "similarity_calculator"
+ [attr-defined]
+                    calc = self.classifier.similarity_calculator
+                           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+frontend/service.py:425: error: Incompatible types in assignment (expression
+has type "Any | None", variable has type "SQLiteTransactionDataSource") 
+[assignment]
+                    datasource = getattr(calc, 'embedding_datasource', Non...
+                                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+frontend/service.py:428: error: "SQLiteTransactionDataSource" has no attribute
+"invalidate_embedding"  [attr-defined]
+                        datasource.invalidate_embedding(tx_id)
+                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+frontend/service.py: note: In member "add_new_transaction" of class "TransactionService":
+frontend/service.py:435: error: Incompatible default for argument "currency"
+(default has type "None", argument has type "str")  [assignment]
+    ...ry: str = "", comment: str = "", currency: str = None) -> tuple[bool, ...
+                                                        ^~~~
+frontend/service.py:435: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+frontend/service.py:435: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+frontend/service.py:496: error: "None" has no attribute "classify" 
+[attr-defined]
+    ...         final_category, final_category_source = self.classifier.class...
+                                                        ^~~~~~~~~~~~~~~~~~~~~~~~
+frontend/service.py:521: error: "None" has no attribute
+"manual_assignment_source"  [attr-defined]
+                    self.classifier.manual_assignment_source.add_assignmen...
+                    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+frontend/service.py: note: In member "tree_to_dict" of class "TransactionService":
+frontend/service.py:571: error: "object" has no attribute "append" 
+[attr-defined]
+                    result['children'].append(self.tree_to_dict(child, nod...
+                    ^~~~~~~~~~~~~~~~~~~~~~~~~
+frontend/service.py: note: In member "update_category" of class "TransactionService":
+frontend/service.py:637: error: Incompatible default for argument "name"
+(default has type "None", argument has type "str")  [assignment]
+    ...ate_category(self, category_id: str, name: str = None, description: st...
+                                                        ^~~~
+frontend/service.py:637: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+frontend/service.py:637: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+frontend/service.py:637: error: Incompatible default for argument "description"
+(default has type "None", argument has type "str")  [assignment]
+    ...ry_id: str, name: str = None, description: str = None, parent_id: str ...
+                                                        ^~~~
+frontend/service.py:637: error: Incompatible default for argument "parent_id"
+(default has type "None", argument has type "str")  [assignment]
+    ... None, description: str = None, parent_id: str = None) -> tuple[bool, ...
+                                                        ^~~~
+frontend/service.py:680: error: Argument 2 to "update_category" of
+"SQLiteCategoryDataSource" has incompatible type "str | None"; expected "str" 
+[arg-type]
+    ...      if datasource.update_category(category_id, name.strip() if name ...
+                                                        ^~~~~~~~~~~~~~~~~~~~~...
+frontend/service.py:680: error: Argument 3 to "update_category" of
+"SQLiteCategoryDataSource" has incompatible type "str | None"; expected "str" 
+[arg-type]
+    ...ory(category_id, name.strip() if name else None, description.strip() i...
+                                                        ^~~~~~~~~~~~~~~~~~~~~...
+frontend/service.py: note: In member "get_pattern_by_id" of class "TransactionService":
+frontend/service.py:817: error: "Regexp" object is not iterable  [misc]
+            pattern_id, raw, name, category_id = pattern
+                                                 ^~~~~~~
+frontend/service.py:822: error: "Regexp" object is not iterable  [misc]
+            for pid, r, n, visual_desc, cat, order_idx in pattern_full:
+            ^
+frontend/service.py:823: error: Cannot determine type of "pid"  [has-type]
+                if pid == pattern_id:
+                   ^~~
+frontend/service.py:824: error: Cannot determine type of "visual_desc" 
+[has-type]
+                    if visual_desc:
+                       ^~~~~~~~~~~
+frontend/service.py:826: error: Cannot determine type of "visual_desc" 
+[has-type]
+                            visual_data = json.loads(visual_desc)
+                                                     ^~~~~~~~~~~
+frontend/service.py:834: error: Cannot determine type of "name"  [has-type]
+                'name': name,
+                        ^~~~
+frontend/service.py:835: error: Cannot determine type of "category_id" 
+[has-type]
+                'category_id': category_id,
+                               ^~~~~~~~~~~
+frontend/service.py: note: In member "get_user_settings" of class "TransactionService":
+frontend/service.py:1253: error: Name "UserSettings" is not defined 
+[name-defined]
+        def get_user_settings(self) -> 'UserSettings':
+                                       ^
+frontend/service.py: note: In member "update_user_settings" of class "TransactionService":
+frontend/service.py:1266: error: Incompatible default for argument "language"
+(default has type "None", argument has type "str")  [assignment]
+    ...  def update_user_settings(self, language: str = None, currency: str =...
+                                                        ^~~~
+frontend/service.py:1266: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+frontend/service.py:1266: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+frontend/service.py:1266: error: Incompatible default for argument "currency"
+(default has type "None", argument has type "str")  [assignment]
+    ...ings(self, language: str = None, currency: str = None, browser_setting...
+                                                        ^~~~
+frontend/service.py:1266: error: Incompatible default for argument
+"browser_settings" (default has type "None", argument has type "dict[Any, Any]")
+ [assignment]
+    ..., currency: str = None, browser_settings: dict = None) -> tuple[bool, ...
+                                                        ^~~~
+datasource/sqlite_datasource_factory.py: note: In member "__init__" of class "SQLiteDataSourceFactory":
+datasource/sqlite_datasource_factory.py:41: error: Need type annotation for
+"_cache" (hint: "_cache: dict[<type>, <type>] = ...")  [var-annotated]
+            self._cache = {}
+            ^~~~~~~~~~~
+frontend/services/__init__.py:29: note: In module imported here:
+application/services/transaction_service.py: note: In member "__init__" of class "TransactionService":
+application/services/transaction_service.py:39: error: Incompatible default for
+argument "db_path" (default has type "None", argument has type "str") 
+[assignment]
+                     db_path: str = None):
+                                    ^~~~
+application/services/transaction_service.py:39: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+application/services/transaction_service.py:39: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+application/services/transaction_service.py: note: In member "get_transactions_by_group" of class "TransactionService":
+application/services/transaction_service.py:169: error: "TransactionRepository"
+has no attribute "get_transactions_by_group"; maybe
+"get_transactions_by_source"?  [attr-defined]
+            return self._transaction_datasource.get_transactions_by_group(...
+                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+application/services/transaction_service.py: note: In member "add_new_transaction" of class "TransactionService":
+application/services/transaction_service.py:173: error: Incompatible default
+for argument "currency" (default has type "None", argument has type "str") 
+[assignment]
+                               currency: str = None, classifier=None) -> T...
+                                               ^~~~
+application/services/transaction_service.py:173: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+application/services/transaction_service.py:173: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+application/services/transaction_service.py: note: In member "update_transaction" of class "TransactionService":
+application/services/transaction_service.py:276: error: Incompatible default
+for argument "currency" (default has type "None", argument has type "str") 
+[assignment]
+    ...                 description: str, comment: str, currency: str = None,
+                                                                        ^~~~
+application/services/transaction_service.py:276: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+application/services/transaction_service.py:276: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+application/services/transaction_service.py:329: error: "TransactionRepository"
+has no attribute "update_transaction"; maybe "add_transaction"?  [attr-defined]
+            if self._transaction_datasource.update_transaction(tx_id, date...
+               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+application/services/transaction_service.py: note: In member "get_last_transaction_date" of class "TransactionService":
+application/services/transaction_service.py:393: error: "TransactionRepository"
+has no attribute "get_last_transaction_date"; maybe "get_all_transactions"? 
+[attr-defined]
+            return self._transaction_datasource.get_last_transaction_date(...
+                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+application/services/transaction_service.py: note: In member "add_group_to_transaction" of class "TransactionService":
+application/services/transaction_service.py:406: error: "TransactionRepository"
+has no attribute "add_group_to_transaction"; maybe "add_transaction"? 
+[attr-defined]
+            return self._transaction_datasource.add_group_to_transaction(t...
+                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+application/services/transaction_service.py: note: In member "remove_group_from_transaction" of class "TransactionService":
+application/services/transaction_service.py:419: error: "TransactionRepository"
+has no attribute "remove_group_from_transaction"  [attr-defined]
+            return self._transaction_datasource.remove_group_from_transact...
+                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+application/services/transaction_service.py: note: In member "add_group_to_transactions_batch" of class "TransactionService":
+application/services/transaction_service.py:432: error: "TransactionRepository"
+has no attribute "add_group_to_transactions_batch"; maybe
+"add_transactions_batch"?  [attr-defined]
+            return self._transaction_datasource.add_group_to_transactions_...
+                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~...
+application/services/transaction_service.py: note: In member "remove_group_from_transactions_batch" of class "TransactionService":
+application/services/transaction_service.py:445: error: "TransactionRepository"
+has no attribute "remove_group_from_transactions_batch"  [attr-defined]
+            return self._transaction_datasource.remove_group_from_transact...
+                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~...
+application/services/transaction_service.py: note: In member "remove_group_from_all_transactions" of class "TransactionService":
+application/services/transaction_service.py:457: error: "TransactionRepository"
+has no attribute "remove_group_from_all_transactions"  [attr-defined]
+            return self._transaction_datasource.remove_group_from_all_tran...
+                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~...
+frontend/services/__init__.py:27: note: In module imported here:
+application/services/pattern_service.py: note: In member "__init__" of class "PatternService":
+application/services/pattern_service.py:29: error: Incompatible default for
+argument "db_path" (default has type "None", argument has type "str") 
+[assignment]
+    ...              category_service: CategoryService, db_path: str = None):
+                                                                       ^~~~
+application/services/pattern_service.py:29: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+application/services/pattern_service.py:29: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+frontend/services/__init__.py:32: note: In module imported here:
+application/services/group_service.py: note: In member "__init__" of class "GroupService":
+application/services/group_service.py:29: error: Incompatible default for
+argument "db_path" (default has type "None", argument has type "str") 
+[assignment]
+    ...        transaction_service: TransactionService, db_path: str = None):
+                                                                       ^~~~
+application/services/group_service.py:29: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+application/services/group_service.py:29: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+application/services/group_service.py: note: In member "update_group" of class "GroupService":
+application/services/group_service.py:90: error: Incompatible default for
+argument "name" (default has type "None", argument has type "str")  [assignment]
+    ...ef update_group(self, group_id: str, name: str = None) -> Tuple[bool, ...
+                                                        ^~~~
+application/services/group_service.py:90: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+application/services/group_service.py:90: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+frontend/utils.py: note: In function "invalidate_service_cache":
+frontend/utils.py:71: error: Incompatible default for argument "user_id"
+(default has type "None", argument has type "str")  [assignment]
+    def invalidate_service_cache(user_id: str = None):
+                                                ^~~~
+frontend/utils.py:71: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+frontend/utils.py:71: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+frontend/blueprints/onboarding.py: note: In function "step":
+frontend/blueprints/onboarding.py:223: error: Unsupported operand types for <
+("int" and "object")  [operator]
+            step_data['is_complete'] = step_data['count'] > 0
+                                       ^
+frontend/blueprints/onboarding.py:225: error: Unsupported operand types for >
+("int" and "object")  [operator]
+            step_data['is_past'] = step_def['number'] < step_num
+                                   ^
+frontend/blueprints/onboarding.py:243: error: Unsupported operand types for <
+("int" and "object")  [operator]
+            'can_continue': current_step['count'] > 0,
+                            ^
+Found 112 errors in 26 files (checked 47 source files)
+make: *** [mypy] Error 1

@@ -1,0 +1,68 @@
+{#
+Pattern creation/edit form partial with rule builder.
+Can be used both in modal (standalone page) and embedded (wizard).
+
+Variables:
+  - all_categories: List of (category, depth) tuples for category dropdown
+  - context: 'modal' (default) or 'wizard' - affects form behavior
+#}
+{% set ctx = context|default('modal') %}
+
+<form id="pattern-form" onsubmit="return false;">
+    <input type="hidden" id="edit-mode" value="false">
+    <input type="hidden" id="pattern-id">
+
+    {# Pattern name #}
+    <div class="form-group">
+        <label for="pattern-name" class="form-label">Pattern Name *</label>
+        <input type="text" id="pattern-name" class="form-input"
+               placeholder="e.g., konbini, supermarket" required maxlength="40">
+        <small class="form-help">Short label to identify this pattern</small>
+    </div>
+
+    {# Target category #}
+    <div class="form-group">
+        <label for="pattern-category" class="form-label">Target Category *</label>
+        <select id="pattern-category" class="form-select" required>
+            <option value="">Select category...</option>
+            {% for cat, depth in all_categories %}
+                {% if cat.id not in ['all', 'unknown'] %}
+                    <option value="{{ cat.id }}">
+                        {{ ('&nbsp;&nbsp;&nbsp;&nbsp;' * depth)|safe }}{{ cat.name }}
+                    </option>
+                {% endif %}
+            {% endfor %}
+        </select>
+    </div>
+
+    {# Rules section #}
+    <div class="form-group">
+        <label class="form-label">Matching Rules *</label>
+        <div id="rules-container">
+            {# Rules added dynamically via JavaScript #}
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="addRuleRow('OR', '')">
+            + Add Rule
+        </button>
+        <small class="form-help">At least one positive rule required (OR, AND, START_WITH, or END_WITH)</small>
+    </div>
+
+    {# Preview box #}
+    <div class="form-group">
+        <label class="form-label">Preview</label>
+        <div id="preview-description" class="preview-box">
+            No rules added yet
+        </div>
+        <small class="form-help">Auto-generated description based on rules</small>
+    </div>
+
+    <div class="filter-actions">
+        {% if ctx == 'modal' %}
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="button" class="btn btn-success" onclick="savePattern()">Save</button>
+        {% else %}
+        <button type="button" class="btn btn-secondary" onclick="resetPatternForm()">Clear</button>
+        <button type="button" class="btn btn-success" onclick="savePattern({ context: 'wizard' })">Save Pattern</button>
+        {% endif %}
+    </div>
+</form>

@@ -1,0 +1,416 @@
+{% extends "base.html" %}
+
+{% block title %}Review Transactions - SpendSense{% endblock %}
+{% block page_title %}Review Transactions{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/review.css') }}">
+{% endblock %}
+
+{% block content %}
+<!-- Hidden form for re-categorization (triggered by FAB) -->
+<form method="POST" action="{{ url_for('main.recategorize') }}" style="display: none;" id="recategorize-form">
+    <input type="hidden" name="redirect_params" class="redirect_params" value="">
+</form>
+
+<!-- Info Note -->
+<div class="info-note">
+    <p>This page shows all transactions (default: past 6 months). All transactions can be reassigned to any category. For manually assigned transactions, you can clear the assignment to let the system re-categorize them automatically. For similarity-based transactions, you can click "Confirm" to convert them to manual assignments.</p>
+</div>
+
+<!-- Filter Section -->
+<div class="filter-section">
+    <form method="GET" action="{{ url_for('transactions.review') }}" class="filter-form" id="filter-form">
+        <div class="form-group">
+            <label class="form-label">Category</label>
+            <select name="category" class="form-select">
+                <option value="">All Categories</option>
+                {% for cat, depth in categories %}
+                <option value="{{ cat.id }}" {% if selected_category == cat.id %}selected{% endif %}>
+                    {% for i in range(depth) %}&nbsp;&nbsp;&nbsp;&nbsp;{% endfor %}
+                    {% if depth > 0 %}└─ {% endif %}{{ cat.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">From Date</label>
+            <input type="date" name="from_date" class="form-input" value="{{ from_date }}">
+        </div>
+        <div class="form-group">
+            <label class="form-label">To Date</label>
+            <input type="date" name="to_date" class="form-input" value="{{ to_date }}">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Search Description/Comment</label>
+            <input type="text" name="search" id="search-input" class="form-input" placeholder="Search..." value="{{ search_query }}" autocomplete="off">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Category Source</label>
+            <select name="category_source" class="form-select">
+                <option value="">All Sources</option>
+                <option value="manual" {% if category_source == 'manual' %}selected{% endif %}>Manual</option>
+                <option value="regexp" {% if category_source == 'regexp' %}selected{% endif %}>RegExp</option>
+                <option value="similarity" {% if category_source == 'similarity' %}selected{% endif %}>Similarity</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Transaction Source</label>
+            <select name="transaction_source" class="form-select">
+                <option value="">All Sources</option>
+                {% for source in transaction_sources %}
+                <option value="{{ source }}" {% if transaction_source == source %}selected{% endif %}>{{ source }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Sort By</label>
+            <select name="sort_by" class="form-select">
+                <option value="date" {% if sort_by == 'date' %}selected{% endif %}>Date (Newest First)</option>
+                <option value="amount" {% if sort_by == 'amount' %}selected{% endif %}>Amount (Highest First)</option>
+            </select>
+        </div>
+        <div class="filter-actions">
+            <button type="submit" class="btn btn-success">Apply Filters</button>
+            <a href="{{ url_for('transactions.review') }}" class="btn btn-danger">Clear Filters</a>
+        </div>
+    </form>
+</div>
+
+<!-- Transaction Summary -->
+<div class="transaction-summary">
+    <div class="summary-stat">
+        <span class="summary-stat-label">Total Transactions</span>
+        <span class="summary-stat-value" id="total-count">{{ transactions|length }}</span>
+        <span id="filtered-info" style="font-size: 0.75rem; color: var(--text-muted); display: none;">
+            (filtered from <span id="original-count">{{ transactions|length }}</span>)
+        </span>
+    </div>
+    <div class="summary-stat">
+        <span class="summary-stat-label">Total Amount</span>
+        <span class="summary-stat-value highlight" id="total-amount">{{ currency_symbol }}{{ total_amount|format_major_amount(default_currency) }}</span>
+    </div>
+</div>
+
+<!-- Bulk Actions Bar -->
+<div class="bulk-actions-bar" id="bulk-actions-bar" style="display: none;">
+    <div class="bulk-actions-left">
+        <label class="checkbox-label">
+            <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this.checked)">
+            <span>Select All</span>
+        </label>
+        <span id="selected-count">0 selected</span>
+    </div>
+    <div class="bulk-actions-right">
+        <button type="button" class="btn btn-sm btn-success" onclick="openBulkAddGroupModal()">+ Add Group to Selected</button>
+        <button type="button" class="btn btn-sm btn-danger" onclick="openBulkRemoveGroupModal()">- Remove Group from Selected</button>
+    </div>
+</div>
+
+<!-- Transactions Form -->
+<form id="bulk-assign-form" method="POST" action="{{ url_for('transactions.assign_similarity') }}">
+    <input type="hidden" name="redirect_params" id="redirect_params" value="">
+
+    {% if transactions %}
+        {% for tx in transactions %}
+        <div class="transaction-card {% if not tx.category or tx.category not in categories_dict %}uncategorized{% endif %}{% if tx.category_source and tx.category_source.value == 'similarity' %} similarity-source{% endif %}"
+             data-description="{{ tx.description }}"
+             data-comment="{{ tx.comment if tx.comment else '' }}"
+             data-amount="{{ tx.amount }}"
+             data-currency="{{ tx.currency }}"
+             data-tx-id="{{ tx.id }}">
+            <div class="transaction-card-header">
+                <label class="checkbox-label">
+                    <input type="checkbox" class="tx-checkbox" data-tx-id="{{ tx.id }}" onchange="updateBulkSelectionUI()">
+                </label>
+                <div class="transaction-card-header__actions">
+                    {% include 'partials/_encryption_badge.html' %}
+                    <button type="button" class="edit-transaction-btn" onclick="openEditTransactionModal('{{ tx.id }}')" title="Edit transaction">
+                        ✏️
+                    </button>
+                </div>
+            </div>
+            <div class="transaction-info">
+                <div class="info-item">
+                    <span class="info-label">Date</span>
+                    <span class="info-value" data-utc-date="{{ tx.date.strftime('%Y-%m-%d %H:%M:%S') }}">{{ tx.date.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Amount</span>
+                    <span class="info-value" data-amount="{{ tx.amount }}" data-currency="{{ tx.currency }}">
+                        {{ get_currency_symbol(tx.currency) }}{{ tx.amount|format_amount(tx.currency) }}
+                        {% if tx.currency != default_currency %}
+                        <span style="font-size: 0.9em; color: var(--text-muted); margin-left: 0.5rem;">
+                            (≈{{ currency_symbol }}{{ converter.convert(tx.amount|amount_major(tx.currency), tx.currency, default_currency, tx.date)|format_major_amount(default_currency) }})
+                        </span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Description</span>
+                    <span class="info-value">{{ tx.description }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Current Category</span>
+                    <div class="info-value">
+                        {% if tx.category and tx.category in categories_dict %}
+                        <span class="badge badge-category">{{ categories_dict[tx.category].name }}</span>
+                        {% else %}
+                        <span class="badge badge-uncategorized">Uncategorized</span>
+                        {% endif %}
+                        <br>
+                        {% if tx.category_source %}
+                        <span class="badge badge-source {{ tx.category_source.value }}">{{ tx.category_source.value.upper() }}</span>
+                        {% if tx.category_source.value == 'similarity' %}
+                        <button class="investigate-btn" onclick="investigateSimilarity('{{ tx.id }}', event)" title="Investigate similarities">?</button>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Groups Section -->
+            <div class="groups-section">
+                <label class="form-label">Groups</label>
+                <div class="groups-display">
+                    {% if tx.groups %}
+                        {% for group_id in tx.groups %}
+                            {% if group_id in groups_dict %}
+                            <span class="group-badge group-badge-clickable" data-group-id="{{ group_id }}" data-tx-id="{{ tx.id }}" onclick="navigateToGroup('{{ group_id }}')" title="View all transactions in this group">
+                                <span>{{ groups_dict[group_id].name }}</span>
+                                <button type="button" class="group-badge-remove" onclick="event.stopPropagation(); removeGroupFromTransaction('{{ tx.id }}', '{{ group_id }}')" title="Remove group" aria-label="Remove {{ groups_dict[group_id].name }}">×</button>
+                            </span>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                    <button type="button" class="btn-add-group" onclick="openAddGroupModal('{{ tx.id }}')" title="Add group to this transaction" aria-label="Add group">Add Group</button>
+                </div>
+            </div>
+
+            <div class="category-form">
+                <button type="button" class="category-select-btn"
+                        data-tx-id="{{ tx.id }}"
+                        data-original-category="{{ tx.category or '' }}"
+                        data-category-source="{{ tx.category_source.value if tx.category_source else '' }}"
+                        onclick="openCategoryModal('{{ tx.id }}', '{{ tx.category or '' }}', '{{ tx.category_source.value if tx.category_source else '' }}')">
+                    <span class="selected-category-text">
+                        {% if tx.category and tx.category in categories_dict %}
+                        {{ categories_dict[tx.category].name }}
+                        {% else %}
+                        Select category...
+                        {% endif %}
+                    </span>
+                    <span>▼</span>
+                </button>
+                {% if tx.category_source and tx.category_source.value == 'similarity' and tx.category and tx.category in categories_dict %}
+                <button type="button" class="confirm-btn"
+                        data-tx-id="{{ tx.id }}"
+                        onclick="confirmSimilarityCategory('{{ tx.id }}', '{{ tx.category }}', '{{ categories_dict[tx.category].name }}')">
+                    Confirm
+                </button>
+                {% endif %}
+            </div>
+
+            <div class="comment-section">
+                <label class="form-label">Comment</label>
+                <div class="comment-display">
+                    {{ tx.comment if tx.comment else '(no comment)' }}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <h2>No transactions found</h2>
+            <p>There are no transactions matching the current filters.</p>
+        </div>
+    {% endif %}
+</form>
+{% endblock %}
+
+{% block modals %}
+<!-- Category Selection Modal -->
+<div class="modal-overlay" id="category-modal" onclick="closeModalOnOverlay(event)">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Select Category</h3>
+            <button class="modal-close" onclick="closeCategoryModal()">&times;</button>
+        </div>
+        <ul class="modal-category-list">
+            {% for cat, depth in categories %}
+            {% if cat.id != 'unknown' %}
+            <li class="modal-category-item"
+                data-category-id="{{ cat.id }}"
+                data-category-name="{{ cat.name }}"
+                onclick="selectCategory('{{ cat.id }}', '{{ cat.name }}')">
+                {% for i in range(depth) %}&nbsp;&nbsp;&nbsp;&nbsp;{% endfor %}
+                {% if depth > 0 %}└─ {% endif %}{{ cat.name }}
+            </li>
+            {% endif %}
+            {% endfor %}
+        </ul>
+        <button class="btn btn-danger full-width mt-md" id="modal-clear-btn" onclick="clearCategory(event)" style="display: none;">
+            Clear Manual Assignment
+        </button>
+    </div>
+</div>
+
+<!-- Add Transaction Modal -->
+<div class="modal-overlay" id="add-transaction-modal" onclick="closeAddModalOnOverlay(event)">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Add New Transaction</h3>
+            <button class="modal-close" onclick="closeAddTransactionModal()">&times;</button>
+        </div>
+        <form id="add-transaction-form">
+            <div class="form-group">
+                <label class="form-label required" for="add-tx-date">Date & Time</label>
+                <input type="datetime-local" id="add-tx-date" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label required" for="add-tx-amount">Amount</label>
+                <input type="number" id="add-tx-amount" class="form-input" placeholder="Amount in currency (e.g., 1000)" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label required" for="add-tx-currency">Currency</label>
+                <select id="add-tx-currency" class="form-select" required>
+                    {% for curr in supported_currencies|sort(attribute='code') %}
+                    <option value="{{ curr.code }}">{{ curr.code }} - {{ curr.name }} ({{ curr.symbol }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label required" for="add-tx-description">Description</label>
+                <div class="autocomplete-wrapper">
+                    <input type="text" id="add-tx-description" class="form-input" placeholder="Transaction description (start typing for suggestions)" required autocomplete="off">
+                    <div id="autocomplete-suggestions" class="autocomplete-suggestions"></div>
+                </div>
+            </div>
+            <div class="form-group" id="add-tx-category-group">
+                <label class="form-label">Category (optional - will auto-classify if not selected)</label>
+                <button type="button" class="category-select-btn"
+                        id="add-tx-category-btn"
+                        data-category-id=""
+                        onclick="openCategoryModalForNewTx()">
+                    <span class="selected-category-text" id="add-tx-category-text">
+                        Auto-classify (use system rules)
+                    </span>
+                    <span>▼</span>
+                </button>
+                <input type="hidden" id="add-tx-category" value="">
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="add-tx-comment">Comment</label>
+                <textarea id="add-tx-comment" class="form-input form-textarea" placeholder="Optional comment"></textarea>
+            </div>
+            <div id="add-tx-message"></div>
+            <div class="filter-actions mt-md">
+                <button type="button" class="btn btn-secondary" onclick="closeAddTransactionModal()">Cancel</button>
+                <button type="submit" class="btn btn-success">Add Transaction</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Similarity Investigation Modal -->
+<div class="modal-overlay similarity-modal" id="similarity-modal" onclick="closeSimilarityModalOnOverlay(event)">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Similar Transactions</h3>
+            <button class="modal-close" onclick="closeSimilarityModal()">&times;</button>
+        </div>
+        <div id="similarity-modal-content">
+            <div class="loading">Loading...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Group Modal (Individual) -->
+<div class="modal-overlay" id="add-group-modal" onclick="closeModalOnOverlay(event, 'add-group-modal')">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Add Group to Transaction</h3>
+            <button class="modal-close" onclick="closeAddGroupModal()">&times;</button>
+        </div>
+        <ul class="modal-group-list">
+            {% for group in groups %}
+            <li class="modal-group-item"
+                data-group-id="{{ group.id }}"
+                data-group-name="{{ group.name }}"
+                onclick="addGroupToTransaction('{{ group.id }}', '{{ group.name }}')">
+                {{ group.name }}
+            </li>
+            {% endfor %}
+            {% if not groups %}
+            <li class="empty-state-small">No groups available. Create groups in the Groups page.</li>
+            {% endif %}
+        </ul>
+    </div>
+</div>
+
+<!-- Bulk Add Group Modal -->
+<div class="modal-overlay" id="bulk-add-group-modal" onclick="closeModalOnOverlay(event, 'bulk-add-group-modal')">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Add Group to Selected Transactions</h3>
+            <button class="modal-close" onclick="closeBulkAddGroupModal()">&times;</button>
+        </div>
+        <ul class="modal-group-list">
+            {% for group in groups %}
+            <li class="modal-group-item"
+                data-group-id="{{ group.id }}"
+                data-group-name="{{ group.name }}"
+                onclick="bulkAddGroup('{{ group.id }}', '{{ group.name }}')">
+                {{ group.name }}
+            </li>
+            {% endfor %}
+            {% if not groups %}
+            <li class="empty-state-small">No groups available. Create groups in the Groups page.</li>
+            {% endif %}
+        </ul>
+    </div>
+</div>
+
+<!-- Bulk Remove Group Modal -->
+<div class="modal-overlay" id="bulk-remove-group-modal" onclick="closeModalOnOverlay(event, 'bulk-remove-group-modal')">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Remove Group from Selected Transactions</h3>
+            <button class="modal-close" onclick="closeBulkRemoveGroupModal()">&times;</button>
+        </div>
+        <ul class="modal-group-list">
+            {% for group in groups %}
+            <li class="modal-group-item"
+                data-group-id="{{ group.id }}"
+                data-group-name="{{ group.name }}"
+                onclick="bulkRemoveGroup('{{ group.id }}', '{{ group.name }}')">
+                {{ group.name }}
+            </li>
+            {% endfor %}
+            {% if not groups %}
+            <li class="empty-state-small">No groups available.</li>
+            {% endif %}
+        </ul>
+    </div>
+</div>
+
+<!-- Pending Changes Bar -->
+<div class="pending-changes-bar" id="pending-changes-bar">
+    <strong id="pending-count">0</strong> transaction(s) modified
+    <button onclick="submitPendingChanges()">Apply Changes</button>
+    <button class="cancel-btn" onclick="cancelPendingChanges()">Cancel</button>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- Currency configuration from backend (single source of truth) -->
+<script>
+    // Build currency minor units map from backend configuration
+    window.CURRENCY_CONFIG = {
+        {% for currency in supported_currencies %}
+        '{{ currency.code }}': {{ currency.minor_units }}{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+</script>
+<script src="{{ url_for('static', filename='js/review.js') }}"></script>
+{% endblock %}

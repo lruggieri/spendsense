@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Pattern Settings - SpendSense{% endblock %}
+{% block page_title %}Pattern Settings{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/patterns.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="patterns-container">
+    <!-- Info box explaining patterns -->
+    <div class="info-note">
+        <h3>About Patterns</h3>
+        <p>Patterns automatically categorize transactions by matching keywords in descriptions.
+           You can create rules using simple operators without needing to know regex syntax.</p>
+        <p><strong>Available Operators:</strong></p>
+        <ul>
+            <li><strong>Starts with</strong> - Transaction must begin with this keyword</li>
+            <li><strong>Ends with</strong> - Transaction must end with this keyword</li>
+            <li><strong>Not starts with</strong> - Transaction must NOT begin with this keyword</li>
+            <li><strong>Contains (OR)</strong> - Match if transaction contains ANY of these keywords</li>
+            <li><strong>Must contain (AND)</strong> - Transaction must contain ALL of these keywords</li>
+            <li><strong>Must not contain (NOT)</strong> - Transaction must NOT contain this keyword</li>
+        </ul>
+        <p><strong>Pattern Priority:</strong> First matching pattern wins. Drag patterns to reorder priority.</p>
+    </div>
+
+    <!-- Header -->
+    <div class="section-header">
+        <h2>Patterns List</h2>
+    </div>
+
+    <!-- Patterns table -->
+    <div class="pattern-table-wrapper">
+        <table class="pattern-table">
+            <thead>
+                <tr>
+                    <th class="drag-col">Order</th>
+                    <th class="name-col">Name</th>
+                    <th>Description</th>
+                    <th class="category-col">Category</th>
+                    <th class="actions-col">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="patterns-tbody">
+                {% for pattern in patterns %}
+                <tr draggable="true" data-pattern-id="{{ pattern.id }}" data-order="{{ pattern.order_index }}">
+                    <td class="drag-col">
+                        <span class="drag-handle" title="Drag to reorder">☰</span>
+                    </td>
+                    <td class="name-col">{{ pattern.name }}</td>
+                    <td class="pattern-description">{{ pattern.human_description }}</td>
+                    <td class="category-col">{{ pattern.category_name }}</td>
+                    <td class="actions-col">
+                        <button class="btn-icon" onclick="openEditModal('{{ pattern.id }}')" title="Edit">✏️</button><button class="btn-icon btn-danger" onclick="deletePattern('{{ pattern.id }}', '{{ pattern.name }}')" title="Delete">🗑️</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Create/Edit Modal -->
+<div class="modal-overlay" id="pattern-modal" onclick="closeModalOnOverlay(event)">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h3 class="modal-title" id="modal-title">Create Pattern</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        {% include 'partials/_pattern_form.html' %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/patterns.js') }}"></script>
+{% endblock %}

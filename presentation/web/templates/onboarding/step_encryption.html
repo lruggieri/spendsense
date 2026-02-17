@@ -1,0 +1,72 @@
+{% extends "onboarding/base_onboarding.html" %}
+
+{% block step_content %}
+<div class="step-card">
+    <div class="step-header">
+        <div class="step-icon step-icon--encryption">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11V7a5 5 0 0110 0v4"/>
+            </svg>
+        </div>
+        <h2 class="step-title">Protect Your Data</h2>
+        <p class="step-description">
+            Register a passkey to enable end-to-end encryption. Your transaction data will be encrypted so only you can read it.
+        </p>
+        <p class="step-description step-description--hint">
+            This step is optional &mdash; you can set up encryption later from <a href="{{ url_for('webauthn.passkey_setup') }}">Passkey Setup</a>.
+        </p>
+    </div>
+
+    <div class="wizard-form-container">
+        <div class="wizard-form-header">
+            <h3>Register Passkey</h3>
+        </div>
+
+        <div class="encryption-form-body">
+            <div class="encryption-info-box">
+                <p>
+                    <strong>How it works:</strong> A passkey on your device derives an encryption key using the PRF extension. The server uses this key to encrypt your data at rest. You'll authenticate with your passkey each session to provide the key.
+                </p>
+            </div>
+
+            <div id="setup-status" class="encryption-status"></div>
+
+            <button class="btn btn-primary" id="register-passkey-btn" onclick="registerPasskeyForOnboarding()">
+                Register Passkey
+            </button>
+        </div>
+    </div>
+
+    <div class="step-tips">
+        <h4>Tips</h4>
+        <ul>
+            <li>Works best with built-in authenticators (Touch ID, Windows Hello, Android biometrics)</li>
+            <li>You can add more passkeys later from the Encryption Setup page</li>
+            <li>If you skip, your data is still stored securely &mdash; just not end-to-end encrypted</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ super() }}
+<script>
+    async function registerPasskeyForOnboarding() {
+        // Reuse the global passkey registration function
+        await window.registerPasskeyWithPRF();
+
+        // Check if DEK was stored (encryption setup succeeded)
+        // Migration is already triggered by registerPasskeyWithPRF()
+        const dek = localStorage.getItem('encryption_dek');
+        if (dek) {
+            const continueBtn = document.getElementById('continue-btn');
+            if (continueBtn) continueBtn.disabled = false;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initOnboarding({{ step_num }}, {{ total_steps }});
+    });
+</script>
+{% endblock %}

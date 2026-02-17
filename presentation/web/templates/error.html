@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% set hide_header = true %}
+
+{% block title %}{{ error_message }} - SpendSense{% endblock %}
+
+{% block extra_head %}
+<style>
+    body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .error-card {
+        background-color: var(--bg-primary);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-xl);
+        box-shadow: var(--shadow-xl);
+        max-width: 500px;
+        margin: var(--spacing-xl) auto;
+        text-align: center;
+    }
+
+    @media (max-width: 640px) {
+        .error-card {
+            padding: var(--spacing-lg);
+        }
+    }
+
+    .error-icon {
+        font-size: 4rem;
+        margin-bottom: var(--spacing-md);
+    }
+
+    .error-code {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .error-title {
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-md);
+        font-size: 1.75rem;
+    }
+
+    .error-details {
+        color: var(--text-secondary);
+        margin-bottom: var(--spacing-xl);
+        font-size: 1rem;
+        line-height: 1.6;
+    }
+
+    .error-actions {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-md);
+        margin-top: var(--spacing-xl);
+    }
+
+    .btn-primary {
+        background-color: var(--primary);
+        color: white;
+        padding: var(--spacing-md) var(--spacing-xl);
+        font-size: 1rem;
+        font-weight: 500;
+        border-radius: var(--radius-sm);
+        border: none;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        transition: all var(--transition-normal);
+    }
+
+    .btn-primary:hover {
+        background-color: var(--primary-dark);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .btn-secondary {
+        background-color: transparent;
+        color: var(--text-secondary);
+        padding: var(--spacing-md) var(--spacing-xl);
+        font-size: 0.875rem;
+        font-weight: 500;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--gray-300);
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        transition: all var(--transition-normal);
+    }
+
+    .btn-secondary:hover {
+        border-color: var(--gray-400);
+        background-color: var(--bg-secondary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="error-card">
+    <div class="error-icon">🚫</div>
+    <div class="error-code">Error {{ error_code }}</div>
+    <h1 class="error-title">{{ error_message }}</h1>
+    <p class="error-details">{{ error_details }}</p>
+
+    <div class="error-actions">
+        <a href="{{ url_for('auth.login') }}" class="btn-primary">Back to Login</a>
+        <a href="/" class="btn-secondary">Go to Home</a>
+    </div>
+</div>
+{% endblock %}

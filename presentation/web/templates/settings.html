@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - SpendSense{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="settings-container">
+    <!-- Info box -->
+    <div class="info-note">
+        <h3>User Preferences</h3>
+        <p>Configure your personal settings below. Changes take effect immediately.</p>
+        <p><strong>Note:</strong> Internationalization features are not yet implemented.</p>
+    </div>
+
+    <!-- Settings form -->
+    <div class="settings-form-wrapper">
+        <form id="settings-form">
+            <!-- Language -->
+            <div class="form-group">
+                <label for="language" class="form-label">Display Language</label>
+                <select id="language" class="form-select" name="language">
+                    <option value="en" {{ 'selected' if current_settings.language == 'en' }}>English</option>
+                    <option value="es" {{ 'selected' if current_settings.language == 'es' }}>Español (Spanish)</option>
+                    <option value="fr" {{ 'selected' if current_settings.language == 'fr' }}>Français (French)</option>
+                    <option value="de" {{ 'selected' if current_settings.language == 'de' }}>Deutsch (German)</option>
+                    <option value="it" {{ 'selected' if current_settings.language == 'it' }}>Italiano (Italian)</option>
+                    <option value="pt" {{ 'selected' if current_settings.language == 'pt' }}>Português (Portuguese)</option>
+                    <option value="ja" {{ 'selected' if current_settings.language == 'ja' }}>日本語 (Japanese)</option>
+                    <option value="zh" {{ 'selected' if current_settings.language == 'zh' }}>中文 (Chinese)</option>
+                    <option value="ko" {{ 'selected' if current_settings.language == 'ko' }}>한국어 (Korean)</option>
+                    <option value="ru" {{ 'selected' if current_settings.language == 'ru' }}>Русский (Russian)</option>
+                    <option value="ar" {{ 'selected' if current_settings.language == 'ar' }}>العربية (Arabic)</option>
+                    <option value="hi" {{ 'selected' if current_settings.language == 'hi' }}>हिन्दी (Hindi)</option>
+                    <option value="nl" {{ 'selected' if current_settings.language == 'nl' }}>Nederlands (Dutch)</option>
+                    <option value="sv" {{ 'selected' if current_settings.language == 'sv' }}>Svenska (Swedish)</option>
+                    <option value="no" {{ 'selected' if current_settings.language == 'no' }}>Norsk (Norwegian)</option>
+                    <option value="da" {{ 'selected' if current_settings.language == 'da' }}>Dansk (Danish)</option>
+                    <option value="fi" {{ 'selected' if current_settings.language == 'fi' }}>Suomi (Finnish)</option>
+                    <option value="pl" {{ 'selected' if current_settings.language == 'pl' }}>Polski (Polish)</option>
+                    <option value="tr" {{ 'selected' if current_settings.language == 'tr' }}>Türkçe (Turkish)</option>
+                    <option value="th" {{ 'selected' if current_settings.language == 'th' }}>ไทย (Thai)</option>
+                    <option value="vi" {{ 'selected' if current_settings.language == 'vi' }}>Tiếng Việt (Vietnamese)</option>
+                </select>
+                <small class="form-help">Language for UI labels and messages (feature not yet active)</small>
+            </div>
+
+            <!-- Currency -->
+            <div class="form-group">
+                <label for="currency" class="form-label">Default Currency</label>
+                <select id="currency" class="form-select" name="currency">
+                    {% for curr in supported_currencies|sort(attribute='code') %}
+                    <option value="{{ curr.code }}" {{ 'selected' if current_settings.currency == curr.code }}>
+                        {{ curr.code }} - {{ curr.name }} ({{ curr.symbol }})
+                    </option>
+                    {% endfor %}
+                </select>
+                <small class="form-help">Default currency for new transactions</small>
+            </div>
+
+            <!-- Actions -->
+            <div class="filter-actions">
+                <button type="button" class="btn btn-secondary" onclick="window.history.back()">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="saveSettings()">Save Settings</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Current settings display -->
+    <div class="settings-summary">
+        <h3>Current Settings</h3>
+        <ul>
+            <li><strong>Language:</strong> {{ language_names[current_settings.language] }} ({{ current_settings.language }})</li>
+            <li><strong>Currency:</strong> {{ current_settings.currency }}</li>
+            {% if current_settings.updated_at %}
+            <li><strong>Last Updated:</strong> {{ current_settings.updated_at.strftime('%Y-%m-%d %H:%M UTC') if current_settings.updated_at else 'Never' }}</li>
+            {% endif %}
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+{% endblock %}

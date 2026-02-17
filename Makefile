@@ -1,0 +1,80 @@
+.PHONY: help test test-verbose test-coverage test-fast test-watch test-specific clean install lint format run
+
+# Default Python command
+PYTHON := python3
+
+# Default target
+.DEFAULT_GOAL := help
+
+help: ## Show this help message
+	@echo "SpendSense - Development Commands"
+	@echo ""
+	@echo "Usage: make [target]"
+	@echo ""
+	@echo "Available targets:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+
+install: ## Install all dependencies
+	$(PYTHON) -m pip install -r requirements.txt
+
+test: ## Run all tests with pytest
+	$(PYTHON) -m pytest tests/ -v
+
+test-coverage: ## Run tests with coverage report (minimum 70%)
+	$(PYTHON) -m pytest tests/ --cov=domain --cov=application --cov=infrastructure --cov=presentation --cov-report=html --cov-report=term --cov-report=xml --cov-fail-under=70
+
+test-specific: ## Run specific test file (usage: make test-specific FILE=test_classifier.py)
+	$(PYTHON) -m pytest tests/$(FILE) -v
+
+test-llm: ## Run LLM integration tests (requires GEMINI_API_KEY, expensive)
+	@echo "⚠️  Running LLM tests - this will make API calls and may incur costs"
+	$(PYTHON) -m pytest -m llm -v
+
+test-all: ## Run ALL tests including expensive LLM tests
+	@echo "⚠️  Running all tests including LLM tests - this may incur costs"
+	$(PYTHON) -m pytest -m "" -v
+
+lint: ## Run linting checks (requires pylint)
+	$(PYTHON) -m pip install pylint
+	$(PYTHON) -m pylint domain/ application/ infrastructure/ presentation/ --disable=C0111,C0103,R0903,R0913
+
+mypy: ## Run mypy type checker
+	@echo "Running mypy type checker..."
+	$(PYTHON) -m pip install mypy
+	$(PYTHON) -m mypy presentation/ infrastructure/ application/ domain/
+
+format: ## Format code with black (requires black)
+	$(PYTHON) -m pip install black
+	$(PYTHON) -m black domain/ application/ infrastructure/ presentation/ tests/
+
+run: ## Run the Flask application (development mode)
+	$(PYTHON) -m presentation.web.app
+
+run-prod: ## Run the Flask application (production mode with gunicorn)
+	gunicorn -w 4 -b 0.0.0.0:5000 presentation.web.app:app
+
+db-backup: ## Backup the database
+	@mkdir -p backups
+	@cp data/transactions.db backups/transactions_backup_$$(date +%Y%m%d_%H%M%S).db
+	@echo "✓ Database backed up to backups/"
+
+# Development workflow shortcuts
+dev: install ## Setup development environment
+	@echo ""
+	@echo "✓ Development environment ready!"
+	@echo ""
+	@echo "Next steps:"
+	@echo "  • make test          - Run tests"
+	@echo "  • make run           - Start Flask app"
+	@echo "  • make help          - See all commands"
+
+# Statistics
+stats: ## Show code statistics
+	@echo "Code Statistics:"
+	@echo "=================="
+	@echo -n "Python files: "
+	@find . -name "*.py" -not -path "./.venv/*" -not -path "./venv/*" | wc -l
+	@echo -n "Lines of code: "
+	@find . -name "*.py" -not -path "./.venv/*" -not -path "./venv/*" -exec cat {} \; | wc -l
+	@echo -n "Test files: "
+	@find tests/ -name "test_*.py" 2>/dev/null | wc -l || echo "0"

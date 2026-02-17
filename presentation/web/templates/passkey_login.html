@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Unlock Data - SpendSense{% endblock %}
+{% block page_title %}Unlock Encrypted Data{% endblock %}
+
+{% block extra_head %}
+<style>
+    .unlock-card {
+        background-color: var(--bg-primary);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-xl);
+        box-shadow: var(--shadow-md);
+        max-width: 500px;
+        margin: var(--spacing-xl) auto;
+        text-align: center;
+    }
+
+    .unlock-card h2 {
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-sm);
+    }
+
+    .unlock-card p {
+        color: var(--text-secondary);
+        line-height: 1.6;
+        margin-bottom: var(--spacing-lg);
+    }
+
+    .lock-icon {
+        font-size: 3rem;
+        margin-bottom: var(--spacing-md);
+    }
+
+    #unlock-status {
+        margin-top: var(--spacing-md);
+        padding: var(--spacing-md);
+        border-radius: var(--radius-sm);
+        display: none;
+    }
+
+    #unlock-status.success {
+        background-color: var(--bg-success, #e8f5e9);
+        color: #2e7d32;
+        display: block;
+    }
+
+    #unlock-status.error {
+        background-color: var(--bg-danger, #ffebee);
+        color: #c62828;
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="unlock-card">
+    <div class="lock-icon">&#x1f512;</div>
+    <h2>Unlock Encryption Key</h2>
+    <p>
+        Authenticate with your passkey to load your encryption key
+        for this session.
+    </p>
+
+    <div id="unlock-status"></div>
+
+    <button class="btn btn-primary" id="unlock-btn" onclick="authenticateWithPRF()">
+        Authenticate with Passkey
+    </button>
+</div>
+{% endblock %}
+

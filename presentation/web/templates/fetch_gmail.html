@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Fetch Gmail Transactions - SpendSense{% endblock %}
+{% block page_title %}Fetch Gmail Transactions{% endblock %}
+
+{% block content %}
+<div class="info-note">
+    <p><strong>What does this do?</strong></p>
+    <p>This feature fetches transaction data from your Gmail account by scanning emails from configured sources. The data is automatically parsed and saved to persistent storage for classification.</p>
+    <p><strong>Note:</strong> Your Gmail credentials from login will be used automatically - no additional authorization needed!</p>
+</div>
+
+<div class="card">
+    <form action="{{ url_for('gmail.fetch_gmail_start') }}" method="get">
+        <div class="form-group">
+            <label class="form-label">Select sources to fetch:</label>
+            <div style="margin-top: var(--spacing-sm);">
+                {% if fetchers %}
+                {% for fetcher in fetchers %}
+                <div style="margin-bottom: var(--spacing-sm);">
+                    <label style="display: flex; align-items: flex-start; cursor: pointer;">
+                        <input
+                            type="checkbox"
+                            name="fetchers"
+                            value="{{ fetcher.id }}"
+                            {% if fetcher.enabled %}checked{% endif %}
+                            style="margin-right: var(--spacing-sm); margin-top: 3px; min-width: 20px; height: 20px;"
+                        >
+                        <div style="flex: 1;">
+                            <strong>{{ fetcher.name }}</strong>
+                            <div style="color: var(--text-muted); font-size: 0.875rem; margin-top: var(--spacing-xs);">
+                                {{ fetcher.description }}
+                            </div>
+                        </div>
+                    </label>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div style="padding: var(--spacing-md); background: var(--bg-secondary); border-radius: var(--radius-md); color: var(--text-muted);">
+                    <p style="margin: 0 0 var(--spacing-sm) 0;">No fetchers configured yet.</p>
+                    <a href="{{ url_for('fetchers.fetchers') }}" class="btn btn-primary" style="display: inline-block;">
+                        Configure Fetchers
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="after_date">Fetch emails after date:</label>
+            <input
+                type="date"
+                id="after_date"
+                name="after_date"
+                class="form-input"
+                value="{{ default_date }}"
+            >
+            <div style="color: var(--text-muted); font-size: 0.75rem; margin-top: var(--spacing-xs);">
+                Only emails after this date will be fetched
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-success" style="font-size: 1rem; padding: var(--spacing-md) var(--spacing-xl);" {% if not fetchers %}disabled{% endif %}>
+            Start Fetching Transactions
+        </button>
+    </form>
+</div>
+
+<div class="card">
+    <h2>How it works:</h2>
+    <ol style="line-height: 1.8; color: var(--text-secondary);">
+        <li>Select which sources to fetch (or leave all checked for all sources)</li>
+        <li>Choose the start date for fetching emails</li>
+        <li>Click "Start Fetching Transactions"</li>
+        <li>The app will scan your Gmail using your existing credentials</li>
+        <li>Transactions will be automatically parsed and saved</li>
+        <li>Progress will be displayed in real-time</li>
+    </ol>
+</div>
+{% endblock %}

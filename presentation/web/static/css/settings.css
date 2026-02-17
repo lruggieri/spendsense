@@ -1,0 +1,123 @@
+/* Settings page styles */
+
+.settings-container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: var(--spacing-md);
+}
+
+.info-note {
+    background: var(--bg-info, #e8f4fd);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--primary);
+    margin-bottom: var(--spacing-lg);
+}
+
+.info-note h3 {
+    margin-top: 0;
+    margin-bottom: var(--spacing-sm);
+    color: var(--primary);
+    font-size: 1.1rem;
+}
+
+.info-note p {
+    margin: var(--spacing-xs) 0;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.settings-form-wrapper {
+    background: var(--bg-primary, #ffffff);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    margin-bottom: var(--spacing-lg);
+}
+
+.settings-summary {
+    background: var(--bg-secondary, #f8f9fa);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--primary);
+}
+
+.settings-summary h3 {
+    margin-top: 0;
+    margin-bottom: var(--spacing-sm);
+    color: var(--primary);
+    font-size: 1rem;
+}
+
+.settings-summary ul {
+    list-style: none;
+    padding: 0;
+    margin: var(--spacing-sm) 0 0 0;
+}
+
+.settings-summary li {
+    padding: var(--spacing-xs) 0;
+    font-size: 0.9rem;
+}
+
+/* Mobile-first: Stack form groups vertically */
+.form-group {
+    margin-bottom: var(--spacing-lg);
+}
+
+/* Larger touch targets for mobile */
+.form-select {
+    min-height: 44px;
+    font-size: 16px; /* Prevent iOS zoom on focus */
+    width: 100%;
+}
+
+.form-help {
+    display: block;
+    margin-top: var(--spacing-xs);
+    font-size: 0.85rem;
+    color: var(--text-muted, #6c757d);
+}
+
+/* Button group */
+.filter-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-lg);
+}
+
+.filter-actions .btn {
+    flex: 1;
+}
+
+/* Tablet and up */
+@media (min-width: 640px) {
+    .settings-container {
+        margin-top: var(--spacing-xl);
+        padding: var(--spacing-lg);
+    }
+
+    .info-note {
+        padding: var(--spacing-lg);
+    }
+
+    .settings-form-wrapper {
+        padding: var(--spacing-xl);
+    }
+
+    .settings-summary {
+        padding: var(--spacing-lg);
+    }
+
+    .filter-actions .btn {
+        flex: 0 0 auto;
+        min-width: 120px;
+    }
+}
+
+/* Desktop */
+@media (min-width: 1024px) {
+    .settings-container {
+        margin-top: calc(var(--spacing-xl) * 1.5);
+    }
+}

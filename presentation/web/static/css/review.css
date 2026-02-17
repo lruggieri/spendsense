@@ -1,0 +1,632 @@
+/* === REVIEW PAGE SPECIFIC STYLES === */
+
+/* Edit transaction button */
+.edit-transaction-btn {
+    position: absolute;
+    top: var(--spacing-sm);
+    right: var(--spacing-sm);
+    background-color: transparent;
+    border: none;
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: var(--spacing-xs);
+    line-height: 1;
+    border-radius: var(--radius-sm);
+    transition: background-color var(--transition-fast);
+    z-index: 10;
+}
+
+.edit-transaction-btn:hover {
+    background-color: var(--gray-100);
+}
+
+.transaction-card {
+    position: relative;
+}
+
+/* Comment display (read-only) */
+.comment-display {
+    padding: var(--spacing-sm);
+    background-color: var(--gray-50);
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    min-height: 2rem;
+}
+
+/* Category selection button */
+.category-select-btn {
+    background-color: white;
+    border: 1px solid var(--gray-300);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.875rem;
+    text-align: left;
+    font-family: 'Courier New', monospace;
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all var(--transition-fast);
+}
+
+.category-select-btn:hover {
+    border-color: var(--primary);
+    background-color: var(--gray-50);
+}
+
+.category-select-btn.modified {
+    border-color: var(--warning);
+    background-color: var(--bg-warning);
+}
+
+/* Category modal should appear above other modals */
+#category-modal {
+    z-index: 1100;
+}
+
+/* Modal category list */
+.modal-category-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.modal-category-item {
+    padding: var(--spacing-sm) var(--spacing-md);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    margin-bottom: 2px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    transition: background-color var(--transition-fast);
+}
+
+.modal-category-item:hover {
+    background-color: var(--bg-info);
+}
+
+.modal-category-item.selected {
+    background-color: var(--primary);
+    color: white;
+}
+
+/* Similarity investigation */
+.investigate-btn {
+    background-color: var(--warning-dark);
+    color: white;
+    border: none;
+    border-radius: var(--radius-full);
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: 0.75rem;
+    font-weight: bold;
+    cursor: pointer;
+    margin-left: var(--spacing-xs);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    position: relative;
+    transition: background-color var(--transition-fast);
+}
+
+.investigate-btn:hover {
+    background-color: #e65100;
+}
+
+.investigate-btn::before {
+    content: "Investigate similarities";
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #333;
+    color: white;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    font-size: 0.6875rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-normal);
+    margin-bottom: var(--spacing-xs);
+    z-index: 1000;
+}
+
+.investigate-btn:hover::before {
+    opacity: 1;
+}
+
+.similarity-modal {
+    z-index: 1200;
+}
+
+.similarity-results {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.similarity-item {
+    padding: var(--spacing-md);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--spacing-sm);
+    background-color: var(--gray-50);
+    transition: background-color var(--transition-fast);
+}
+
+.similarity-item:hover {
+    background-color: var(--gray-100);
+}
+
+.similarity-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-sm);
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+}
+
+.similarity-description {
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1;
+    word-break: break-word;
+}
+
+.similarity-score {
+    background-color: var(--secondary);
+    color: white;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    font-size: 0.6875rem;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.similarity-details {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--spacing-xs) var(--spacing-sm);
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+}
+
+.similarity-label {
+    font-weight: 600;
+}
+
+/* Comment section */
+.comment-section {
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--gray-300);
+}
+
+/* Category form within transaction card */
+.category-form {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.confirm-btn {
+    background-color: var(--secondary);
+    color: white;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    transition: background-color var(--transition-fast);
+}
+
+.confirm-btn:hover {
+    background-color: var(--secondary-dark);
+}
+
+.confirm-btn.confirmed {
+    background-color: var(--warning);
+}
+
+.confirm-btn.confirmed:hover {
+    background-color: var(--warning-dark);
+}
+
+/* Autocomplete */
+.autocomplete-wrapper {
+    position: relative;
+}
+
+.autocomplete-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: white;
+    border: 1px solid var(--gray-300);
+    border-top: none;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    max-height: 12.5rem;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: var(--shadow-lg);
+    display: none;
+}
+
+.autocomplete-suggestions.visible {
+    display: block;
+}
+
+.autocomplete-item {
+    padding: var(--spacing-sm) var(--spacing-md);
+    cursor: pointer;
+    border-bottom: 1px solid var(--gray-100);
+    transition: background-color var(--transition-fast);
+}
+
+.autocomplete-item:hover {
+    background-color: var(--bg-info);
+}
+
+.autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.autocomplete-description {
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.autocomplete-details {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.autocomplete-category {
+    color: var(--primary);
+    font-weight: 500;
+}
+
+/* Transaction count display */
+.transaction-summary {
+    display: flex;
+    gap: var(--spacing-lg);
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-md);
+    background-color: var(--bg-primary);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+}
+
+.summary-stat {
+    display: flex;
+    flex-direction: column;
+}
+
+.summary-stat-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.summary-stat-value {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.summary-stat-value.highlight {
+    font-size: 1.5rem;
+    color: var(--primary);
+}
+
+/* Mobile responsive adjustments for review page */
+@media (max-width: 640px) {
+    .category-form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .confirm-btn {
+        width: 100%;
+    }
+
+    .transaction-summary {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-sm);
+    }
+}
+
+/* === GROUP-RELATED STYLES === */
+
+/* Bulk Actions Bar */
+.bulk-actions-bar {
+    background-color: var(--bg-info);
+    border: 1px solid var(--info);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.bulk-actions-left {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.bulk-actions-right {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+/* Checkbox styles */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    cursor: pointer;
+    user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.tx-checkbox {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+/* Transaction card header (checkbox + edit button) */
+.transaction-card-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.transaction-card-header .edit-transaction-btn {
+    position: static;
+}
+
+/* Groups Section */
+.groups-section {
+    margin: var(--spacing-md) 0;
+}
+
+.groups-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    align-items: center;
+    min-height: 44px;
+}
+
+.groups-display:empty::after {
+    content: 'No groups assigned';
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    font-style: italic;
+}
+
+/* Group Badge - Modern pill design with softer colors */
+.group-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    color: #1565c0;
+    border: 1px solid #90caf9;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    transition: all var(--transition-fast);
+    max-width: 200px;
+}
+
+.group-badge-clickable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.group-badge-clickable:hover {
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #d1e9fc 0%, #a8d5f7 100%);
+    border-color: #64b5f6;
+}
+
+.group-badge-clickable:active {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.group-badge span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Remove button with better visual feedback */
+.group-badge-remove {
+    background-color: rgba(21, 101, 192, 0.15);
+    border: none;
+    color: #1565c0;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    margin: 0 0 0 4px;
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    min-height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.group-badge-remove:hover {
+    background-color: #d32f2f;
+    color: white;
+    transform: scale(1.15);
+}
+
+.group-badge-remove:active {
+    transform: scale(1.05);
+}
+
+/* Add Group Button - Larger and more accessible */
+.btn-add-group {
+    background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 8px 16px;
+    min-height: 36px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.btn-add-group::before {
+    content: '+';
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.btn-add-group:hover {
+    background: linear-gradient(135deg, #388e3c 0%, #4caf50 100%);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+.btn-add-group:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Mobile optimizations */
+@media (max-width: 640px) {
+    .group-badge {
+        font-size: 0.8125rem;
+        padding: 7px 12px;
+        max-width: 160px;
+    }
+
+    .btn-add-group {
+        padding: 10px 14px;
+        min-height: 40px;
+        font-size: 0.8125rem;
+    }
+
+    .group-badge-remove {
+        width: 24px;
+        height: 24px;
+        min-width: 24px;
+        min-height: 24px;
+    }
+}
+
+/* Modal Group List */
+.modal-group-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.modal-group-item {
+    padding: var(--spacing-md);
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    margin-bottom: 2px;
+    font-size: 0.875rem;
+    transition: background-color var(--transition-fast);
+    border: 1px solid transparent;
+}
+
+.modal-group-item:hover {
+    background-color: var(--bg-info);
+    border-color: var(--info);
+}
+
+.empty-state-small {
+    padding: var(--spacing-md);
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Selected count badge */
+#selected-count {
+    font-weight: 600;
+    color: var(--primary);
+}
+
+/* Mobile responsive adjustments for groups */
+@media (max-width: 640px) {
+    .bulk-actions-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .bulk-actions-left,
+    .bulk-actions-right {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .bulk-actions-right button {
+        width: 100%;
+    }
+
+    .transaction-card-header {
+        flex-wrap: wrap;
+    }
+
+    .groups-display {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .group-badge {
+        justify-content: space-between;
+        width: 100%;
+    }
+}

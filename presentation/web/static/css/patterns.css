@@ -1,0 +1,336 @@
+/* Patterns page styles */
+.patterns-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--spacing-md);
+}
+
+.info-note {
+    background-color: var(--info-bg, #e3f2fd);
+    border-left: 4px solid var(--primary);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    border-radius: var(--radius-md);
+}
+
+.info-note h3 {
+    margin-top: 0;
+    font-size: 1.1rem;
+}
+
+.info-note p {
+    margin-bottom: var(--spacing-sm);
+}
+
+.info-note p:last-child {
+    margin-bottom: 0;
+}
+
+.info-note ul {
+    margin: var(--spacing-sm) 0;
+    padding-left: var(--spacing-lg);
+}
+
+.info-note li {
+    margin-bottom: var(--spacing-xs);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
+.section-header h2 {
+    margin: 0;
+}
+
+.pattern-table-wrapper {
+    overflow-x: auto;
+    background: white;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+}
+
+.pattern-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.pattern-table th,
+.pattern-table td {
+    padding: var(--spacing-md);
+    text-align: left;
+    border-bottom: 1px solid var(--gray-200);
+    vertical-align: middle;
+}
+
+.pattern-table th {
+    background-color: var(--gray-50);
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.pattern-table tbody tr:hover {
+    background-color: var(--gray-50);
+}
+
+/* Drag and drop styles */
+.drag-col {
+    width: 60px;
+    text-align: center;
+}
+
+.drag-handle {
+    cursor: move;
+    color: var(--gray-400);
+    font-size: 1.5rem;
+    user-select: none;
+    display: inline-block;
+    padding: var(--spacing-xs);
+    transition: color var(--transition-fast);
+}
+
+.drag-handle:hover {
+    color: var(--gray-600);
+}
+
+.pattern-table tbody tr[draggable="true"] {
+    cursor: move;
+}
+
+.pattern-table tbody tr.dragging {
+    opacity: 0.5;
+    background-color: var(--gray-100);
+}
+
+.pattern-table tbody tr.drag-over {
+    border-top: 3px solid var(--primary);
+}
+
+.name-col {
+    width: 150px;
+    font-weight: 600;
+    color: var(--gray-900);
+}
+
+.pattern-description {
+    font-weight: 400;
+    min-width: 300px;
+    color: var(--gray-700);
+}
+
+.category-col {
+    width: 150px;
+    color: var(--gray-700);
+}
+
+.actions-col {
+    width: 100px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.actions-col .btn-icon {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: var(--spacing-xs);
+    font-size: 1.2rem;
+    opacity: 0.7;
+    transition: opacity var(--transition-fast);
+    display: inline-block;
+}
+
+.actions-col .btn-icon:hover {
+    opacity: 1;
+}
+
+/* Modal large variant for rule builder */
+.modal-large {
+    max-width: 700px;
+}
+
+/* Rule builder styles */
+#rules-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.rule-row {
+    display: grid;
+    grid-template-columns: 180px 1fr 40px;
+    gap: var(--spacing-sm);
+    align-items: center;
+    padding: var(--spacing-sm);
+    background-color: var(--gray-50);
+    border-radius: var(--radius-sm);
+}
+
+.rule-operator {
+    font-size: 0.9rem;
+}
+
+.rule-keyword {
+    flex: 1;
+}
+
+.rule-row .btn-icon {
+    font-size: 1.5rem;
+    color: var(--danger);
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Preview box */
+.preview-box {
+    background-color: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-md);
+    font-family: monospace;
+    font-size: 0.9rem;
+    color: var(--gray-700);
+    min-height: 60px;
+    line-height: 1.5;
+}
+
+.form-help {
+    display: block;
+    font-size: 0.875rem;
+    color: var(--gray-600);
+    margin-top: var(--spacing-xs);
+}
+
+/* Mobile responsive (< 640px) */
+@media (max-width: 640px) {
+    .patterns-container {
+        padding: var(--spacing-sm);
+    }
+
+    .section-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--spacing-sm);
+    }
+
+    .section-header h2 {
+        font-size: 1.25rem;
+    }
+
+    .section-header .btn {
+        width: 100%;
+    }
+
+    /* Hide description column on mobile, keep name */
+    .pattern-table th:nth-child(3),
+    .pattern-table td:nth-child(3) {
+        display: none;
+    }
+
+    .drag-col {
+        width: 50px;
+    }
+
+    .name-col {
+        width: auto;
+    }
+
+    .drag-handle {
+        font-size: 1.2rem;
+    }
+
+    .actions-col {
+        width: 80px;
+    }
+
+    .actions-col .btn-icon {
+        font-size: 1rem;
+        padding: var(--spacing-xs);
+    }
+
+    /* Stack rule rows vertically on mobile */
+    .rule-row {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto;
+        gap: var(--spacing-xs);
+    }
+
+    .rule-row .btn-icon {
+        grid-column: 2;
+        grid-row: 1;
+        justify-self: end;
+    }
+
+    .rule-operator {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .rule-keyword {
+        grid-column: 1 / -1;
+        grid-row: 2;
+    }
+
+    .modal-large {
+        max-width: 100%;
+        margin: var(--spacing-sm);
+    }
+
+    .info-note {
+        padding: var(--spacing-sm);
+    }
+
+    .info-note ul {
+        font-size: 0.9rem;
+    }
+}
+
+/* Tablet responsive (641px - 1024px) */
+@media (min-width: 641px) and (max-width: 1024px) {
+    .patterns-container {
+        padding: var(--spacing-md);
+    }
+
+    .name-col {
+        width: 120px;
+    }
+
+    .pattern-description {
+        min-width: 200px;
+    }
+
+    .category-col {
+        width: 120px;
+    }
+
+    .rule-row {
+        grid-template-columns: 160px 1fr 40px;
+    }
+}
+
+/* Desktop (> 1024px) - ensure touch targets remain accessible */
+@media (min-width: 1025px) {
+    .drag-handle {
+        padding: var(--spacing-sm);
+        min-width: 48px;
+        min-height: 48px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .actions-col .btn-icon {
+        min-width: 44px;
+        min-height: 44px;
+    }
+}

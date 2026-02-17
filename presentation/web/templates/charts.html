@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block title %}Expense Analysis - SpendSense{% endblock %}
+{% block page_title %}Expense Analysis{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+    /* Charts specific styles */
+    .summary-stats {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+        margin-top: var(--spacing-md);
+    }
+
+    @media (min-width: 640px) {
+        .summary-stats {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .summary-stats {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+
+    .stat-box {
+        text-align: center;
+        padding: var(--spacing-lg);
+        background-color: var(--gray-100);
+        border-radius: var(--radius-sm);
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: var(--primary);
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-top: var(--spacing-xs);
+    }
+
+    .category-table-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .category-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: var(--spacing-md);
+        font-size: 0.875rem;
+    }
+
+    .category-table th,
+    .category-table td {
+        padding: var(--spacing-sm) var(--spacing-sm);
+        text-align: left;
+        border-bottom: 1px solid var(--gray-300);
+    }
+
+    .category-table th {
+        background-color: var(--gray-100);
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .category-table tr:hover {
+        background-color: var(--gray-50);
+    }
+
+    .category-table tbody tr {
+        cursor: pointer;
+    }
+
+    .indent-0 { padding-left: var(--spacing-sm); font-weight: 600; }
+    .indent-1 { padding-left: calc(var(--spacing-md) * 2.5); }
+    .indent-1::before { content: "└─ "; color: var(--text-muted); }
+    .indent-2 { padding-left: calc(var(--spacing-md) * 4); font-size: 0.875rem; }
+    .indent-2::before { content: "  └─ "; color: var(--text-muted); }
+    .indent-3 { padding-left: calc(var(--spacing-md) * 5.5); font-size: 0.875rem; }
+    .indent-3::before { content: "    └─ "; color: var(--text-muted); }
+    .indent-4 { padding-left: calc(var(--spacing-md) * 7); font-size: 0.8125rem; }
+    .indent-4::before { content: "      └─ "; color: var(--text-muted); }
+    .indent-5 { padding-left: calc(var(--spacing-md) * 8.5); font-size: 0.8125rem; }
+    .indent-5::before { content: "        └─ "; color: var(--text-muted); }
+
+    canvas {
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Filter Section -->
+<div class="filter-section">
+    <form method="GET" action="{{ url_for('main.charts') }}" class="filter-form" id="charts-filter-form">
+        <div class="form-group">
+            <label class="form-label">From Date</label>
+            <input type="date" name="from_date" class="form-input" value="{{ from_date }}">
+        </div>
+        <div class="form-group">
+            <label class="form-label">To Date</label>
+            <input type="date" name="to_date" class="form-input" value="{{ to_date }}">
+        </div>
+        <div class="filter-actions">
+            <button type="submit" class="btn btn-success">Apply Filters</button>
+            <a href="{{ url_for('main.charts') }}" class="btn btn-danger">Clear Filters</a>
+        </div>
+    </form>
+</div>
+
+<!-- Summary Card -->
+<div class="card">
+    <h2>Summary</h2>
+    <div class="summary-stats">
+        <div class="stat-box">
+            <div class="stat-value" id="total-expenses">{{ currency_symbol }}0</div>
+            <div class="stat-label">Total Expenses</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value" id="num-categories">0</div>
+            <div class="stat-label">Categories</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value" id="largest-category">-</div>
+            <div class="stat-label">Largest Category</div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Container -->
+<div class="charts-container">
+    <div class="card">
+        <h2 class="card-title">Category Distribution (Pie Chart)</h2>
+        <div class="chart-wrapper">
+            <canvas id="pieChart"></canvas>
+        </div>
+    </div>
+    <div class="card">
+        <h2 class="card-title">Category Breakdown (Bar Chart)</h2>
+        <div class="chart-wrapper">
+            <canvas id="barChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed Breakdown -->
+<div class="card">
+    <h2>Detailed Category Breakdown</h2>
+    <div class="category-table-wrapper">
+        <table class="category-table" id="categoryTable">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th style="text-align: right;">Amount</th>
+                    <th style="text-align: right;">Percentage</th>
+                </tr>
+            </thead>
+            <tbody id="categoryTableBody"></tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/charts-common.js') }}"></script>
+<script>
+    // Parse tree data from server
+    const treeData = {{ tree_data | tojson }};
+    const fromDate = '{{ from_date }}';
+    const toDate = '{{ to_date }}';
+
+    // Adjust charts default dates to local timezone (server defaults to current UTC month)
+    (function() {
+        var params = new URLSearchParams(window.location.search);
+        if (!params.has('from_date') && !params.has('to_date')) {
+            var form = document.getElementById('charts-filter-form');
+            if (form) {
+                var fromInput = form.querySelector('input[name="from_date"]');
+                if (fromInput) fromInput.value = getLocalFirstDayOfMonth();
+                var toInput = form.querySelector('input[name="to_date"]');
+                if (toInput) toInput.value = getLocalLastDayOfMonth();
+            }
+        }
+    })();
+
+    // Helper function to redirect to review page with category filter
+    function redirectToReview(categoryId) {
+        let url = `/review?category=${categoryId}`;
+        if (fromDate) url += `&from_date=${encodeURIComponent(ensureISODate(fromDate, false))}`;
+        if (toDate) url += `&to_date=${encodeURIComponent(ensureISODate(toDate, true))}`;
+        window.location.href = url;
+    }
+
+    // Initialize
+    const topCategories = getTopLevelCategories(treeData);
+    const allCategories = flattenCategories(treeData);
+    const total = treeData.total;
+
+    // Calculate percentages
+    allCategories.forEach(cat => {
+        cat.percentage = total > 0 ? (cat.total / total * 100).toFixed(1) : 0;
+    });
+
+    // Update summary
+    const currencySymbol = '{{ currency_symbol }}';
+    document.getElementById('total-expenses').textContent = `${currencySymbol}${total.toLocaleString()}`;
+    document.getElementById('num-categories').textContent = allCategories.length;
+    if (topCategories.length > 0) {
+        document.getElementById('largest-category').textContent = topCategories[0].name;
+    }
+
+    // Create charts using shared functions
+    createPieChart('pieChart', treeData, redirectToReview, currencySymbol);
+    createStackedBarChart('barChart', treeData, redirectToReview, currencySymbol);
+
+    // Populate table using shared function
+    populateCategoryTable('categoryTableBody', treeData, redirectToReview, currencySymbol);
+</script>
+{% endblock %}

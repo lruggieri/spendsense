@@ -1,0 +1,280 @@
+{% extends "onboarding/base_onboarding.html" %}
+
+{% block extra_head %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/fetchers.css') }}">
+{% endblock %}
+
+{% block step_content %}
+<div class="step-card step-card--wide">
+    <div class="step-header">
+        <div class="step-icon step-icon--fetchers">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+        </div>
+        <h2 class="step-title">Set Up Email Fetchers</h2>
+        <p class="step-description">
+            Configure at least one email fetcher to automatically import transactions from your bank notification emails.
+        </p>
+    </div>
+
+    {# Item List #}
+    <div class="wizard-item-list">
+        <div class="wizard-item-list__header">
+            <h4>Your Fetchers (<span id="fetcher-count">{{ current_step.count }}</span>)</h4>
+        </div>
+        <div class="wizard-item-list__content" id="fetcher-item-list">
+            {% if fetchers and fetchers|length > 0 %}
+                {% for fetcher in fetchers %}
+                <div class="item-list__item">
+                    <span class="item-list__name">{{ fetcher.name }}</span>
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="item-list__empty">No fetchers created yet</div>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Embedded Fetcher Creation Form #}
+    <div class="wizard-form-container" id="fetcher-form-container">
+        <div class="wizard-form-header">
+            <h3>Create a Fetcher</h3>
+        </div>
+
+        {# Fetcher Configuration Section #}
+        <div class="fetcher-config-section">
+            {# Name input #}
+            <div class="form-group">
+                <label for="fetcher-name">Fetcher Name <span class="required">*</span></label>
+                <input type="text" id="fetcher-name" class="form-input"
+                       placeholder="e.g., Chase Credit Card">
+                <small class="form-help">Suggest your bank or service name</small>
+            </div>
+
+            {# From emails (dynamic list) #}
+            <div class="form-group">
+                <label>From Email Address(es) <span class="required">*</span></label>
+                <div id="from-emails-container"></div>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="addFromEmail()">
+                    + Add Email Address
+                </button>
+                <small class="form-help">Add all email addresses this provider uses</small>
+            </div>
+
+            {# Subject filter #}
+            <div class="form-group">
+                <label for="subject-filter">Subject Filter <span class="optional">(optional)</span></label>
+                <input type="text" id="subject-filter" class="form-input"
+                       placeholder="e.g., transaction">
+                <small class="form-help warning-text">
+                    Keep this general - avoid being too specific
+                </small>
+            </div>
+
+            {# Default currency #}
+            <div class="form-group">
+                <label for="default-currency">Default Currency <span class="required">*</span></label>
+                <select id="default-currency" class="form-input">
+                    <option value="">-- Select Currency --</option>
+                </select>
+                <small class="form-help">Used when currency cannot be extracted from emails</small>
+            </div>
+
+            {# Negate amount checkbox #}
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="negate-amount" class="form-checkbox">
+                    <span>Negate amounts (for income/refunds)</span>
+                </label>
+                <small class="form-help">Check this to make amounts negative. Useful for payments received.</small>
+            </div>
+        </div>
+
+        {# Email Examples Section #}
+        <div class="section-header section-header--compact">
+            <h3>Training Emails</h3>
+            <p class="section-description">Add sample emails to generate parsing patterns</p>
+        </div>
+
+        <form id="fetcher-form" class="fetchers-form">
+            <div id="email-examples-container">
+                {# Examples added dynamically #}
+            </div>
+
+            <div class="form-group">
+                <button type="button" class="btn btn-secondary" onclick="addEmailExample()">
+                    + Add Email Example
+                </button>
+                <small class="form-help">Add multiple examples if your provider sends different email formats</small>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="clearForm()">Clear All</button>
+                <button type="submit" class="btn btn-primary">Generate Patterns & Parse</button>
+            </div>
+        </form>
+
+        {# Loading Overlay #}
+        <div id="loading-overlay" class="loading-overlay hidden">
+            <div class="spinner"></div>
+            <p>Generating patterns with LLM</p>
+        </div>
+
+        {# Results Section #}
+        <div id="results-section" class="results-section hidden">
+            <div class="section-header">
+                <h3>Results</h3>
+            </div>
+
+            {# Generated Patterns #}
+            <div class="patterns-card">
+                <h4>Generated Regex Patterns</h4>
+                <p class="card-subtitle">Patterns generated by AI to extract transaction data</p>
+
+                {# Expert Mode Controls #}
+                <div class="expert-mode-controls">
+                    <div class="expert-mode-toggle-wrapper">
+                        <label class="expert-mode-label">
+                            <span class="expert-mode-text">Expert Mode</span>
+                            <span class="expert-mode-description">Manually edit regex patterns</span>
+                        </label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="expert-mode-toggle" onchange="toggleExpertMode(this.checked)">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-sm" id="reset-patterns-btn" onclick="resetToOriginalPatterns()" style="display: none;">
+                        Reset Patterns
+                    </button>
+                </div>
+
+                <div class="pattern-grid">
+                    <div class="pattern-item">
+                        <div class="pattern-header">
+                            <label class="pattern-label">Amount Pattern</label>
+                            <button type="button" class="btn-icon copy-btn" onclick="copyPattern('amount')" title="Copy">
+                                &#128203;
+                            </button>
+                        </div>
+                        <textarea id="amount-pattern" class="pattern-display" readonly></textarea>
+                        <div class="pattern-error" id="amount-pattern-error"></div>
+                    </div>
+
+                    <div class="pattern-item">
+                        <div class="pattern-header">
+                            <label class="pattern-label">Merchant Pattern</label>
+                            <button type="button" class="btn-icon copy-btn" onclick="copyPattern('merchant')" title="Copy">
+                                &#128203;
+                            </button>
+                        </div>
+                        <textarea id="merchant-pattern" class="pattern-display" readonly></textarea>
+                        <div class="pattern-error" id="merchant-pattern-error"></div>
+                    </div>
+
+                    <div class="pattern-item">
+                        <div class="pattern-header">
+                            <label class="pattern-label">Currency Pattern</label>
+                            <button type="button" class="btn-icon copy-btn" onclick="copyPattern('currency')" title="Copy">
+                                &#128203;
+                            </button>
+                        </div>
+                        <textarea id="currency-pattern" class="pattern-display" readonly></textarea>
+                        <div class="pattern-error" id="currency-pattern-error"></div>
+                    </div>
+                </div>
+            </div>
+
+            {# Training Results #}
+            <div class="training-results-header">
+                <h4>Training Results</h4>
+                <p class="card-subtitle">Transactions extracted from training emails</p>
+            </div>
+
+            <div class="transactions-card">
+                <div id="transactions-container"></div>
+            </div>
+
+            {# Email Previews #}
+            <div id="email-previews-container"></div>
+
+            {# Pattern Testing Section #}
+            <div id="pattern-test-section" class="pattern-test-section hidden">
+                <div class="section-divider"></div>
+
+                <div class="section-header">
+                    <h4>Test Generated Patterns</h4>
+                    <p class="section-description">Test with additional emails to validate patterns</p>
+                </div>
+
+                <div class="test-form-container">
+                    <div id="test-email-examples-container"></div>
+
+                    <div class="form-group">
+                        <button type="button" class="btn btn-secondary" onclick="addTestEmailExample()">
+                            + Add Test Email Example
+                        </button>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-primary" onclick="submitTestEmails()">
+                            Test Patterns
+                        </button>
+                    </div>
+                </div>
+
+                <div id="test-results-container" class="hidden">
+                    <div class="test-results-header">
+                        <h4>Test Results</h4>
+                    </div>
+                    <div id="test-transactions-container"></div>
+                    <div id="test-email-previews-container"></div>
+                </div>
+
+                {# Save Fetcher Section #}
+                <div id="save-fetcher-section" class="save-fetcher-section hidden">
+                    <h4>Save This Fetcher</h4>
+                    <p>Patterns tested successfully! Save this fetcher configuration.</p>
+                    <button type="button" class="btn btn-primary" onclick="saveFetcher()">
+                        Save Fetcher Configuration
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Add Another Button - shown after save #}
+    <div class="wizard-add-another hidden" id="add-another-fetcher-btn">
+        <button type="button" class="btn btn-secondary" onclick="showFormForAnotherItem('fetcher')">
+            + Add Another Fetcher
+        </button>
+    </div>
+
+    <div class="step-tips">
+        <h4>Tips</h4>
+        <ul>
+            <li>Look for transaction notification emails from your bank or credit card provider</li>
+            <li>You can add multiple fetchers for different accounts</li>
+            <li>The AI will help generate parsing patterns from sample emails</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/fetchers.js') }}"></script>
+<script src="{{ url_for('static', filename='js/onboarding-wizard.js') }}"></script>
+<script>
+    // Set wizard mode
+    window.FETCHER_MODE = 'wizard';
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize fetcher step
+        initWizardStep(1, {
+            fetchers: {{ fetchers|tojson if fetchers else '[]' }}
+        });
+    });
+</script>
+{% endblock %}

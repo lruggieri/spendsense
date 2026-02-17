@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% set hide_header = true %}
+
+{% block title %}Login - SpendSense{% endblock %}
+
+{% block extra_head %}
+<script>
+    // Clear any previous user's encryption key from localStorage.
+    // Without this, logging in as a different user would encrypt their
+    // session with the previous user's DEK.
+    // Runs before passkey-manager.js so syncCookie() won't re-set the cookie.
+    localStorage.removeItem('encryption_dek');
+</script>
+<style>
+    body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .login-card {
+        background-color: var(--bg-primary);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-xl);
+        box-shadow: var(--shadow-xl);
+        max-width: 400px;
+        margin: var(--spacing-xl) auto;
+        text-align: center;
+    }
+
+    @media (max-width: 640px) {
+        .login-card {
+            padding: var(--spacing-lg);
+        }
+    }
+
+    .logo {
+        width: 160px;
+        height: auto;
+        max-height: 160px;
+        margin: 0 auto var(--spacing-md);
+        display: block;
+        object-fit: contain;
+    }
+
+    @media (max-width: 640px) {
+        .logo {
+            width: 120px;
+            max-height: 120px;
+        }
+    }
+
+    .login-title {
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-xs);
+        font-size: 1.75rem;
+    }
+
+    .subtitle {
+        color: var(--text-secondary);
+        margin-bottom: var(--spacing-xl);
+        font-size: 0.875rem;
+    }
+
+    .google-login-btn {
+        background-color: white;
+        color: #444;
+        border: 1px solid var(--gray-300);
+        padding: var(--spacing-md) var(--spacing-xl);
+        font-size: 1rem;
+        font-weight: 500;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--spacing-sm);
+        text-decoration: none;
+        transition: all var(--transition-normal);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .google-login-btn:hover {
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-2px);
+        border-color: var(--gray-400);
+    }
+
+    .google-icon {
+        width: 20px;
+        height: 20px;
+    }
+
+    .info-box {
+        background-color: var(--bg-success);
+        border-left: 4px solid var(--secondary);
+        padding: var(--spacing-md);
+        margin-top: var(--spacing-xl);
+        border-radius: var(--radius-sm);
+        text-align: left;
+    }
+
+    .info-box p {
+        margin: 0;
+        color: #2e7d32;
+        font-size: 0.8125rem;
+        line-height: 1.6;
+    }
+
+    .info-box ul {
+        margin: var(--spacing-sm) 0 0 var(--spacing-lg);
+        padding: 0;
+        color: #2e7d32;
+        font-size: 0.8125rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-card">
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="SpendSense Logo" class="logo">
+    <h1 class="login-title">SpendSense</h1>
+    <p class="subtitle">Sign in to manage your transactions</p>
+
+    <a href="{{ url_for('auth.login_start') }}" class="google-login-btn">
+        <svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+        Sign in with Google
+    </a>
+
+    <div class="info-box">
+        <p><strong>Why sign in?</strong></p>
+        <ul>
+            <li>Access your personal expense data</li>
+            <li>Sync transactions from Gmail</li>
+            <li>Securely manage your categorizations</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

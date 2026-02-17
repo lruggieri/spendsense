@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Category Settings - SpendSense{% endblock %}
+{% block page_title %}Category Settings{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/categories.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="categories-container">
+    <!-- Info box explaining categories -->
+    <div class="info-note">
+        <h3>About Categories</h3>
+        <p>Categories help organize your expenses into a hierarchical tree structure.
+           Each transaction is automatically assigned to a category based on rules (regex patterns)
+           or similarity matching. You can create parent-child relationships to group
+           related categories together.</p>
+        <p><strong>System Categories:</strong> The 'all' and 'unknown' categories
+           are protected and cannot be modified.</p>
+    </div>
+
+    <!-- Header -->
+    <div class="section-header">
+        <h2>Category Tree</h2>
+    </div>
+
+    <!-- Category tree table -->
+    <div class="category-table-wrapper">
+        <table class="category-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th class="actions-col">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cat in categories %}
+                <tr class="{% if cat.is_protected %}protected-row{% endif %}">
+                    <td>
+                        <div class="category-name-cell">
+                            <span class="tree-indent" style="width: {{ cat.depth * 24 }}px;"></span>
+                            {% if cat.depth > 0 %}
+                                <span class="tree-icon">└─</span>
+                            {% endif %}
+                            <span class="category-name">{{ cat.name }}</span>
+                            {% if cat.is_protected %}
+                                <span class="badge badge-system">System</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td class="category-description">{{ cat.description }}</td>
+                    <td class="actions-col">
+                        {% if not cat.is_protected %}
+                            <button class="btn-icon" onclick="openEditModal('{{ cat.id }}', '{{ cat.name }}', '{{ cat.description }}', '{{ cat.parent_id }}')" title="Edit">
+                                ✏️
+                            </button>
+                            <button class="btn-icon btn-danger" onclick="deleteCategory('{{ cat.id }}', '{{ cat.name }}')" title="Delete">
+                                🗑️
+                            </button>
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Create/Edit Modal -->
+<div class="modal-overlay" id="category-modal" onclick="closeModalOnOverlay(event)">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title" id="modal-title">Create Category</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        {% include 'partials/_category_form.html' %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/categories.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+config/credentials.json
+logic/fetch_transactions/credentials.json
+token.json
+
+# Database (consider uncommenting if you don't want to commit local DB)
+# data/*.db
+# data/*.db-journal
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Claude Code
+.claude/settings.local.json
+data

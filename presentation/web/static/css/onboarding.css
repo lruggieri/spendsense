@@ -1,0 +1,813 @@
+/* ====================================
+   ONBOARDING WIZARD - MOBILE-FIRST CSS
+   ==================================== */
+
+/* === Container === */
+.onboarding-container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: var(--spacing-md);
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* === Stepper Component === */
+.stepper {
+    margin-bottom: var(--spacing-xl);
+    padding: var(--spacing-md) 0;
+}
+
+.stepper__track {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.stepper__step {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.stepper__indicator {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    background-color: var(--gray-200);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all var(--transition-normal);
+    border: 2px solid var(--gray-300);
+}
+
+.stepper__number {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--gray-600);
+}
+
+.stepper__check {
+    width: 20px;
+    height: 20px;
+    color: white;
+}
+
+.stepper__label {
+    font-size: 0.9rem;
+    color: var(--gray-600);
+    transition: color var(--transition-normal);
+}
+
+/* Step States */
+.stepper__step--active .stepper__indicator {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(33, 150, 243, 0.2);
+}
+
+.stepper__step--active .stepper__number {
+    color: white;
+}
+
+.stepper__step--active .stepper__label {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.stepper__step--complete .stepper__indicator {
+    background-color: var(--secondary);
+    border-color: var(--secondary);
+}
+
+.stepper__step--complete .stepper__label {
+    color: var(--secondary);
+}
+
+/* Connector (Mobile: Vertical) */
+.stepper__connector {
+    width: 2px;
+    height: 20px;
+    background-color: var(--gray-300);
+    margin-left: 19px; /* Center under 40px indicator */
+    transition: background-color var(--transition-normal);
+}
+
+.stepper__connector--complete {
+    background-color: var(--secondary);
+}
+
+/* Desktop: Horizontal Stepper */
+@media (min-width: 640px) {
+    .stepper__track {
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .stepper__step {
+        flex-direction: column;
+        text-align: center;
+        gap: var(--spacing-sm);
+    }
+
+    .stepper__connector {
+        width: 60px;
+        height: 2px;
+        margin: 0;
+        margin-bottom: 24px; /* Offset for label */
+    }
+
+    .stepper__label {
+        max-width: 100px;
+    }
+}
+
+@media (min-width: 1024px) {
+    .stepper__connector {
+        width: 100px;
+    }
+
+    .stepper__label {
+        max-width: 150px;
+    }
+}
+
+/* === Step Content Card === */
+.step-card {
+    background: var(--bg-primary);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: var(--spacing-lg);
+    flex-grow: 1;
+}
+
+.step-header {
+    text-align: center;
+    margin-bottom: var(--spacing-xl);
+}
+
+.step-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto var(--spacing-md);
+}
+
+.step-icon svg {
+    width: 32px;
+    height: 32px;
+}
+
+.step-icon--fetchers {
+    background-color: var(--bg-info);
+    color: var(--primary);
+}
+
+.step-icon--categories {
+    background-color: var(--bg-success);
+    color: var(--secondary);
+}
+
+.step-icon--patterns {
+    background-color: var(--bg-warning);
+    color: var(--warning);
+}
+
+.step-title {
+    font-size: 1.5rem;
+    margin-bottom: var(--spacing-sm);
+    color: var(--text-primary);
+}
+
+.step-description {
+    color: var(--text-secondary);
+    max-width: 500px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+/* === Status Badge === */
+.step-status {
+    margin-bottom: var(--spacing-xl);
+    display: flex;
+    justify-content: center;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+}
+
+.status-badge--success {
+    background-color: var(--bg-success);
+    color: #2e7d32;
+}
+
+.status-badge--pending {
+    background-color: var(--bg-warning);
+    color: #f57c00;
+}
+
+.status-icon {
+    width: 18px;
+    height: 18px;
+}
+
+/* === Step Actions === */
+.step-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    align-items: center;
+    margin-bottom: var(--spacing-xl);
+}
+
+.step-actions .btn-lg {
+    padding: var(--spacing-md) var(--spacing-xl);
+    font-size: 1rem;
+}
+
+.btn-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: var(--spacing-sm);
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--gray-300);
+    color: var(--text-secondary);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    text-decoration: none;
+    transition: all var(--transition-fast);
+}
+
+.btn-outline:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+@media (min-width: 640px) {
+    .step-actions {
+        flex-direction: row;
+        justify-content: center;
+    }
+}
+
+/* === Tips Section === */
+.step-tips {
+    background-color: var(--gray-50);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    border-left: 3px solid var(--primary);
+}
+
+.step-tips h4 {
+    margin: 0 0 var(--spacing-sm) 0;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.step-tips ul {
+    margin: 0;
+    padding-left: var(--spacing-lg);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.step-tips li {
+    margin-bottom: var(--spacing-xs);
+}
+
+.step-tips li:last-child {
+    margin-bottom: 0;
+}
+
+/* === Navigation === */
+.onboarding-nav {
+    display: flex;
+    justify-content: space-between;
+    padding-top: var(--spacing-lg);
+    margin-top: auto;
+}
+
+.onboarding-nav .btn {
+    min-width: 120px;
+}
+
+#continue-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* === Complete Page === */
+.complete-card {
+    background: var(--bg-primary);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: var(--spacing-xl);
+    text-align: center;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.complete-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: var(--radius-full);
+    background-color: var(--bg-success);
+    color: var(--secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto var(--spacing-lg);
+}
+
+.complete-icon svg {
+    width: 48px;
+    height: 48px;
+}
+
+.complete-title {
+    font-size: 1.75rem;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-md);
+}
+
+.complete-message {
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-xl);
+}
+
+/* === Summary Grid === */
+.complete-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-xl);
+}
+
+.summary-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    background-color: var(--gray-50);
+    border-radius: var(--radius-md);
+}
+
+.summary-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.summary-icon svg {
+    width: 20px;
+    height: 20px;
+}
+
+.summary-icon--fetchers {
+    background-color: var(--bg-info);
+    color: var(--primary);
+}
+
+.summary-icon--categories {
+    background-color: var(--bg-success);
+    color: var(--secondary);
+}
+
+.summary-icon--patterns {
+    background-color: var(--bg-warning);
+    color: var(--warning);
+}
+
+.summary-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.summary-count {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.summary-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* === Next Steps === */
+.complete-next-steps {
+    text-align: left;
+    background-color: var(--gray-50);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-xl);
+}
+
+.complete-next-steps h3 {
+    margin: 0 0 var(--spacing-sm) 0;
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+
+.complete-next-steps ul {
+    margin: 0;
+    padding-left: var(--spacing-lg);
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.complete-next-steps li {
+    margin-bottom: var(--spacing-xs);
+}
+
+/* === Complete Actions === */
+.complete-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+@media (min-width: 640px) {
+    .complete-actions {
+        flex-direction: row;
+        justify-content: center;
+    }
+}
+
+/* === Reminder Banner === */
+.onboarding-banner {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    padding: var(--spacing-md);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+}
+
+.onboarding-banner__content {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    flex: 1;
+}
+
+.onboarding-banner__icon {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.onboarding-banner__text {
+    font-size: 0.9rem;
+}
+
+.onboarding-banner__actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    flex-shrink: 0;
+}
+
+.onboarding-banner .btn-banner {
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    cursor: pointer;
+    border: none;
+    transition: all var(--transition-fast);
+}
+
+.onboarding-banner .btn-banner-primary {
+    background-color: white;
+    color: var(--primary);
+}
+
+.onboarding-banner .btn-banner-primary:hover {
+    background-color: var(--gray-100);
+}
+
+.onboarding-banner .btn-banner-secondary {
+    background-color: transparent;
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.onboarding-banner .btn-banner-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: white;
+}
+
+@media (max-width: 640px) {
+    .onboarding-banner {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .onboarding-banner__content {
+        flex-direction: column;
+    }
+
+    .onboarding-banner__actions {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* === Onboarding Content (main area) === */
+.onboarding-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ====================================
+   EMBEDDED WIZARD FORMS
+   ==================================== */
+
+/* Wide step card for fetchers */
+.step-card--wide {
+    max-width: 100%;
+}
+
+@media (min-width: 1024px) {
+    .onboarding-container:has(.step-card--wide) {
+        max-width: 1000px;
+    }
+}
+
+/* === Wizard Item List === */
+.wizard-item-list {
+    background-color: var(--gray-50);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-lg);
+    overflow: hidden;
+}
+
+.wizard-item-list__header {
+    background-color: var(--gray-100);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.wizard-item-list__header h4 {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.wizard-item-list__content {
+    padding: var(--spacing-sm);
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.item-list__empty {
+    padding: var(--spacing-md);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+.item-list__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background-color: white;
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--spacing-xs);
+    border: 1px solid var(--gray-200);
+}
+
+.item-list__item:last-child {
+    margin-bottom: 0;
+}
+
+.item-list__name {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.item-list__meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    background-color: var(--gray-100);
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+}
+
+/* === Wizard Form Container === */
+.wizard-form-container {
+    background-color: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    transition: all var(--transition-normal);
+}
+
+.wizard-form-container.collapsed {
+    padding: var(--spacing-md);
+    background-color: var(--gray-50);
+}
+
+.wizard-form-container.collapsed > *:not(.wizard-form-header) {
+    display: none;
+}
+
+.wizard-form-header {
+    margin-bottom: var(--spacing-md);
+}
+
+.wizard-form-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+/* Form sections within wizard */
+.wizard-form-container .fetcher-config-section {
+    border: none;
+    padding: 0;
+    margin-bottom: var(--spacing-lg);
+}
+
+.wizard-form-container .section-header {
+    margin-top: var(--spacing-lg);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--gray-200);
+}
+
+.wizard-form-container .section-header--compact {
+    margin-top: var(--spacing-md);
+}
+
+.wizard-form-container .section-header--compact h3 {
+    font-size: 1rem;
+    margin-bottom: var(--spacing-xs);
+}
+
+.wizard-form-container .section-description {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* === Add Another Button === */
+.wizard-add-another {
+    text-align: center;
+    margin-bottom: var(--spacing-lg);
+}
+
+.wizard-add-another .btn {
+    width: 100%;
+}
+
+@media (min-width: 640px) {
+    .wizard-add-another .btn {
+        width: auto;
+    }
+}
+
+/* === Compact Results for Wizard === */
+.wizard-form-container .results-section {
+    margin-top: var(--spacing-lg);
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--gray-200);
+}
+
+.wizard-form-container .patterns-card {
+    padding: var(--spacing-md);
+}
+
+.wizard-form-container .pattern-grid {
+    gap: var(--spacing-sm);
+}
+
+.wizard-form-container .transactions-card {
+    padding: var(--spacing-sm);
+}
+
+/* === Step Tips in Embedded Mode === */
+.step-card .step-tips {
+    margin-top: var(--spacing-lg);
+}
+
+/* === Form Styles within Partials === */
+.wizard-form-container .filter-actions {
+    display: flex;
+    gap: var(--spacing-md);
+    justify-content: flex-end;
+    margin-top: var(--spacing-lg);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--gray-100);
+}
+
+/* Rule builder in pattern form */
+.wizard-form-container .rule-row {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+    margin-bottom: var(--spacing-sm);
+    flex-wrap: wrap;
+}
+
+.wizard-form-container .rule-operator {
+    flex: 0 0 auto;
+    width: 150px;
+}
+
+.wizard-form-container .rule-keyword {
+    flex: 1;
+    min-width: 150px;
+}
+
+/* Preview box */
+.wizard-form-container .preview-box {
+    background-color: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-md);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    min-height: 40px;
+}
+
+/* === Mobile Adjustments === */
+@media (max-width: 640px) {
+    .wizard-form-container {
+        padding: var(--spacing-md);
+    }
+
+    .wizard-form-container .filter-actions {
+        flex-direction: column;
+    }
+
+    .wizard-form-container .filter-actions .btn {
+        width: 100%;
+    }
+
+    .wizard-form-container .rule-operator {
+        width: 100%;
+    }
+}
+
+/* === Encryption Step === */
+.step-description--hint {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.step-description--hint a {
+    color: var(--text-muted);
+    text-decoration: underline;
+}
+
+.encryption-info-box {
+    background-color: var(--bg-info, #e3f2fd);
+    border-left: 4px solid var(--primary);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--spacing-lg);
+}
+
+.encryption-info-box p {
+    margin: 0;
+    font-size: 0.875rem;
+}
+
+.encryption-form-body {
+    padding: var(--spacing-md);
+}
+
+.encryption-status {
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-sm);
+    display: none;
+}

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Setup Complete{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/onboarding.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="onboarding-container">
+    <div class="complete-card">
+        <div class="complete-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+        </div>
+
+        <h1 class="complete-title">You're All Set!</h1>
+
+        <p class="complete-message">
+            Congratulations! Your setup is complete. Here is a summary:
+        </p>
+
+        <div class="complete-summary">
+            <div class="summary-item">
+                <div class="summary-icon summary-icon--fetchers">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <div class="summary-content">
+                    <span class="summary-count">{{ counts.fetchers }}</span>
+                    <span class="summary-label">Fetchers</span>
+                </div>
+            </div>
+
+            <div class="summary-item">
+                <div class="summary-icon summary-icon--categories">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                    </svg>
+                </div>
+                <div class="summary-content">
+                    <span class="summary-count">{{ counts.categories }}</span>
+                    <span class="summary-label">Categories</span>
+                </div>
+            </div>
+
+            <div class="summary-item">
+                <div class="summary-icon summary-icon--patterns">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+                    </svg>
+                </div>
+                <div class="summary-content">
+                    <span class="summary-count">{{ counts.patterns }}</span>
+                    <span class="summary-label">Patterns</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="complete-next-steps">
+            <h3>Next Steps</h3>
+            <ul>
+                <li>Fetch your emails using the "Fetch Gmail" tool</li>
+                <li>Review and categorize imported transactions</li>
+                <li>Check out the Charts and Trends pages</li>
+            </ul>
+        </div>
+
+        <div class="complete-actions">
+            <a href="{{ url_for('main.index') }}" class="btn btn-primary btn-lg">
+                Go to Dashboard
+            </a>
+            <a href="{{ url_for('gmail.fetch_gmail_page') }}" class="btn btn-secondary">
+                Fetch Emails Now
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

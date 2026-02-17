@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+{% block title %}
+  {% if mode == 'list' %}Fetchers - SpendSense
+  {% elif mode == 'edit' %}Edit Fetcher - SpendSense
+  {% else %}Create Fetcher - SpendSense{% endif %}
+{% endblock %}
+{% block page_title %}
+  {% if mode == 'list' %}Transaction Fetchers
+  {% elif mode == 'edit' %}Edit Fetcher
+  {% else %}Create Fetcher{% endif %}
+{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/fetchers.css') }}">
+{% endblock %}
+
+{% block header_actions %}
+  {% if mode in ['create', 'edit'] %}
+  <a href="{{ url_for('fetchers.fetchers') }}" class="btn btn-secondary">
+    ← Back to Fetchers
+  </a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+{% if mode == 'list' %}
+<div class="fetchers-container">
+    <!-- Info box explaining the feature -->
+    <div class="info-note">
+        <h3>About Transaction Fetchers</h3>
+        <p>Fetchers automatically parse transaction emails from your Gmail account. Configure fetchers to extract amounts, merchants, and currencies from your bank or credit card emails.</p>
+        <p><strong>How it works:</strong> Define patterns using regex or let the LLM generate them from sample emails.</p>
+    </div>
+
+    <div class="section-header">
+        <h2>Fetchers List</h2>
+    </div>
+
+    <div class="fetcher-table-wrapper">
+        {% if fetchers and fetchers|length > 0 %}
+        <table class="fetcher-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th class="email-col">From Emails</th>
+                    <th class="subject-col">Subject Filter</th>
+                    <th class="status-col">Status</th>
+                    <th class="actions-col">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fetcher in fetchers %}
+                <tr data-fetcher-id="{{ fetcher.id }}" data-group-id="{{ fetcher.group_id }}">
+                    <td>
+                        <div class="fetcher-name-cell">
+                            <span class="fetcher-name">{{ fetcher.name }}</span>
+                            {% if fetcher.version > 1 %}
+                            <span class="version-badge" title="Version {{ fetcher.version }}">v{{ fetcher.version }}</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td class="email-col">
+                        <span title="{{ fetcher.from_emails|join(', ') }}">
+                            {{ fetcher.from_emails_display }}
+                        </span>
+                    </td>
+                    <td class="subject-col">{{ fetcher.subject_filter }}</td>
+                    <td class="status-col">
+                        <span class="status-badge {% if fetcher.enabled %}status-enabled{% else %}status-disabled{% endif %}">
+                            {{ 'Enabled' if fetcher.enabled else 'Disabled' }}
+                        </span>
+                    </td>
+                    <td class="actions-col">
+                        <button class="btn-icon" onclick="window.location.href='{{ url_for('fetchers.edit_fetcher', fetcher_id=fetcher.id) }}'" title="Edit">✏️</button>
+                        <button class="btn-icon" onclick="toggleFetcher('{{ fetcher.id }}', {{ 'true' if fetcher.enabled else 'false' }})" title="{{ 'Disable' if fetcher.enabled else 'Enable' }}">{{ '🔕' if fetcher.enabled else '🔔' }}</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <p>No fetchers configured yet.</p>
+            <p class="empty-state-hint">Click the + button to create your first fetcher.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% else %}
+<div class="fetchers-container">
+    <!-- Info box explaining the feature -->
+    <div class="info-note">
+        {% if mode == 'edit' %}
+        <h3>Edit Fetcher Configuration</h3>
+        <p>Update your fetcher settings, test patterns against sample emails, or regenerate patterns using the LLM.</p>
+        {% else %}
+        <h3>About Fetcher Testing</h3>
+        <p>Test LLM-generated regex patterns for parsing transaction emails. This tool uses Gemini AI to analyze your email text and automatically generate patterns to extract transaction amounts, merchants, and currencies.</p>
+        <p><strong>How it works:</strong></p>
+        <ul>
+            <li>Configure your fetcher with name, from emails, and default currency</li>
+            <li>Add one or more email examples (raw text or Gmail message IDs)</li>
+            <li>For providers with multiple email formats (e.g., Wise), add examples of each format</li>
+            <li>Gemini AI generates regex patterns that work across all provided examples</li>
+            <li>Test patterns against real emails from Gmail</li>
+            <li>Save the fetcher configuration to database for future use</li>
+        </ul>
+        {% endif %}
+    </div>
+
+    <!-- Fetcher Configuration Section -->
+    <div class="fetcher-config-section">
+        <h2>Fetcher Configuration</h2>
+
+        {% if mode == 'edit' %}
+        <input type="hidden" id="fetcher-id" value="{{ fetcher.id }}">
+        {% endif %}
+
+        <!-- Name input -->
+        <div class="form-group">
+            <label for="fetcher-name">Fetcher Name <span class="required">*</span></label>
+            <input type="text" id="fetcher-name" class="form-input"
+                   placeholder="e.g., Chase Credit Card"
+                   {% if fetcher %}value="{{ fetcher.name }}"{% endif %}>
+            <small class="form-help">Suggest your bank or service name</small>
+        </div>
+
+        <!-- From emails (dynamic list) -->
+        <div class="form-group">
+            <label>From Email Address(es) <span class="required">*</span></label>
+            <div id="from-emails-container"></div>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addFromEmail()">
+                + Add Email Address
+            </button>
+            <small class="form-help">Add all email addresses this provider uses</small>
+        </div>
+
+        <!-- Subject filter -->
+        <div class="form-group">
+            <label for="subject-filter">Subject Filter <span class="optional">(optional)</span></label>
+            <input type="text" id="subject-filter" class="form-input"
+                   placeholder="e.g., transaction"
+                   {% if fetcher %}value="{{ fetcher.subject_filter }}"{% endif %}>
+            <small class="form-help warning-text">
+                ⚠ Keep this general - avoid being too specific
+            </small>
+        </div>
+
+        <!-- Default currency -->
+        <div class="form-group">
+            <label for="default-currency">Default Currency <span class="required">*</span></label>
+            <select id="default-currency" class="form-input">
+                <option value="">-- Select Currency --</option>
+                <!-- Options populated by JavaScript from SUPPORTED_CURRENCIES -->
+            </select>
+            <small class="form-help">Used when currency cannot be extracted from emails</small>
+        </div>
+
+        <!-- Negate amount checkbox -->
+        <div class="form-group">
+            <label class="checkbox-label">
+                <input type="checkbox" id="negate-amount" class="form-checkbox"
+                       {% if fetcher and fetcher.negate_amount %}checked{% endif %}>
+                <span>Negate amounts (for income/refunds)</span>
+            </label>
+            <small class="form-help">Check this to make amounts negative. Useful for payments received (income) rather than expenses.</small>
+        </div>
+    </div>
+
+    <!-- Input Form -->
+    <div class="section-header">
+        <h2>Test Email Parsing</h2>
+    </div>
+
+    <form id="fetcher-form" class="fetchers-form">
+        <!-- Email Examples Container -->
+        <div id="email-examples-container">
+            <!-- Examples will be added here dynamically -->
+        </div>
+
+        <!-- Add Example Button -->
+        <div class="form-group">
+            <button type="button" class="btn btn-secondary" onclick="addEmailExample()">
+                + Add Email Example
+            </button>
+            <small class="form-help">Add multiple examples if your provider sends different email formats</small>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="clearForm()">Clear All</button>
+            <button type="submit" class="btn btn-primary">Generate Patterns & Parse</button>
+        </div>
+    </form>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="spinner"></div>
+        <p>Generating patterns with LLM</p>
+    </div>
+
+    <!-- Results Section -->
+    <div id="results-section" class="results-section hidden">
+        <div class="section-header">
+            <h2>Results</h2>
+        </div>
+
+        <!-- Generated Patterns -->
+        <div class="patterns-card">
+            <h3>Generated Regex Patterns</h3>
+            <p class="card-subtitle">These patterns were generated by Gemini AI to extract transaction data</p>
+
+            <!-- Expert Mode Controls -->
+            <div class="expert-mode-controls">
+                <div class="expert-mode-toggle-wrapper">
+                    <label class="expert-mode-label">
+                        <span class="expert-mode-text">Expert Mode</span>
+                        <span class="expert-mode-description">Manually edit regex patterns</span>
+                    </label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="expert-mode-toggle" onchange="toggleExpertMode(this.checked)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" id="reset-patterns-btn" onclick="resetToOriginalPatterns()" style="display: none;">
+                    Reset Patterns
+                </button>
+            </div>
+
+            <div class="pattern-grid">
+                <div class="pattern-item">
+                    <div class="pattern-header">
+                        <label class="pattern-label">Amount Pattern</label>
+                        <button type="button" class="btn-icon copy-btn" onclick="copyPattern('amount')" title="Copy to clipboard">
+                            📋
+                        </button>
+                    </div>
+                    <textarea id="amount-pattern" class="pattern-display" readonly></textarea>
+                    <div class="pattern-error" id="amount-pattern-error"></div>
+                </div>
+
+                <div class="pattern-item">
+                    <div class="pattern-header">
+                        <label class="pattern-label">Merchant Pattern</label>
+                        <button type="button" class="btn-icon copy-btn" onclick="copyPattern('merchant')" title="Copy to clipboard">
+                            📋
+                        </button>
+                    </div>
+                    <textarea id="merchant-pattern" class="pattern-display" readonly></textarea>
+                    <div class="pattern-error" id="merchant-pattern-error"></div>
+                </div>
+
+                <div class="pattern-item">
+                    <div class="pattern-header">
+                        <label class="pattern-label">Currency Pattern</label>
+                        <button type="button" class="btn-icon copy-btn" onclick="copyPattern('currency')" title="Copy to clipboard">
+                            📋
+                        </button>
+                    </div>
+                    <textarea id="currency-pattern" class="pattern-display" readonly></textarea>
+                    <div class="pattern-error" id="currency-pattern-error"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Training Results -->
+        <div class="training-results-header">
+            <h3>Training Results</h3>
+            <p class="card-subtitle">Transactions extracted from training emails used to generate patterns</p>
+        </div>
+
+        <div class="transactions-card">
+            <div id="transactions-container">
+                <!-- Will be populated by JavaScript with one table per email -->
+            </div>
+        </div>
+
+        <!-- Email Previews (Collapsible) -->
+        <div id="email-previews-container">
+            <!-- Will be populated by JavaScript with collapsible sections for each email -->
+        </div>
+
+        <!-- Pattern Testing Section -->
+        <div id="pattern-test-section" class="pattern-test-section hidden">
+            <div class="section-divider"></div>
+
+            <div class="section-header">
+                <h2>Test Generated Patterns</h2>
+                <p class="section-description">
+                    Test the patterns above with additional emails to validate they work correctly.
+                </p>
+            </div>
+
+            <!-- Test Email Input Form -->
+            <div class="test-form-container">
+                <div id="test-email-examples-container">
+                    <!-- Test examples will be added here dynamically -->
+                </div>
+
+                <div class="form-group">
+                    <button type="button" class="btn btn-secondary" onclick="addTestEmailExample()">
+                        + Add Test Email Example
+                    </button>
+                    <small class="form-help">Add new emails to test the generated patterns</small>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-primary" onclick="submitTestEmails()">
+                        Test Patterns
+                    </button>
+                </div>
+            </div>
+
+            <!-- Test Results Container -->
+            <div id="test-results-container" class="hidden">
+                <div class="test-results-header">
+                    <h3>Test Results</h3>
+                    <p class="card-subtitle">Transactions extracted from test emails using the generated patterns</p>
+                </div>
+
+                <div id="test-transactions-container">
+                    <!-- Will be populated with test results -->
+                </div>
+
+                <!-- Test Email Previews (Collapsible) -->
+                <div id="test-email-previews-container">
+                    <!-- Will be populated with collapsible test email previews -->
+                </div>
+            </div>
+
+            <!-- Save Fetcher Section -->
+            <div id="save-fetcher-section" class="save-fetcher-section hidden">
+                <h3>Save This Fetcher</h3>
+                <p>Patterns tested successfully! Save this fetcher configuration to use later.</p>
+                <button type="button" class="btn btn-primary" onclick="saveFetcher()">
+                    {% if mode == 'edit' %}Save as New Version{% else %}Save Fetcher Configuration{% endif %}
+                </button>
+                {% if mode == 'edit' %}
+                <p class="version-note">Note: Editing creates a new version. The previous version will be disabled.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/fetchers.js') }}"></script>
+<script>
+    // Pass mode and fetcher data to JavaScript
+    window.FETCHER_MODE = '{{ mode or "create" }}';
+    {% if fetcher %}
+    window.FETCHER_DATA = {{ fetcher|tojson }};
+    {% endif %}
+</script>
+{% endblock %}

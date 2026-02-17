@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}Gmail Fetch Results - SpendSense{% endblock %}
+{% block page_title %}Gmail Fetch Results{% endblock %}
+
+{% block extra_head %}
+<style>
+    .result-card {
+        background-color: var(--gray-50);
+        border-radius: var(--radius-sm);
+        padding: var(--spacing-lg);
+        margin-bottom: var(--spacing-md);
+        border: 1px solid var(--gray-300);
+    }
+
+    .result-header {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-md);
+        display: flex;
+        align-items: center;
+    }
+
+    .result-header::before {
+        content: "📧";
+        margin-right: var(--spacing-sm);
+        font-size: 1.5rem;
+    }
+
+    .result-stats {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--spacing-sm);
+    }
+
+    @media (min-width: 640px) {
+        .result-stats {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+
+    .stat-box {
+        background-color: var(--bg-primary);
+        padding: var(--spacing-md);
+        border-radius: var(--radius-sm);
+        text-align: center;
+    }
+
+    .stat-number {
+        font-size: 1.75rem;
+        font-weight: bold;
+        color: var(--primary);
+    }
+
+    @media (min-width: 640px) {
+        .stat-number {
+            font-size: 2rem;
+        }
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-top: var(--spacing-xs);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .stat-box.new .stat-number {
+        color: var(--secondary);
+    }
+
+    .stat-box.written .stat-number {
+        color: var(--warning);
+    }
+
+    .summary-section {
+        margin-top: var(--spacing-xl);
+        padding-top: var(--spacing-lg);
+        border-top: 2px solid var(--gray-300);
+    }
+
+    .summary-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-md);
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+    }
+
+    @media (min-width: 640px) {
+        .summary-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+
+    .summary-card {
+        background-color: var(--bg-info);
+        padding: var(--spacing-lg);
+        border-radius: var(--radius-sm);
+        text-align: center;
+    }
+
+    .summary-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #1976D2;
+    }
+
+    .summary-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-top: var(--spacing-xs);
+    }
+
+    .action-buttons {
+        margin-top: var(--spacing-xl);
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+
+    @media (min-width: 640px) {
+        .action-buttons {
+            flex-direction: row;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flash-message flash-success" style="margin-bottom: var(--spacing-lg);">
+    ✓ Gmail fetch completed successfully!
+</div>
+
+<div class="card">
+    <h2>Results by Source</h2>
+
+    {% for result in results %}
+    <div class="result-card">
+        <div class="result-header">{{ result.source }}</div>
+        <div class="result-stats">
+            <div class="stat-box">
+                <div class="stat-number">{{ result.total }}</div>
+                <div class="stat-label">Total Messages</div>
+            </div>
+            <div class="stat-box new">
+                <div class="stat-number">{{ result.new }}</div>
+                <div class="stat-label">New Messages</div>
+            </div>
+            <div class="stat-box written">
+                <div class="stat-number">{{ result.written }}</div>
+                <div class="stat-label">Transactions Written</div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <div class="summary-section">
+        <div class="summary-title">Overall Summary</div>
+        <div class="summary-grid">
+            <div class="summary-card">
+                <div class="summary-value">{{ results|map(attribute='total')|sum }}</div>
+                <div class="summary-label">Total Messages</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-value">{{ results|map(attribute='new')|sum }}</div>
+                <div class="summary-label">New Messages</div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-value">{{ results|map(attribute='written')|sum }}</div>
+                <div class="summary-label">Transactions Written</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="action-buttons">
+        <a href="{{ url_for('transactions.review') }}" class="btn btn-success" style="flex: 1;">
+            View All Transactions
+        </a>
+        <a href="{{ url_for('gmail.fetch_gmail_page') }}" class="btn btn-primary" style="flex: 1;">
+            Fetch Again
+        </a>
+    </div>
+</div>
+{% endblock %}

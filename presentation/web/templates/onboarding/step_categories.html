@@ -1,0 +1,81 @@
+{% extends "onboarding/base_onboarding.html" %}
+
+{% block extra_head %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/categories.css') }}">
+{% endblock %}
+
+{% block step_content %}
+<div class="step-card">
+    <div class="step-header">
+        <div class="step-icon step-icon--categories">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+            </svg>
+        </div>
+        <h2 class="step-title">Configure Categories</h2>
+        <p class="step-description">
+            Create categories to organize your expenses. You can create a hierarchy with parent-child relationships.
+        </p>
+    </div>
+
+    {# Item List #}
+    <div class="wizard-item-list">
+        <div class="wizard-item-list__header">
+            <h4>Your Categories (<span id="category-count">{{ current_step.count }}</span>)</h4>
+        </div>
+        <div class="wizard-item-list__content" id="category-item-list">
+            {% if categories and categories|length > 0 %}
+                {% for cat in categories %}
+                <div class="item-list__item">
+                    <span class="item-list__name">{{ cat.name }}</span>
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="item-list__empty">No categories created yet</div>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Embedded Category Creation Form #}
+    <div class="wizard-form-container" id="category-form-container">
+        <div class="wizard-form-header">
+            <h3>Add Category</h3>
+        </div>
+
+        {% with context='wizard' %}
+            {% include 'partials/_category_form.html' %}
+        {% endwith %}
+    </div>
+
+    {# Add Another Button - shown after save #}
+    <div class="wizard-add-another hidden" id="add-another-category-btn">
+        <button type="button" class="btn btn-secondary" onclick="showFormForAnotherItem('category')">
+            + Add Another Category
+        </button>
+    </div>
+
+    <div class="step-tips">
+        <h4>Tips</h4>
+        <ul>
+            <li>Start with broad categories like "Food", "Transport", "Entertainment"</li>
+            <li>You can create subcategories for more detailed tracking</li>
+            <li>Categories can be edited or reorganized later in Settings</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/categories.js') }}"></script>
+<script src="{{ url_for('static', filename='js/onboarding-wizard.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize category step
+        initWizardStep(2, {
+            categories: {{ categories|tojson if categories else '[]' }}
+        });
+    });
+</script>
+{% endblock %}

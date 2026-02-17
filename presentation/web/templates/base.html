@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SpendSense{% endblock %}</title>
+
+    {# Navigation structure - single source of truth #}
+    {% set nav_items = [
+        {
+            'label': 'Transactions',
+            'links': [
+                {'label': 'Review', 'url': url_for('transactions.review')},
+                {'label': 'Groups', 'url': url_for('groups.groups')}
+            ]
+        },
+        {
+            'label': 'Analytics',
+            'links': [
+                {'label': 'Charts', 'url': url_for('main.charts')},
+                {'label': 'Trends', 'url': url_for('main.trends')}
+            ]
+        },
+        {
+            'label': 'Settings',
+            'links': [
+                {'label': 'Categories', 'url': url_for('categories.categories')},
+                {'label': 'Patterns', 'url': url_for('patterns.patterns')},
+                {'label': 'Fetchers', 'url': url_for('fetchers.fetchers')}
+            ]
+        },
+        {
+            'label': 'Tools',
+            'links': [
+                {'label': 'Fetch Gmail', 'url': url_for('gmail.fetch_gmail_page')}
+            ]
+        }
+    ] %}
+
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Track and categorize your expenses automatically">
+    <meta name="theme-color" content="#0f3460">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Expenses">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+
+    <!-- Favicon and Apple Touch Icons -->
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/icon-16x16.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/icon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ url_for('static', filename='icons/icon-512x512.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-152x152.png') }}">
+    <link rel="apple-touch-icon" sizes="152x152" href="{{ url_for('static', filename='icons/icon-152x152.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
+    <link rel="apple-touch-icon" sizes="167x167" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
+
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    {% if not hide_header %}
+    <header class="header">
+        <div class="header-content">
+            <div class="header-branding">
+                <img src="{{ url_for('static', filename='icons/icon-192x192.png') }}" alt="Logo" class="header-logo">
+                <h1>{% block page_title %}SpendSense{% endblock %}</h1>
+            </div>
+
+            <!-- User Profile Dropdown - Direct child of header-content -->
+            <div class="user-menu">
+                <button class="user-menu-trigger" id="userMenuTrigger" aria-label="User menu">
+                    {% if user_picture %}
+                    <img src="{{ user_picture }}" alt="{{ user_name or user_id }}" class="user-avatar">
+                    {% else %}
+                    <div class="user-avatar-fallback">
+                        {{ (user_name or user_id)[0]|upper }}
+                    </div>
+                    {% endif %}
+                </button>
+                <div class="user-menu-dropdown" id="userMenuDropdown">
+                    <div class="user-menu-header">
+                        <div class="user-menu-name">{{ user_name or user_id }}</div>
+                        <div class="user-menu-email">{{ user_id }}</div>
+                    </div>
+                    <div class="user-menu-divider"></div>
+                    <a href="{{ url_for('settings.settings') }}" class="user-menu-item">
+                        <svg class="user-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        Settings
+                    </a>
+                    <a href="{{ url_for('auth.logout') }}" class="user-menu-item">
+                        <svg class="user-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                        </svg>
+                        Logout
+                    </a>
+                </div>
+            </div>
+
+            <!-- Navigation links -->
+            <div class="header-actions">
+                <!-- Mobile hamburger menu button -->
+                <button class="mobile-menu-trigger" id="mobileMenuTrigger" aria-label="Open menu">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
+
+                <!-- Mobile menu backdrop -->
+                <div class="mobile-menu-backdrop" id="mobileMenuBackdrop"></div>
+
+                <!-- Mobile menu overlay -->
+                <div class="mobile-menu-overlay" id="mobileMenuOverlay">
+                    <div class="mobile-menu-header">
+                        <h2>Menu</h2>
+                        <button class="mobile-menu-close" id="mobileMenuClose" aria-label="Close menu">&times;</button>
+                    </div>
+                    <nav class="mobile-menu-nav">
+                        {% for section in nav_items %}
+                        <div class="mobile-menu-section">
+                            <h3>{{ section.label }}</h3>
+                            {% for link in section.links %}
+                            <a href="{{ link.url }}" class="mobile-menu-link">{{ link.label }}</a>
+                            {% endfor %}
+                        </div>
+                        {% endfor %}
+                    </nav>
+                </div>
+
+                <!-- Desktop dropdown navigation -->
+                <nav class="main-nav">
+                    <ul class="nav-menu">
+                        {% for section in nav_items %}
+                        <li class="nav-menu__item has-dropdown">
+                            <button class="nav-menu__link" aria-expanded="false" aria-haspopup="true">
+                                {{ section.label }}
+                                <span class="nav-menu__arrow">▼</span>
+                            </button>
+                            <ul class="nav-menu__dropdown">
+                                {% for link in section.links %}
+                                <li><a href="{{ link.url }}" class="nav-menu__dropdown-link">{{ link.label }}</a></li>
+                                {% endfor %}
+                            </ul>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </nav>
+                {% block header_actions %}{% endblock %}
+            </div>
+        </div>
+    </header>
+    {% endif %}
+
+
+    <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                <div class="flash-message flash-{{ category }}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endwith %}
+
+        {% if show_unlock_banner %}
+        <div class="encryption-banner" id="unlock-banner">
+            <div class="encryption-banner__content">
+                <span class="encryption-banner__icon">&#x1f510;</span>
+                <span class="encryption-banner__text">
+                    Your data is encrypted.
+                    <a href="{{ url_for('webauthn.passkey_login') }}" class="encryption-banner__link">Unlock with your passkey</a>
+                    to view it.
+                </span>
+            </div>
+        </div>
+        {% elif show_encryption_banner %}
+        <div class="encryption-banner" id="encryption-banner">
+            <div class="encryption-banner__content">
+                <span class="encryption-banner__icon">&#x1f512;</span>
+                <span class="encryption-banner__text">
+                    Protect your data with end-to-end encryption.
+                    <a href="{{ url_for('webauthn.passkey_setup') }}" class="encryption-banner__link">Set up a passkey</a>
+                </span>
+            </div>
+            <button class="encryption-banner__dismiss" onclick="dismissEncryptionBanner()" aria-label="Dismiss">&times;</button>
+        </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    {% block modals %}{% endblock %}
+
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- Floating Action Button -->
+    <div class="fab-container" id="fab-container" style="display: none;">
+        <button class="fab-backdrop" id="fab-backdrop" aria-label="Close actions menu"></button>
+
+        <div class="fab-actions" id="fab-actions">
+            <!-- Populated by JavaScript -->
+        </div>
+
+        <button class="fab-main" id="fab-main" aria-label="Actions" aria-expanded="false">
+            <span class="fab-icon fab-icon-plus">+</span>
+            <span class="fab-icon fab-icon-close">×</span>
+        </button>
+    </div>
+
+    <!-- Debug Panel (hidden by default) -->
+    <div id="debug-panel" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border: 2px solid #333; padding: 20px; max-width: 90%; max-height: 80%; overflow: auto; z-index: 10000; box-shadow: 0 4px 20px rgba(0,0,0,0.3); border-radius: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="margin: 0; color: #333;">Debug Info</h3>
+            <button onclick="document.getElementById('debug-panel').style.display='none'" style="background: #e74c3c; color: white; border: none; padding: 5px 15px; border-radius: 4px; cursor: pointer;">Close</button>
+        </div>
+        <div id="debug-content" style="font-family: monospace; font-size: 12px; color: #333; line-height: 1.6;"></div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div class="modal-overlay" id="confirm-modal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h3 class="modal-title" id="confirm-title">Confirm</h3>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-message"></p>
+            </div>
+            <div class="filter-actions mt-md">
+                <button type="button" class="btn btn-secondary" id="confirm-cancel">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirm-ok">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global utility functions
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Toast Notification System
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+
+            const icons = {
+                'success': '✓',
+                'error': '✗',
+                'warning': '⚠',
+                'info': 'ℹ'
+            };
+
+            const icon = icons[type] || icons.info;
+
+            toast.innerHTML = `
+                <div class="toast-icon">${icon}</div>
+                <div class="toast-message">${escapeHtml(message)}</div>
+                <button class="toast-close" onclick="this.parentElement.remove()" aria-label="Close">&times;</button>
+            `;
+
+            container.appendChild(toast);
+
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 10);
+
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+
+            return toast;
+        }
+
+        // Modern Confirm Dialog
+        function showConfirm(message, title = 'Confirm') {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('confirm-modal');
+                const titleEl = document.getElementById('confirm-title');
+                const messageEl = document.getElementById('confirm-message');
+                const okBtn = document.getElementById('confirm-ok');
+                const cancelBtn = document.getElementById('confirm-cancel');
+
+                titleEl.textContent = title;
+                messageEl.textContent = message;
+
+                modal.classList.add('active');
+                modal.style.display = 'flex';
+
+                function cleanup() {
+                    modal.classList.remove('active');
+                    modal.style.display = 'none';
+                    okBtn.replaceWith(okBtn.cloneNode(true));
+                    cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+                }
+
+                document.getElementById('confirm-ok').addEventListener('click', () => {
+                    cleanup();
+                    resolve(true);
+                });
+
+                document.getElementById('confirm-cancel').addEventListener('click', () => {
+                    cleanup();
+                    resolve(false);
+                });
+
+                // Close on Escape key
+                const escapeHandler = (e) => {
+                    if (e.key === 'Escape') {
+                        cleanup();
+                        resolve(false);
+                        document.removeEventListener('keydown', escapeHandler);
+                    }
+                };
+                document.addEventListener('keydown', escapeHandler);
+            });
+        }
+
+        // Encryption banner dismiss
+        async function dismissEncryptionBanner() {
+            try {
+                await fetch('/api/encryption/dismiss-banner', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const banner = document.getElementById('encryption-banner');
+                if (banner) {
+                    banner.style.opacity = '0';
+                    banner.style.transform = 'translateY(-10px)';
+                    setTimeout(() => banner.remove(), 300);
+                }
+            } catch (err) {
+                console.error('Error dismissing encryption banner:', err);
+            }
+        }
+
+        // User menu dropdown
+        document.addEventListener('DOMContentLoaded', function() {
+            const menuTrigger = document.getElementById('userMenuTrigger');
+            const menuDropdown = document.getElementById('userMenuDropdown');
+
+            if (menuTrigger && menuDropdown) {
+                // Toggle dropdown on click
+                menuTrigger.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    menuDropdown.classList.toggle('active');
+                });
+
+                // Close dropdown when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!menuTrigger.contains(e.target) && !menuDropdown.contains(e.target)) {
+                        menuDropdown.classList.remove('active');
+                    }
+                });
+
+                // Close dropdown on Escape key
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape') {
+                        menuDropdown.classList.remove('active');
+                    }
+                });
+            }
+
+            // Hierarchical Navigation Menu
+            const navItems = document.querySelectorAll('.nav-menu__item.has-dropdown');
+
+            navItems.forEach(item => {
+                const button = item.querySelector('.nav-menu__link');
+                const dropdown = item.querySelector('.nav-menu__dropdown');
+
+                if (!button || !dropdown) return;
+
+                // Mobile/tablet: Click to toggle
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const isActive = item.classList.contains('active');
+
+                    // Close all other dropdowns
+                    navItems.forEach(otherItem => {
+                        if (otherItem !== item) {
+                            otherItem.classList.remove('active');
+                            const otherButton = otherItem.querySelector('.nav-menu__link');
+                            if (otherButton) {
+                                otherButton.setAttribute('aria-expanded', 'false');
+                            }
+                        }
+                    });
+
+                    // Toggle current dropdown
+                    item.classList.toggle('active');
+                    button.setAttribute('aria-expanded', !isActive);
+                });
+
+                // Desktop: Also support hover (CSS handles visual, JS handles ARIA)
+                if (window.matchMedia('(min-width: 640px)').matches) {
+                    item.addEventListener('mouseenter', function() {
+                        button.setAttribute('aria-expanded', 'true');
+                    });
+
+                    item.addEventListener('mouseleave', function() {
+                        button.setAttribute('aria-expanded', 'false');
+                    });
+                }
+            });
+
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.nav-menu__item')) {
+                    navItems.forEach(item => {
+                        item.classList.remove('active');
+                        const button = item.querySelector('.nav-menu__link');
+                        if (button) {
+                            button.setAttribute('aria-expanded', 'false');
+                        }
+                    });
+                }
+            });
+
+            // Close dropdowns on Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    navItems.forEach(item => {
+                        item.classList.remove('active');
+                        const button = item.querySelector('.nav-menu__link');
+                        if (button) {
+                            button.setAttribute('aria-expanded', 'false');
+                        }
+                    });
+                }
+            });
+
+            // Highlight active menu item based on current URL
+            const currentPath = window.location.pathname;
+            document.querySelectorAll('.nav-menu__dropdown-link').forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+            });
+
+            // Mobile Hamburger Menu
+            const mobileMenuTrigger = document.getElementById('mobileMenuTrigger');
+            const mobileMenuBackdrop = document.getElementById('mobileMenuBackdrop');
+            const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+            const mobileMenuClose = document.getElementById('mobileMenuClose');
+
+            if (mobileMenuTrigger && mobileMenuBackdrop && mobileMenuOverlay && mobileMenuClose) {
+                function openMobileMenu() {
+                    mobileMenuBackdrop.classList.add('active');
+                    mobileMenuOverlay.classList.add('active');
+                    document.body.style.overflow = 'hidden'; // Prevent scrolling
+                }
+
+                function closeMobileMenu() {
+                    mobileMenuBackdrop.classList.remove('active');
+                    mobileMenuOverlay.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+
+                // Open mobile menu
+                mobileMenuTrigger.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    openMobileMenu();
+                });
+
+                // Close mobile menu
+                mobileMenuClose.addEventListener('click', closeMobileMenu);
+
+                // Close on backdrop click
+                mobileMenuBackdrop.addEventListener('click', closeMobileMenu);
+
+                // Close on Escape key
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape' && mobileMenuOverlay.classList.contains('active')) {
+                        closeMobileMenu();
+                    }
+                });
+
+                // Highlight active menu item in mobile menu
+                document.querySelectorAll('.mobile-menu-link').forEach(link => {
+                    if (link.getAttribute('href') === currentPath) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+        });
+
+        // Close modals on Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                document.querySelectorAll('.modal-overlay.active').forEach(modal => {
+                    modal.classList.remove('active');
+                });
+            }
+        });
+
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(function(registration) {
+                        console.log('[PWA] Service Worker registered successfully:', registration.scope);
+
+                        // Check for updates
+                        registration.addEventListener('updatefound', function() {
+                            const newWorker = registration.installing;
+                            console.log('[PWA] New Service Worker found, installing...');
+
+                            newWorker.addEventListener('statechange', function() {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    console.log('[PWA] New Service Worker installed, will activate on next page load');
+                                    // Optionally show a notification to the user
+                                    // showUpdateNotification();
+                                }
+                            });
+                        });
+                    })
+                    .catch(function(error) {
+                        console.error('[PWA] Service Worker registration failed:', error);
+                    });
+
+                // Handle service worker messages
+                navigator.serviceWorker.addEventListener('message', function(event) {
+                    if (event.data && event.data.type === 'CACHE_CLEARED') {
+                        console.log('[PWA] Cache cleared successfully');
+                    }
+                });
+            });
+
+            // Listen for install prompt
+            let deferredPrompt;
+            window.addEventListener('beforeinstallprompt', function(e) {
+                console.log('[PWA] Install prompt available');
+                // Prevent the mini-infobar from appearing on mobile
+                e.preventDefault();
+                // Stash the event so it can be triggered later
+                deferredPrompt = e;
+                // Optionally show custom install button
+                // showInstallButton(deferredPrompt);
+            });
+
+            // Log when app is installed
+            window.addEventListener('appinstalled', function(e) {
+                console.log('[PWA] App installed successfully');
+                deferredPrompt = null;
+            });
+        }
+
+        // Debug Panel - Triple tap header logo to open
+        (function() {
+            const logo = document.querySelector('.header-logo');
+            if (!logo) return;
+
+            let tapCount = 0;
+            let tapTimer = null;
+
+            logo.addEventListener('click', function(e) {
+                tapCount++;
+
+                if (tapCount === 1) {
+                    tapTimer = setTimeout(() => {
+                        tapCount = 0;
+                    }, 500);
+                } else if (tapCount === 3) {
+                    clearTimeout(tapTimer);
+                    tapCount = 0;
+                    showDebugPanel();
+                }
+            });
+
+            async function showDebugPanel() {
+                const panel = document.getElementById('debug-panel');
+                const content = document.getElementById('debug-content');
+
+                let html = '<div style="margin-bottom: 10px;"><strong>Fetching debug info...</strong></div>';
+                content.innerHTML = html;
+                panel.style.display = 'block';
+
+                // Get Service Worker info
+                let swInfo = 'Not supported';
+                let swState = 'N/A';
+                let cacheInfo = [];
+
+                if ('serviceWorker' in navigator) {
+                    const registration = await navigator.serviceWorker.getRegistration();
+                    if (registration) {
+                        if (registration.active) {
+                            swState = 'Active ✓';
+                            swInfo = registration.active.scriptURL;
+                        } else if (registration.installing) {
+                            swState = 'Installing...';
+                            swInfo = registration.installing.scriptURL;
+                        } else if (registration.waiting) {
+                            swState = 'Waiting';
+                            swInfo = registration.waiting.scriptURL;
+                        }
+                    } else {
+                        swState = 'Not registered';
+                    }
+
+                    // Get cache info
+                    try {
+                        const cacheNames = await caches.keys();
+                        for (const cacheName of cacheNames) {
+                            const cache = await caches.open(cacheName);
+                            const keys = await cache.keys();
+                            cacheInfo.push({
+                                name: cacheName,
+                                size: keys.length,
+                                keys: keys.map(req => req.url.replace(location.origin, ''))
+                            });
+                        }
+                    } catch (e) {
+                        cacheInfo = [{name: 'Error', size: 0, keys: [e.message]}];
+                    }
+                }
+
+                // Get backend debug info (ECB dates, etc.)
+                let ecbFirstDate = 'N/A';
+                let ecbLastDate = 'N/A';
+                try {
+                    const response = await fetch('/api/debug-info');
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.ecb_first_date && data.ecb_last_date) {
+                            // Format dates in UTC
+                            ecbFirstDate = new Date(data.ecb_first_date).toISOString().split('T')[0];
+                            ecbLastDate = new Date(data.ecb_last_date).toISOString().split('T')[0];
+                        } else if (data.ecb_error) {
+                            ecbFirstDate = ecbLastDate = `Error: ${data.ecb_error}`;
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to fetch debug info:', e);
+                }
+
+                // Build debug HTML
+                html = `
+                    <div style="margin-bottom: 15px;">
+                        <strong style="color: #2c3e50;">Service Worker Status:</strong><br>
+                        State: <span style="color: ${swState.includes('✓') ? '#27ae60' : '#e67e22'};">${swState}</span><br>
+                        Script: <span style="color: #7f8c8d; word-break: break-all;">${swInfo}</span>
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <strong style="color: #2c3e50;">Cache Storage:</strong><br>
+                        ${cacheInfo.length === 0 ? '<span style="color: #95a5a6;">No caches found</span>' : ''}
+                        ${cacheInfo.map(cache => `
+                            <div style="margin: 10px 0; padding: 10px; background: #ecf0f1; border-radius: 4px;">
+                                <strong style="color: #e74c3c;">${cache.name}</strong> (${cache.size} items)<br>
+                                <details style="margin-top: 5px;">
+                                    <summary style="cursor: pointer; color: #3498db;">Show cached files</summary>
+                                    <ul style="margin: 5px 0 0 0; padding-left: 20px; font-size: 11px;">
+                                        ${cache.keys.map(key => `<li style="word-break: break-all;">${key}</li>`).join('')}
+                                    </ul>
+                                </details>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <strong style="color: #2c3e50;">Storage Info:</strong><br>
+                        ${navigator.storage && navigator.storage.estimate ? '<span id="storage-estimate">Calculating...</span>' : '<span style="color: #95a5a6;">Storage API not available</span>'}
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <strong style="color: #2c3e50;">ECB Exchange Rates:</strong><br>
+                        First Date: <span style="color: #16a085;">${ecbFirstDate}</span> (UTC)<br>
+                        Last Date: <span style="color: #16a085;">${ecbLastDate}</span> (UTC)
+                    </div>
+
+                    <div>
+                        <button onclick="location.reload()" style="background: #3498db; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-right: 10px;">Reload Page</button>
+                        <button onclick="clearAllCaches()" style="background: #e67e22; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">Clear All Caches</button>
+                    </div>
+                `;
+
+                content.innerHTML = html;
+
+                // Get storage estimate
+                if (navigator.storage && navigator.storage.estimate) {
+                    navigator.storage.estimate().then(estimate => {
+                        const used = (estimate.usage / 1024 / 1024).toFixed(2);
+                        const quota = (estimate.quota / 1024 / 1024).toFixed(2);
+                        document.getElementById('storage-estimate').innerHTML =
+                            `Used: <strong>${used} MB</strong> / ${quota} MB`;
+                    });
+                }
+            }
+
+            window.clearAllCaches = async function() {
+                if (!confirm('Clear all caches and reload?')) return;
+
+                const cacheNames = await caches.keys();
+                await Promise.all(cacheNames.map(name => caches.delete(name)));
+
+                if ('serviceWorker' in navigator) {
+                    const registration = await navigator.serviceWorker.getRegistration();
+                    if (registration) {
+                        await registration.unregister();
+                    }
+                }
+
+                location.reload(true);
+            };
+        })();
+    </script>
+
+    <!-- Passkey manager for end-to-end encryption -->
+    <script src="{{ url_for('static', filename='js/passkey-manager.js') }}"></script>
+
+    <!-- Timezone utilities for date handling -->
+    <script src="{{ url_for('static', filename='js/timezone-utils.js') }}"></script>
+
+    <!-- Filter form timezone conversion -->
+    <script src="{{ url_for('static', filename='js/date-filter-handler.js') }}"></script>
+
+    <!-- Floating Action Button -->
+    <script src="{{ url_for('static', filename='js/fab.js') }}"></script>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

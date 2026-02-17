@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Setup Wizard{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/onboarding.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="onboarding-container">
+    <!-- Stepper Component -->
+    <div class="stepper">
+        <div class="stepper__track">
+            {% for step in steps %}
+            <div class="stepper__step {% if step.is_current %}stepper__step--active{% elif step.is_past or step.is_complete %}stepper__step--complete{% endif %}">
+                <div class="stepper__indicator">
+                    {% if step.is_past or (step.is_complete and not step.is_current) %}
+                    <svg class="stepper__check" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    {% else %}
+                    <span class="stepper__number">{{ step.number }}</span>
+                    {% endif %}
+                </div>
+                <div class="stepper__label">{{ step.title }}</div>
+            </div>
+            {% if not loop.last %}
+            <div class="stepper__connector {% if step.is_past or step.is_complete %}stepper__connector--complete{% endif %}"></div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Step Content -->
+    <div class="onboarding-content">
+        {% block step_content %}{% endblock %}
+    </div>
+
+    <!-- Navigation -->
+    <div class="onboarding-nav">
+        {% if step_num > 1 %}
+        <button type="button" class="btn btn-secondary" id="back-btn">
+            Back
+        </button>
+        {% else %}
+        <div></div> {# Spacer for flex layout #}
+        {% endif %}
+        <button type="button" class="btn btn-primary" id="continue-btn" {% if not can_continue %}disabled{% endif %}>
+            {% if step_num == total_steps %}
+            Finish
+            {% else %}
+            Continue
+            {% endif %}
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/onboarding.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        initOnboarding({{ step_num }}, {{ total_steps }});
+    });
+</script>
+{% endblock %}

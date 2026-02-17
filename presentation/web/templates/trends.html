@@ -1,0 +1,905 @@
+{% extends "base.html" %}
+
+{% block title %}Expense Trends - SpendSense{% endblock %}
+{% block page_title %}Expense Trends{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+    .control-buttons {
+        margin-top: var(--spacing-md);
+        display: flex;
+        gap: var(--spacing-sm);
+        flex-wrap: wrap;
+    }
+
+    .control-btn {
+        background-color: var(--primary);
+        color: white;
+        padding: var(--spacing-sm) var(--spacing-md);
+        border: none;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        font-size: 0.8125rem;
+        transition: background-color var(--transition-fast);
+    }
+
+    .control-btn:hover {
+        background-color: var(--primary-dark);
+    }
+
+    .control-btn.secondary {
+        background-color: var(--gray-600);
+    }
+
+    .control-btn.secondary:hover {
+        background-color: var(--gray-700);
+    }
+
+    .legend-info {
+        margin-top: var(--spacing-md);
+        padding: var(--spacing-md);
+        background-color: var(--gray-100);
+        border-radius: var(--radius-sm);
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        line-height: 1.6;
+    }
+
+    .chart-wrapper {
+        min-height: 400px;
+        max-height: 600px;
+        margin-top: var(--spacing-lg);
+        position: relative;
+    }
+
+    @media (max-width: 640px) {
+        .chart-wrapper {
+            min-height: 350px;
+            max-height: 800px;
+            /* Allow more height on mobile since legend takes more vertical space */
+        }
+    }
+
+    .summary-stats {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+        margin-top: var(--spacing-md);
+    }
+
+    @media (min-width: 640px) {
+        .summary-stats {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .summary-stats {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+
+    .stat-box {
+        text-align: center;
+        padding: var(--spacing-lg);
+        background-color: var(--gray-100);
+        border-radius: var(--radius-sm);
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: var(--primary);
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-top: var(--spacing-xs);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Filter Section -->
+<div class="filter-section">
+    <form method="GET" action="{{ url_for('main.trends') }}" class="filter-form" id="trends-filter-form">
+        <div class="form-group">
+            <label class="form-label">From Date</label>
+            <input type="date" name="from_date" class="form-input" value="{{ from_date }}">
+        </div>
+        <div class="form-group">
+            <label class="form-label">To Date</label>
+            <input type="date" name="to_date" class="form-input" value="{{ to_date }}">
+        </div>
+        <div class="filter-actions">
+            <button type="submit" class="btn btn-success">Apply Filters</button>
+            <a href="{{ url_for('main.trends') }}" class="btn btn-danger">Clear Filters</a>
+        </div>
+    </form>
+</div>
+
+<!-- Summary Card -->
+<div class="card">
+    <h2>Trends Summary</h2>
+    <div class="summary-stats">
+        <div class="stat-box">
+            <div class="stat-value" id="total-months">0</div>
+            <div class="stat-label">Months Tracked</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value" id="avg-monthly">{{ currency_symbol }}0</div>
+            <div class="stat-label">Average Monthly</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value" id="highest-month">-</div>
+            <div class="stat-label">Highest Month</div>
+        </div>
+    </div>
+
+    <div style="margin-top: var(--spacing-lg);">
+        <h3 style="font-size: 1rem; margin-bottom: var(--spacing-md); color: var(--text-secondary);">Monthly Total & 3-Point Moving Average</h3>
+        <div style="height: 200px; position: relative;">
+            <canvas id="summaryChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Trends Chart -->
+<div class="card">
+    <h2>Monthly Expense Trends by Category</h2>
+
+    <div class="legend-info">
+        <strong>Legend Interactions:</strong> Single-click to toggle just that category. Double-click to isolate that category + all subcategories.<br>
+        <strong>Chart Interactions:</strong> Click a data point to view transactions for that month and category.<br>
+        <strong>Tip:</strong> Works consistently at all levels! View any category alone or with its full hierarchy. Subcategories appear in progressively lighter shades.
+    </div>
+
+    <div class="control-buttons">
+        <button class="control-btn" onclick="showAllCategories()">Show All Categories</button>
+        <button class="control-btn secondary" onclick="hideAllCategories()">Hide All Categories</button>
+    </div>
+
+    <div class="control-buttons" id="categoryButtons">
+        <!-- Category isolation buttons will be added here dynamically -->
+    </div>
+
+    <div class="chart-wrapper">
+        <canvas id="trendsChart"></canvas>
+    </div>
+</div>
+
+<!-- Moving Average Trends Chart -->
+<div class="card">
+    <h2>3-Point Moving Average by Category</h2>
+
+    <div class="legend-info">
+        <strong>Legend Interactions:</strong> Single-click to toggle just that category. Double-click to isolate that category + all subcategories.<br>
+        <strong>Chart Interactions:</strong> Click a data point to view transactions for that month and category.<br>
+        <strong>Tip:</strong> Works consistently at all levels! View any category alone or with its full hierarchy. Subcategories appear in progressively lighter shades.
+    </div>
+
+    <div class="control-buttons">
+        <button class="control-btn" onclick="showAllCategoriesMA()">Show All Categories</button>
+        <button class="control-btn secondary" onclick="hideAllCategoriesMA()">Hide All Categories</button>
+    </div>
+
+    <div class="control-buttons" id="categoryButtonsMA">
+        <!-- Category isolation buttons will be added here dynamically -->
+    </div>
+
+    <div class="chart-wrapper">
+        <canvas id="movingAvgChart"></canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Parse data from server
+    const months = {{ months | tojson }};
+    const datasetsRaw = {{ datasets | tojson }};
+    const movingAvgDatasetsRaw = {{ moving_avg_datasets | tojson }};
+    const summaryMonthlyTotals = {{ monthly_totals | tojson }};
+    const summaryMovingAvg = {{ monthly_totals_moving_avg | tojson }};
+    const fromDate = '{{ from_date }}';
+    const toDate = '{{ to_date }}';
+    const currencySymbol = '{{ currency_symbol }}';
+
+    /**
+     * Truncate text to a maximum length with ellipsis
+     * @param {string} text - Text to truncate
+     * @param {number} maxLength - Maximum length (default 20)
+     * @returns {string} Truncated text
+     */
+    function truncateText(text, maxLength = 20) {
+        if (!text) return '';
+        if (text.length <= maxLength) return text;
+        return text.substring(0, maxLength - 1) + '…';
+    }
+
+    // Create Summary Chart (Monthly Total vs Moving Average)
+    const ctxSummary = document.getElementById('summaryChart').getContext('2d');
+    const summaryChart = new Chart(ctxSummary, {
+        type: 'line',
+        data: {
+            labels: months,
+            datasets: [
+                {
+                    label: 'Monthly Total',
+                    data: summaryMonthlyTotals,
+                    borderColor: '#36A2EB',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.1,
+                    pointRadius: 3,
+                    pointHoverRadius: 5
+                },
+                {
+                    label: '3-Point Moving Average',
+                    data: summaryMovingAvg,
+                    borderColor: '#FF6384',
+                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    pointRadius: 3,
+                    pointHoverRadius: 5
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        font: {
+                            size: 11
+                        },
+                        boxWidth: 12,
+                        padding: 10
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + currencySymbol + Math.round(context.parsed.y).toLocaleString();
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: value => currencySymbol + Math.round(value).toLocaleString(),
+                        font: {
+                            size: 10
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45,
+                        font: {
+                            size: 9
+                        }
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+
+    // Helper function to get all descendant category IDs recursively
+    function getAllDescendants(categoryId, hierarchy) {
+        const descendants = [];
+        const children = hierarchy[categoryId]?.children || [];
+
+        for (const child of children) {
+            descendants.push(child.category_id);
+            // Recursively get descendants of this child
+            const childDescendants = getAllDescendants(child.category_id, hierarchy);
+            descendants.push(...childDescendants);
+        }
+
+        return descendants;
+    }
+
+    // Generate distinct colors for categories
+    function generateColors(count) {
+        const baseColors = [
+            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+            '#FF9F40', '#C9CBCF', '#FF6384', '#36A2EB', '#FFCE56'
+        ];
+        const colors = [];
+        for (let i = 0; i < count; i++) {
+            colors.push(baseColors[i % baseColors.length]);
+        }
+        return colors;
+    }
+
+    // Generate lighter shade for subcategory
+    function lightenColor(color, percentage) {
+        const num = parseInt(color.replace('#', ''), 16);
+        const amt = Math.round(2.55 * percentage);
+        const R = (num >> 16) + amt;
+        const G = (num >> 8 & 0x00FF) + amt;
+        const B = (num & 0x0000FF) + amt;
+        return '#' + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+            (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+            (B < 255 ? B < 1 ? 0 : B : 255))
+            .toString(16).slice(1);
+    }
+
+    // Build category hierarchy
+    const categoryHierarchy = {};
+    const rootCategories = [];
+
+    datasetsRaw.forEach(dataset => {
+        if (!dataset.parent_id || dataset.parent_id === '') {
+            rootCategories.push(dataset);
+            categoryHierarchy[dataset.category_id] = {
+                dataset: dataset,
+                children: []
+            };
+        }
+    });
+
+    datasetsRaw.forEach(dataset => {
+        if (dataset.parent_id && dataset.parent_id !== '') {
+            if (!categoryHierarchy[dataset.parent_id]) {
+                categoryHierarchy[dataset.parent_id] = {
+                    dataset: null,
+                    children: []
+                };
+            }
+            categoryHierarchy[dataset.parent_id].children.push(dataset);
+        }
+    });
+
+    // Assign colors to root categories and their children
+    const rootColors = generateColors(rootCategories.length);
+    rootCategories.forEach((rootCat, index) => {
+        rootCat.backgroundColor = rootColors[index];
+        rootCat.borderColor = rootColors[index];
+
+        if (categoryHierarchy[rootCat.category_id]) {
+            const children = categoryHierarchy[rootCat.category_id].children;
+            children.forEach((child, childIndex) => {
+                const lightenAmount = 20 + (childIndex * 15);
+                child.backgroundColor = lightenColor(rootColors[index], lightenAmount);
+                child.borderColor = lightenColor(rootColors[index], lightenAmount);
+            });
+        }
+    });
+
+    // Prepare datasets for Chart.js
+    const datasets = datasetsRaw.map(ds => ({
+        ...ds,
+        fullLabel: ds.label, // Keep full label for tooltips
+        label: truncateText(ds.label), // Truncate for legend
+        hidden: false,
+        tension: 0.1,
+        borderWidth: 2
+    }));
+
+    // Update summary stats
+    const totalMonths = months.length;
+    // Use server-calculated monthly totals to avoid double-counting subcategories
+    const monthlyTotals = summaryMonthlyTotals;
+    const avgMonthly = totalMonths > 0 ? Math.round(monthlyTotals.reduce((a, b) => a + b, 0) / totalMonths) : 0;
+    const maxMonthly = Math.max(...monthlyTotals);
+    const highestMonthIndex = monthlyTotals.indexOf(maxMonthly);
+
+    document.getElementById('total-months').textContent = totalMonths;
+    document.getElementById('avg-monthly').textContent = `${currencySymbol}${avgMonthly.toLocaleString()}`;
+    document.getElementById('highest-month').textContent = highestMonthIndex >= 0 ? months[highestMonthIndex] : '-';
+
+    // Helper function to find root parent category ID
+    function findRootParentId(categoryId) {
+        const dataset = datasets.find(ds => ds.category_id === categoryId);
+        if (!dataset) return null;
+
+        // If it's already a top-level category, return its ID
+        if (dataset.is_top_level) {
+            return categoryId;
+        }
+
+        // If it has a root_parent_id property, use that
+        if (dataset.root_parent_id) {
+            return dataset.root_parent_id;
+        }
+
+        // Otherwise, recursively find the parent
+        if (dataset.parent_id) {
+            return findRootParentId(dataset.parent_id);
+        }
+
+        return null;
+    }
+
+    // Create chart
+    const ctx = document.getElementById('trendsChart').getContext('2d');
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: months,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: {
+                padding: {
+                    bottom: window.innerWidth < 768 ? 10 : 0
+                }
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
+            },
+            onClick: (event, elements, chart) => {
+                // Always calculate the closest point manually for better control
+                const canvasPosition = Chart.helpers.getRelativePosition(event, chart);
+
+                let closestDistance = Infinity;
+                let closestElement = null;
+
+                // Iterate through all datasets and their points
+                datasets.forEach((ds, datasetIndex) => {
+                    const meta = chart.getDatasetMeta(datasetIndex);
+                    if (!meta.hidden) {
+                        meta.data.forEach((point, index) => {
+                            // Calculate Euclidean distance from click to this point
+                            const distance = Math.sqrt(
+                                Math.pow(point.x - canvasPosition.x, 2) +
+                                Math.pow(point.y - canvasPosition.y, 2)
+                            );
+
+                            if (distance < closestDistance) {
+                                closestDistance = distance;
+                                closestElement = {
+                                    datasetIndex: datasetIndex,
+                                    index: index,
+                                    distance: distance
+                                };
+                            }
+                        });
+                    }
+                });
+
+                // Navigate if we found a reasonably close point
+                if (closestElement && closestElement.distance < 100) {
+                    const monthIndex = closestElement.index;
+                    const categoryId = datasets[closestElement.datasetIndex].category_id;
+                    const month = months[monthIndex];
+                    const [year, monthNum] = month.split('-');
+                    const firstDay = `${year}-${monthNum}-01`;
+                    const lastDay = new Date(year, parseInt(monthNum), 0).getDate();
+                    const lastDayStr = `${year}-${monthNum}-${lastDay}`;
+
+                    // Convert to timezone-aware ISO strings
+                    let url = `/review?from_date=${encodeURIComponent(ensureISODate(firstDay, false))}&to_date=${encodeURIComponent(ensureISODate(lastDayStr, true))}&category=${categoryId}`;
+                    if (fromDate) url += `&original_from=${fromDate}`;
+                    if (toDate) url += `&original_to=${toDate}`;
+
+                    console.log(`Clicked on ${datasets[closestElement.datasetIndex].label} for ${month} (distance: ${Math.round(closestElement.distance)}px)`);
+                    window.location.href = url;
+                }
+            },
+            plugins: {
+                legend: {
+                    position: window.innerWidth < 768 ? 'bottom' : 'top',
+                    align: 'start',
+                    labels: {
+                        padding: window.innerWidth < 768 ? 8 : 10,
+                        boxWidth: window.innerWidth < 768 ? 12 : 15,
+                        font: {
+                            size: window.innerWidth < 768 ? 11 : 12
+                        }
+                    },
+                    onClick: (event, legendItem, legend) => {
+                        const index = legendItem.datasetIndex;
+                        const dataset = datasets[index];
+                        const meta = chart.getDatasetMeta(index);
+
+                        if (event.native.detail === 2) {
+                            // Double-click: isolate category + all descendants
+                            const categoryId = dataset.category_id;
+                            const descendantIds = getAllDescendants(categoryId, categoryHierarchy);
+                            const relatedIds = [categoryId, ...descendantIds];
+
+                            datasets.forEach((ds, i) => {
+                                const shouldShow = relatedIds.includes(ds.category_id);
+                                chart.getDatasetMeta(i).hidden = !shouldShow;
+                            });
+                        } else {
+                            // Single-click: toggle just this one
+                            meta.hidden = !meta.hidden;
+                        }
+                        chart.update();
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            return context[0].label;
+                        },
+                        label: function(context) {
+                            // Return empty - we'll use afterBody for custom formatting
+                            return '';
+                        },
+                        afterBody: function(context) {
+                            const monthIndex = context[0].dataIndex;
+
+                            // Collect all visible categories with data for this month
+                            const categoriesWithData = [];
+
+                            datasets.forEach((ds, idx) => {
+                                const meta = chart.getDatasetMeta(idx);
+                                if (!meta.hidden) {
+                                    const value = ds.data[monthIndex] || 0;
+                                    if (value > 0) {
+                                        categoriesWithData.push({
+                                            label: ds.fullLabel || ds.label, // Use full label in tooltip
+                                            value: value,
+                                            categoryId: ds.category_id,
+                                            parentId: ds.parent_id || '',
+                                            isTopLevel: ds.is_top_level || false
+                                        });
+                                    }
+                                }
+                            });
+
+                            // Find root categories (categories with no parent OR parent not visible)
+                            const visibleCategoryIds = new Set(categoriesWithData.map(c => c.categoryId));
+                            const rootCategories = categoriesWithData.filter(c =>
+                                !c.parentId || !visibleCategoryIds.has(c.parentId)
+                            );
+                            rootCategories.sort((a, b) => b.value - a.value);
+
+                            const lines = [];
+
+                            // Calculate total from root categories only (to avoid double-counting)
+                            const monthTotal = rootCategories.reduce((sum, cat) => sum + cat.value, 0);
+                            lines.push(`TOTAL: ${currencySymbol}${monthTotal.toLocaleString()}`);
+                            lines.push(''); // Empty line for spacing
+
+                            // Build hierarchy recursively for proper indentation
+                            const addCategoryWithChildren = (category, level) => {
+                                const indent = level > 0 ? '  '.repeat(level) + '∟ ' : '';
+                                lines.push(`${indent}${category.label}: ${currencySymbol}${category.value.toLocaleString()}`);
+
+                                // Find direct children of this category
+                                const children = categoriesWithData.filter(c => c.parentId === category.categoryId);
+                                children.sort((a, b) => b.value - a.value);
+
+                                // Recursively add children
+                                children.forEach(child => {
+                                    addCategoryWithChildren(child, level + 1);
+                                });
+                            };
+
+                            // Add each root category and its hierarchy
+                            rootCategories.forEach(rootCat => {
+                                addCategoryWithChildren(rootCat, 0);
+                            });
+
+                            return lines;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    stacked: false,
+                    ticks: {
+                        callback: value => currencySymbol + value.toLocaleString()
+                    }
+                },
+                x: {
+                    ticks: {
+                        maxRotation: window.innerWidth < 768 ? 90 : 45,
+                        minRotation: window.innerWidth < 768 ? 90 : 45
+                    }
+                }
+            }
+        }
+    });
+
+    // Control functions
+    function showAllCategories() {
+        datasets.forEach((_, i) => {
+            chart.getDatasetMeta(i).hidden = false;
+        });
+        chart.update();
+    }
+
+    function hideAllCategories() {
+        datasets.forEach((_, i) => {
+            chart.getDatasetMeta(i).hidden = true;
+        });
+        chart.update();
+    }
+
+    function isolateCategory(categoryId) {
+        const descendantIds = getAllDescendants(categoryId, categoryHierarchy);
+        const relatedIds = [categoryId, ...descendantIds];
+
+        datasets.forEach((ds, i) => {
+            const shouldShow = relatedIds.includes(ds.category_id);
+            chart.getDatasetMeta(i).hidden = !shouldShow;
+        });
+        chart.update();
+    }
+
+    // Create isolation buttons for root categories
+    const categoryButtons = document.getElementById('categoryButtons');
+    rootCategories.forEach(rootCat => {
+        const btn = document.createElement('button');
+        btn.className = 'control-btn';
+        btn.textContent = `Show ${truncateText(rootCat.label, 25)}`;
+        btn.onclick = () => isolateCategory(rootCat.category_id);
+        categoryButtons.appendChild(btn);
+    });
+
+    // ========== Moving Average Chart ==========
+    // Reuse the same color scheme for moving average datasets
+    const movingAvgDatasets = movingAvgDatasetsRaw.map(ds => {
+        // Find the corresponding dataset in the original to get the same color
+        const originalDataset = datasets.find(d => d.category_id === ds.category_id);
+        return {
+            ...ds,
+            fullLabel: ds.label, // Keep full label for tooltips
+            label: truncateText(ds.label), // Truncate for legend
+            backgroundColor: originalDataset?.backgroundColor || '#999',
+            borderColor: originalDataset?.borderColor || '#999',
+            hidden: false,
+            tension: 0.1,
+            borderWidth: 2
+        };
+    });
+
+    // Create moving average chart
+    const ctxMA = document.getElementById('movingAvgChart').getContext('2d');
+    const chartMA = new Chart(ctxMA, {
+        type: 'line',
+        data: {
+            labels: months,
+            datasets: movingAvgDatasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: {
+                padding: {
+                    bottom: window.innerWidth < 768 ? 10 : 0
+                }
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
+            },
+            onClick: (event, elements, chart) => {
+                // Always calculate the closest point manually for better control
+                const canvasPosition = Chart.helpers.getRelativePosition(event, chart);
+
+                let closestDistance = Infinity;
+                let closestElement = null;
+
+                // Iterate through all datasets and their points
+                movingAvgDatasets.forEach((ds, datasetIndex) => {
+                    const meta = chart.getDatasetMeta(datasetIndex);
+                    if (!meta.hidden) {
+                        meta.data.forEach((point, index) => {
+                            // Calculate Euclidean distance from click to this point
+                            const distance = Math.sqrt(
+                                Math.pow(point.x - canvasPosition.x, 2) +
+                                Math.pow(point.y - canvasPosition.y, 2)
+                            );
+
+                            if (distance < closestDistance) {
+                                closestDistance = distance;
+                                closestElement = {
+                                    datasetIndex: datasetIndex,
+                                    index: index,
+                                    distance: distance
+                                };
+                            }
+                        });
+                    }
+                });
+
+                // Navigate if we found a reasonably close point
+                if (closestElement && closestElement.distance < 100) {
+                    const monthIndex = closestElement.index;
+                    const categoryId = movingAvgDatasets[closestElement.datasetIndex].category_id;
+                    const month = months[monthIndex];
+                    const [year, monthNum] = month.split('-');
+                    const firstDay = `${year}-${monthNum}-01`;
+                    const lastDay = new Date(year, parseInt(monthNum), 0).getDate();
+                    const lastDayStr = `${year}-${monthNum}-${lastDay}`;
+
+                    // Convert to timezone-aware ISO strings
+                    let url = `/review?from_date=${encodeURIComponent(ensureISODate(firstDay, false))}&to_date=${encodeURIComponent(ensureISODate(lastDayStr, true))}&category=${categoryId}`;
+                    if (fromDate) url += `&original_from=${fromDate}`;
+                    if (toDate) url += `&original_to=${toDate}`;
+
+                    console.log(`Clicked on ${movingAvgDatasets[closestElement.datasetIndex].label} for ${month} (distance: ${Math.round(closestElement.distance)}px)`);
+                    window.location.href = url;
+                }
+            },
+            plugins: {
+                legend: {
+                    position: window.innerWidth < 768 ? 'bottom' : 'top',
+                    align: 'start',
+                    labels: {
+                        padding: window.innerWidth < 768 ? 8 : 10,
+                        boxWidth: window.innerWidth < 768 ? 12 : 15,
+                        font: {
+                            size: window.innerWidth < 768 ? 11 : 12
+                        }
+                    },
+                    onClick: (event, legendItem, legend) => {
+                        const index = legendItem.datasetIndex;
+                        const dataset = movingAvgDatasets[index];
+                        const meta = chartMA.getDatasetMeta(index);
+
+                        if (event.native.detail === 2) {
+                            // Double-click: isolate category + all descendants
+                            const categoryId = dataset.category_id;
+                            const descendantIds = getAllDescendants(categoryId, categoryHierarchy);
+                            const relatedIds = [categoryId, ...descendantIds];
+
+                            movingAvgDatasets.forEach((ds, i) => {
+                                const shouldShow = relatedIds.includes(ds.category_id);
+                                chartMA.getDatasetMeta(i).hidden = !shouldShow;
+                            });
+                        } else {
+                            // Single-click: toggle just this one
+                            meta.hidden = !meta.hidden;
+                        }
+                        chartMA.update();
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            return context[0].label;
+                        },
+                        label: function(context) {
+                            // Return empty - we'll use afterBody for custom formatting
+                            return '';
+                        },
+                        afterBody: function(context) {
+                            const monthIndex = context[0].dataIndex;
+
+                            // Collect all visible categories with data for this month
+                            const categoriesWithData = [];
+
+                            movingAvgDatasets.forEach((ds, idx) => {
+                                const meta = chartMA.getDatasetMeta(idx);
+                                if (!meta.hidden) {
+                                    const value = ds.data[monthIndex] || 0;
+                                    if (value > 0) {
+                                        categoriesWithData.push({
+                                            label: ds.fullLabel || ds.label, // Use full label in tooltip
+                                            value: value,
+                                            categoryId: ds.category_id,
+                                            parentId: ds.parent_id || '',
+                                            isTopLevel: ds.is_top_level || false
+                                        });
+                                    }
+                                }
+                            });
+
+                            // Find root categories (categories with no parent OR parent not visible)
+                            const visibleCategoryIds = new Set(categoriesWithData.map(c => c.categoryId));
+                            const rootCategories = categoriesWithData.filter(c =>
+                                !c.parentId || !visibleCategoryIds.has(c.parentId)
+                            );
+                            rootCategories.sort((a, b) => b.value - a.value);
+
+                            const lines = [];
+
+                            // Calculate total from root categories only (to avoid double-counting)
+                            const monthTotal = rootCategories.reduce((sum, cat) => sum + cat.value, 0);
+                            lines.push(`TOTAL: ${currencySymbol}${Math.round(monthTotal).toLocaleString()}`);
+                            lines.push(''); // Empty line for spacing
+
+                            // Build hierarchy recursively for proper indentation
+                            const addCategoryWithChildren = (category, level) => {
+                                const indent = level > 0 ? '  '.repeat(level) + '∟ ' : '';
+                                lines.push(`${indent}${category.label}: ${currencySymbol}${Math.round(category.value).toLocaleString()}`);
+
+                                // Find direct children of this category
+                                const children = categoriesWithData.filter(c => c.parentId === category.categoryId);
+                                children.sort((a, b) => b.value - a.value);
+
+                                // Recursively add children
+                                children.forEach(child => {
+                                    addCategoryWithChildren(child, level + 1);
+                                });
+                            };
+
+                            // Add each root category and its hierarchy
+                            rootCategories.forEach(rootCat => {
+                                addCategoryWithChildren(rootCat, 0);
+                            });
+
+                            return lines;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    stacked: false,
+                    ticks: {
+                        callback: value => currencySymbol + Math.round(value).toLocaleString()
+                    }
+                },
+                x: {
+                    ticks: {
+                        maxRotation: window.innerWidth < 768 ? 90 : 45,
+                        minRotation: window.innerWidth < 768 ? 90 : 45
+                    }
+                }
+            }
+        }
+    });
+
+    // Control functions for moving average chart
+    function showAllCategoriesMA() {
+        movingAvgDatasets.forEach((_, i) => {
+            chartMA.getDatasetMeta(i).hidden = false;
+        });
+        chartMA.update();
+    }
+
+    function hideAllCategoriesMA() {
+        movingAvgDatasets.forEach((_, i) => {
+            chartMA.getDatasetMeta(i).hidden = true;
+        });
+        chartMA.update();
+    }
+
+    function isolateCategoryMA(categoryId) {
+        const descendantIds = getAllDescendants(categoryId, categoryHierarchy);
+        const relatedIds = [categoryId, ...descendantIds];
+
+        movingAvgDatasets.forEach((ds, i) => {
+            const shouldShow = relatedIds.includes(ds.category_id);
+            chartMA.getDatasetMeta(i).hidden = !shouldShow;
+        });
+        chartMA.update();
+    }
+
+    // Create isolation buttons for root categories (moving average)
+    const categoryButtonsMA = document.getElementById('categoryButtonsMA');
+    rootCategories.forEach(rootCat => {
+        const btn = document.createElement('button');
+        btn.className = 'control-btn';
+        btn.textContent = `Show ${truncateText(rootCat.label, 25)}`;
+        btn.onclick = () => isolateCategoryMA(rootCat.category_id);
+        categoryButtonsMA.appendChild(btn);
+    });
+</script>
+{% endblock %}
