@@ -9,9 +9,10 @@ import json
 import sqlite3
 from datetime import datetime, timezone
 from typing import Tuple
-from infrastructure.db_query_logger import get_logging_cursor
+
 from domain.entities.user_settings import UserSettings, get_default_settings
 from domain.repositories.user_settings_repository import UserSettingsRepository
+from infrastructure.db_query_logger import get_logging_cursor
 
 
 class SQLiteUserSettingsDataSource(UserSettingsRepository):
@@ -34,7 +35,7 @@ class SQLiteUserSettingsDataSource(UserSettingsRepository):
         conn = sqlite3.connect(self.db_path)
         cursor = get_logging_cursor(conn)
 
-        cursor.execute('''
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS user_settings (
                 user_id TEXT PRIMARY KEY,
                 display_language TEXT NOT NULL DEFAULT 'en',
@@ -43,20 +44,20 @@ class SQLiteUserSettingsDataSource(UserSettingsRepository):
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )
-        ''')
+        """)
 
         # Create index on user_id for faster lookups (though PRIMARY KEY already indexes)
-        cursor.execute('''
+        cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_user_settings_user_id ON user_settings(user_id)
-        ''')
+        """)
 
         # Add llm_call_timestamps column if it doesn't exist
         cursor.execute("PRAGMA table_info(user_settings)")
         columns = [row[1] for row in cursor.fetchall()]
-        if 'llm_call_timestamps' not in columns:
-            cursor.execute('''
+        if "llm_call_timestamps" not in columns:
+            cursor.execute("""
                 ALTER TABLE user_settings ADD COLUMN llm_call_timestamps TEXT DEFAULT '[]'
-            ''')
+            """)
 
         conn.commit()
         conn.close()
@@ -66,14 +67,14 @@ class SQLiteUserSettingsDataSource(UserSettingsRepository):
         if dt.tzinfo is not None:
             dt = dt.astimezone(timezone.utc)
         # Return ISO 8601 format with Z suffix
-        return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+        return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     def _parse_datetime(self, dt_str: str) -> datetime:
         """
         Parse datetime string from storage (assumed to be UTC).
         Expects ISO 8601 format: YYYY-MM-DDTHH:MM:SSZ
         """
-        dt_str_clean = dt_str.rstrip('Z')
+        dt_str_clean = dt_str.rstrip("Z")
         dt = datetime.fromisoformat(dt_str_clean)
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
@@ -110,12 +111,12 @@ class SQLiteUserSettingsDataSource(UserSettingsRepository):
 
         return UserSettings(
             user_id=row[0],
-            language=row[1],        # DB: display_language -> Entity: language
-            currency=row[2],        # DB: default_currency -> Entity: currency
+            language=row[1],  # DB: display_language -> Entity: language
+            currency=row[2],  # DB: default_currency -> Entity: currency
             browser_settings=browser_settings,
             llm_call_timestamps=llm_call_timestamps,
             created_at=self._parse_datetime(row[3]),
-            updated_at=self._parse_datetime(row[4])
+            updated_at=self._parse_datetime(row[4]),
         )
 
     def get_settings(self) -> UserSettings:
@@ -130,11 +131,14 @@ class SQLiteUserSettingsDataSource(UserSettingsRepository):
         conn = sqlite3.connect(self.db_path)
         cursor = get_logging_cursor(conn)
 
-        cursor.execute('''
+        cursor.execute(
+            """
             SELECT user_id, display_language, default_currency, created_at, updated_at, browser_settings, llm_call_timestamps
             FROM user_settings
             WHERE user_id = ?
-        ''', (self.user_id,))
+        """,
+            (self.user_id,),
+        )
 
         row = cursor.fetchone()
         conn.close()
@@ -165,28 +169,49 @@ class SQLiteUserSettingsDataSource(UserSettingsRepository):
             browser_settings_json = json.dumps(settings.browser_settings or {})
 
             # Serialize llm_call_timestamps to JSON (list of ISO 8601 strings)
-            llm_timestamps_json = json.dumps([
-                self._format_datetime(ts) for ts in (settings.llm_call_timestamps or [])
-            ])
+            llm_timestamps_json = json.dumps(
+                [self._format_datetime(ts) for ts in (settings.llm_call_timestamps or [])]
+            )
 
             # Check if settings exist
-            cursor.execute('SELECT 1 FROM user_settings WHERE user_id = ?', (self.user_id,))
+            cursor.execute("SELECT 1 FROM user_settings WHERE user_id = ?", (self.user_id,))
             exists = cursor.fetchone() is not None
 
             if exists:
                 # UPDATE existing settings
-                cursor.execute('''
+                cursor.execute(
+                    """
                     UPDATE user_settings
                     SET display_language = ?, default_currency = ?, browser_settings = ?, llm_call_timestamps = ?, updated_at = ?
                     WHERE user_id = ?
-                ''', (settings.language, settings.currency, browser_settings_json, llm_timestamps_json, now, self.user_id))
+                """,
+                    (
+                        settings.language,
+                        settings.currency,
+                        browser_settings_json,
+                        llm_timestamps_json,
+                        now,
+                        self.user_id,
+                    ),
+                )
             else:
                 # INSERT new settings
-                cursor.execute('''
+                cursor.execute(
+                    """
                     INSERT INTO user_settings
                     (user_id, display_language, default_currency, browser_settings, llm_call_timestamps, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', (self.user_id, settings.language, settings.currency, browser_settings_json, llm_timestamps_json, now, now))
+                """,
+                    (
+                        self.user_id,
+                        settings.language,
+                        settings.currency,
+                        browser_settings_json,
+                        llm_timestamps_json,
+                        now,
+                        now,
+                    ),
+                )
 
             conn.commit()
             return True, ""
@@ -206,11 +231,14 @@ class SQLiteUserSettingsDataSource(UserSettingsRepository):
         conn = sqlite3.connect(self.db_path)
         cursor = get_logging_cursor(conn)
 
-        cursor.execute('''
+        cursor.execute(
+            """
             SELECT llm_call_timestamps
             FROM user_settings
             WHERE user_id = ?
-        ''', (self.user_id,))
+        """,
+            (self.user_id,),
+        )
 
         row = cursor.fetchone()
         conn.close()
@@ -240,27 +268,31 @@ class SQLiteUserSettingsDataSource(UserSettingsRepository):
             now = self._format_datetime(datetime.now(timezone.utc))
 
             # Serialize timestamps to JSON
-            timestamps_json = json.dumps([
-                self._format_datetime(ts) for ts in timestamps
-            ])
+            timestamps_json = json.dumps([self._format_datetime(ts) for ts in timestamps])
 
             # Check if settings exist
-            cursor.execute('SELECT 1 FROM user_settings WHERE user_id = ?', (self.user_id,))
+            cursor.execute("SELECT 1 FROM user_settings WHERE user_id = ?", (self.user_id,))
             exists = cursor.fetchone() is not None
 
             if exists:
-                cursor.execute('''
+                cursor.execute(
+                    """
                     UPDATE user_settings
                     SET llm_call_timestamps = ?, updated_at = ?
                     WHERE user_id = ?
-                ''', (timestamps_json, now, self.user_id))
+                """,
+                    (timestamps_json, now, self.user_id),
+                )
             else:
                 # Create a new record with default values
-                cursor.execute('''
+                cursor.execute(
+                    """
                     INSERT INTO user_settings
                     (user_id, display_language, default_currency, browser_settings, llm_call_timestamps, created_at, updated_at)
                     VALUES (?, 'en', 'USD', '{}', ?, ?, ?)
-                ''', (self.user_id, timestamps_json, now, now))
+                """,
+                    (self.user_id, timestamps_json, now, now),
+                )
 
             conn.commit()
             return True

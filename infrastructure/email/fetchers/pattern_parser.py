@@ -9,8 +9,8 @@ Used by both DBFetcherAdapter and the web UI for pattern testing.
 import re
 from typing import List, Optional
 
-from domain.services.amount_parser import parse_amount
 from config import normalize_currency_code
+from domain.services.amount_parser import parse_amount
 
 
 def flatten_regex_results(results: list) -> list:
@@ -51,7 +51,7 @@ def parse_transactions_with_patterns(
     amount_pattern: Optional[str],
     merchant_pattern: Optional[str],
     currency_pattern: Optional[str],
-    negate_amount: bool = False
+    negate_amount: bool = False,
 ) -> List[dict]:
     """
     Parse transactions from email using regex patterns.
@@ -120,10 +120,6 @@ def parse_transactions_with_patterns(
         if currency:
             currency = normalize_currency_code(currency)
 
-        transactions.append({
-            'amount': amount,
-            'merchant': merchant,
-            'currency': currency
-        })
+        transactions.append({"amount": amount, "merchant": merchant, "currency": currency})
 
     return transactions

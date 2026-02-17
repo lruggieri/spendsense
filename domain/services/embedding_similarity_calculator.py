@@ -1,6 +1,8 @@
-from typing import Dict, List, Tuple
-import numpy as np
 import logging
+from typing import Dict, List, Tuple
+
+import numpy as np
+
 from domain.services.similarity_calculator import SimilarityCalculator
 
 logger = logging.getLogger(__name__)
@@ -9,7 +11,7 @@ logger = logging.getLogger(__name__)
 class EmbeddingSimilarityCalculator(SimilarityCalculator):
     """Similarity calculator using sentence embeddings and cosine similarity."""
 
-    def __init__(self, model_name: str = 'all-MiniLM-L6-v2', model=None, embedding_datasource=None):
+    def __init__(self, model_name: str = "all-MiniLM-L6-v2", model=None, embedding_datasource=None):
         """
         Initialize the embedding-based similarity calculator.
 
@@ -25,6 +27,7 @@ class EmbeddingSimilarityCalculator(SimilarityCalculator):
             # Load model on-demand (slower, used for testing or standalone usage)
             try:
                 from sentence_transformers import SentenceTransformer
+
                 self.model = SentenceTransformer(model_name)
             except ImportError:
                 raise ImportError(
@@ -79,11 +82,15 @@ class EmbeddingSimilarityCalculator(SimilarityCalculator):
             ref_tuples = [(ref_id, reference_texts[ref_id]) for ref_id in self._reference_ids_cache]
 
             # Get cached embeddings and list of what needs encoding
-            cached_embeddings, needs_encoding = self.embedding_datasource.get_cached_embeddings(ref_tuples)
+            cached_embeddings, needs_encoding = self.embedding_datasource.get_cached_embeddings(
+                ref_tuples
+            )
             cache_time = (time.time() - cache_start) * 1000
 
             cache_hit_rate = len(cached_embeddings) / len(reference_texts) * 100
-            logger.debug(f" Reference cache: {len(cached_embeddings)}/{len(reference_texts)} hits ({cache_hit_rate:.1f}%) in {cache_time:.2f}ms")
+            logger.debug(
+                f" Reference cache: {len(cached_embeddings)}/{len(reference_texts)} hits ({cache_hit_rate:.1f}%) in {cache_time:.2f}ms"
+            )
 
             # Encode any missing references
             if needs_encoding:
@@ -92,7 +99,9 @@ class EmbeddingSimilarityCalculator(SimilarityCalculator):
                 texts_to_encode = [desc for _, desc in needs_encoding]
                 new_embeddings = self.model.encode(texts_to_encode, show_progress_bar=False)
                 encode_time = (time.time() - encode_start) * 1000
-                logger.debug(f" Reference encoding took {encode_time:.2f}ms ({encode_time/len(needs_encoding):.2f}ms per reference)")
+                logger.debug(
+                    f" Reference encoding took {encode_time:.2f}ms ({encode_time/len(needs_encoding):.2f}ms per reference)"
+                )
 
                 # Save newly computed embeddings to persistent cache
                 embeddings_to_save = {
@@ -107,8 +116,7 @@ class EmbeddingSimilarityCalculator(SimilarityCalculator):
 
             # Store in memory cache (preserving order)
             self._reference_embeddings_cache = {
-                ref_id: cached_embeddings[ref_id]
-                for ref_id in self._reference_ids_cache
+                ref_id: cached_embeddings[ref_id] for ref_id in self._reference_ids_cache
             }
 
         else:
@@ -119,7 +127,9 @@ class EmbeddingSimilarityCalculator(SimilarityCalculator):
             encode_start = time.time()
             reference_embeddings = self.model.encode(reference_texts_list, show_progress_bar=False)
             encode_time = (time.time() - encode_start) * 1000
-            logger.debug(f" Reference encoding took {encode_time:.2f}ms ({encode_time/len(reference_texts_list):.2f}ms per reference)")
+            logger.debug(
+                f" Reference encoding took {encode_time:.2f}ms ({encode_time/len(reference_texts_list):.2f}ms per reference)"
+            )
 
             # Store in cache
             self._reference_embeddings_cache = {
@@ -128,9 +138,7 @@ class EmbeddingSimilarityCalculator(SimilarityCalculator):
             }
 
     def calculate_similarities(
-        self,
-        text: str,
-        reference_texts: Dict[str, str]
+        self, text: str, reference_texts: Dict[str, str]
     ) -> List[Tuple[str, float]]:
         """
         Calculate similarities using embeddings and cosine similarity.
@@ -146,9 +154,8 @@ class EmbeddingSimilarityCalculator(SimilarityCalculator):
             return []
 
         # Use cached embeddings if available and cache matches current references
-        use_cache = (
-            self._reference_embeddings_cache
-            and set(reference_texts.keys()) == set(self._reference_ids_cache)
+        use_cache = self._reference_embeddings_cache and set(reference_texts.keys()) == set(
+            self._reference_ids_cache
         )
 
         # Generate embedding for the input text
@@ -158,8 +165,7 @@ class EmbeddingSimilarityCalculator(SimilarityCalculator):
         if use_cache:
             reference_ids = self._reference_ids_cache
             reference_embeddings = [
-                self._reference_embeddings_cache[ref_id]
-                for ref_id in reference_ids
+                self._reference_embeddings_cache[ref_id] for ref_id in reference_ids
             ]
         else:
             # Fallback: Generate embeddings for all reference texts
@@ -187,10 +193,7 @@ class EmbeddingSimilarityCalculator(SimilarityCalculator):
         return similarities
 
     def calculate_similarities_batch(
-        self,
-        texts: List[str],
-        reference_texts: Dict[str, str],
-        text_ids: List[str] = None
+        self, texts: List[str], reference_texts: Dict[str, str], text_ids: List[str] = None
     ) -> List[List[Tuple[str, float]]]:
         """
         Calculate similarities for multiple texts at once (batch processing).
@@ -210,9 +213,8 @@ class EmbeddingSimilarityCalculator(SimilarityCalculator):
             return [[] for _ in texts]
 
         # Use cached embeddings if available and cache matches current references
-        use_cache = (
-            self._reference_embeddings_cache
-            and set(reference_texts.keys()) == set(self._reference_ids_cache)
+        use_cache = self._reference_embeddings_cache and set(reference_texts.keys()) == set(
+            self._reference_ids_cache
         )
 
         # Try to load from persistent datasource if available
@@ -232,7 +234,9 @@ class EmbeddingSimilarityCalculator(SimilarityCalculator):
 
             cache_time = (time.time() - cache_start) * 1000
             logger.debug(f" Cache check took {cache_time:.2f}ms")
-            logger.debug(f" Cache hits: {len(cached)}/{len(texts)} ({len(cached)/len(texts)*100:.1f}%)")
+            logger.debug(
+                f" Cache hits: {len(cached)}/{len(texts)} ({len(cached)/len(texts)*100:.1f}%)"
+            )
 
             # Store cached embeddings
             text_embeddings_dict = cached
@@ -253,7 +257,9 @@ class EmbeddingSimilarityCalculator(SimilarityCalculator):
             encode_start = time.time()
             new_embeddings = self.model.encode(texts_to_encode, show_progress_bar=False)
             encode_time = (time.time() - encode_start) * 1000
-            logger.debug(f" Encoding took {encode_time:.2f}ms ({encode_time/len(texts_to_encode):.2f}ms per transaction)")
+            logger.debug(
+                f" Encoding took {encode_time:.2f}ms ({encode_time/len(texts_to_encode):.2f}ms per transaction)"
+            )
 
             # Store newly encoded embeddings
             embeddings_to_save = {}
@@ -271,7 +277,9 @@ class EmbeddingSimilarityCalculator(SimilarityCalculator):
                 save_start = time.time()
                 self.embedding_datasource.save_embeddings(embeddings_to_save)
                 save_time = (time.time() - save_start) * 1000
-                logger.debug(f" Saved {len(embeddings_to_save)} embeddings to cache in {save_time:.2f}ms")
+                logger.debug(
+                    f" Saved {len(embeddings_to_save)} embeddings to cache in {save_time:.2f}ms"
+                )
 
         # Reconstruct text_embeddings in original order
         if text_ids:
@@ -283,8 +291,7 @@ class EmbeddingSimilarityCalculator(SimilarityCalculator):
         if use_cache:
             reference_ids = self._reference_ids_cache
             reference_embeddings = [
-                self._reference_embeddings_cache[ref_id]
-                for ref_id in reference_ids
+                self._reference_embeddings_cache[ref_id] for ref_id in reference_ids
             ]
         else:
             # Fallback: Generate embeddings for all reference texts
@@ -297,7 +304,9 @@ class EmbeddingSimilarityCalculator(SimilarityCalculator):
         text_embeddings_array = np.array(text_embeddings)
 
         # Calculate cosine similarities for all text-reference pairs
-        logger.debug(f" Computing cosine similarities ({len(texts)} x {len(reference_ids)} matrix)...")
+        logger.debug(
+            f" Computing cosine similarities ({len(texts)} x {len(reference_ids)} matrix)..."
+        )
         similarity_start = time.time()
 
         # Shape: (num_texts, num_references)

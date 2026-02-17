@@ -20,7 +20,6 @@ class ManualAssignmentRepository(ABC):
         Returns:
             Dict[str, str]: A dictionary mapping transaction IDs to category IDs
         """
-        pass
 
     @abstractmethod
     def add_assignment(self, tx_id: str, category_id: str) -> None:
@@ -34,7 +33,6 @@ class ManualAssignmentRepository(ABC):
         Note:
             If assignment already exists, it should be updated
         """
-        pass
 
     @abstractmethod
     def remove_assignment(self, tx_id: str) -> bool:
@@ -47,7 +45,6 @@ class ManualAssignmentRepository(ABC):
         Returns:
             True if assignment was removed, False if it didn't exist
         """
-        pass
 
     @abstractmethod
     def add_assignments_batch(self, assignments: Dict[str, str]) -> int:
@@ -60,7 +57,6 @@ class ManualAssignmentRepository(ABC):
         Returns:
             Number of assignments added/updated
         """
-        pass
 
     @abstractmethod
     def get_assignment(self, tx_id: str) -> Optional[str]:
@@ -73,7 +69,6 @@ class ManualAssignmentRepository(ABC):
         Returns:
             Category ID if assignment exists, None otherwise
         """
-        pass
 
     @abstractmethod
     def has_assignment(self, tx_id: str) -> bool:
@@ -86,7 +81,6 @@ class ManualAssignmentRepository(ABC):
         Returns:
             True if assignment exists, False otherwise
         """
-        pass
 
     @abstractmethod
     def get_assigned_tx_ids(self) -> set:
@@ -96,7 +90,6 @@ class ManualAssignmentRepository(ABC):
         Returns:
             Set of transaction IDs
         """
-        pass
 
     @abstractmethod
     def count_assignments(self) -> int:
@@ -106,4 +99,3 @@ class ManualAssignmentRepository(ABC):
         Returns:
             Number of assignments
         """
-        pass

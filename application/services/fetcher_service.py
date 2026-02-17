@@ -12,8 +12,8 @@ from uuid6 import uuid7
 
 from application.services.base_service import BaseService
 from application.services.user_settings_service import UserSettingsService
-from domain.repositories.fetcher_repository import FetcherRepository
 from domain.entities.fetcher import Fetcher
+from domain.repositories.fetcher_repository import FetcherRepository
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +25,13 @@ class FetcherService(BaseService):
     Provides CRUD operations for fetchers with versioning support.
     """
 
-    def __init__(self, user_id: str, fetcher_datasource: FetcherRepository,
-                 user_settings_service: UserSettingsService, db_path: str = None):
+    def __init__(
+        self,
+        user_id: str,
+        fetcher_datasource: FetcherRepository,
+        user_settings_service: UserSettingsService,
+        db_path: str = None,
+    ):
         """
         Initialize FetcherService.
 
@@ -112,11 +117,17 @@ class FetcherService(BaseService):
         """
         return self._fetcher_datasource.get_enabled_version(group_id)
 
-    def create_fetcher(self, name: str, from_emails: List[str],
-                      subject_filter: str, amount_pattern: str,
-                      merchant_pattern: str, currency_pattern: str = None,
-                      default_currency: str = None,
-                      negate_amount: bool = False) -> Tuple[bool, str, str]:
+    def create_fetcher(
+        self,
+        name: str,
+        from_emails: List[str],
+        subject_filter: str,
+        amount_pattern: str,
+        merchant_pattern: str,
+        currency_pattern: str = None,
+        default_currency: str = None,
+        negate_amount: bool = False,
+    ) -> Tuple[bool, str, str]:
         """
         Create a new fetcher.
 
@@ -164,17 +175,17 @@ class FetcherService(BaseService):
             user_id=self.user_id,
             name=name.strip(),
             from_emails=from_emails,
-            subject_filter=subject_filter or '',
+            subject_filter=subject_filter or "",
             amount_pattern=amount_pattern,
             merchant_pattern=merchant_pattern,
-            currency_pattern=currency_pattern or '',
+            currency_pattern=currency_pattern or "",
             default_currency=default_currency,
             negate_amount=negate_amount,
             enabled=True,  # New fetchers are enabled by default
             created_at=now,
             updated_at=now,
             group_id=fetcher_id,  # New fetcher starts its own group
-            version=1
+            version=1,
         )
 
         if self._fetcher_datasource.create_fetcher(fetcher):
@@ -182,14 +193,18 @@ class FetcherService(BaseService):
         else:
             return (False, "Failed to create fetcher in database", "")
 
-    def update_fetcher(self, fetcher_id: str, name: str = None,
-                      from_emails: List[str] = None,
-                      subject_filter: str = None,
-                      amount_pattern: str = None,
-                      merchant_pattern: str = None,
-                      currency_pattern: str = None,
-                      default_currency: str = None,
-                      negate_amount: bool = None) -> Tuple[bool, str, str]:
+    def update_fetcher(
+        self,
+        fetcher_id: str,
+        name: str = None,
+        from_emails: List[str] = None,
+        subject_filter: str = None,
+        amount_pattern: str = None,
+        merchant_pattern: str = None,
+        currency_pattern: str = None,
+        default_currency: str = None,
+        negate_amount: bool = None,
+    ) -> Tuple[bool, str, str]:
         """
         Update a fetcher by creating a new version (immutability semantics).
 
@@ -215,11 +230,21 @@ class FetcherService(BaseService):
         # Use existing values if not provided
         final_name = name.strip() if name is not None else existing.name
         final_from_emails = from_emails if from_emails is not None else existing.from_emails
-        final_subject_filter = subject_filter if subject_filter is not None else existing.subject_filter
-        final_amount_pattern = amount_pattern if amount_pattern is not None else existing.amount_pattern
-        final_merchant_pattern = merchant_pattern if merchant_pattern is not None else existing.merchant_pattern
-        final_currency_pattern = currency_pattern if currency_pattern is not None else existing.currency_pattern
-        final_default_currency = default_currency if default_currency is not None else existing.default_currency
+        final_subject_filter = (
+            subject_filter if subject_filter is not None else existing.subject_filter
+        )
+        final_amount_pattern = (
+            amount_pattern if amount_pattern is not None else existing.amount_pattern
+        )
+        final_merchant_pattern = (
+            merchant_pattern if merchant_pattern is not None else existing.merchant_pattern
+        )
+        final_currency_pattern = (
+            currency_pattern if currency_pattern is not None else existing.currency_pattern
+        )
+        final_default_currency = (
+            default_currency if default_currency is not None else existing.default_currency
+        )
         final_negate_amount = negate_amount if negate_amount is not None else existing.negate_amount
 
         # Validate
@@ -259,7 +284,7 @@ class FetcherService(BaseService):
             created_at=now,
             updated_at=now,
             group_id=existing.group_id,  # Keep same group
-            version=0  # Will be set by datasource
+            version=0,  # Will be set by datasource
         )
 
         result = self._fetcher_datasource.create_new_version(fetcher_id, new_fetcher)

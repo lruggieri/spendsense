@@ -3,10 +3,11 @@ SQLite datasource for categories.
 """
 
 import sqlite3
-from typing import List, Dict
-from infrastructure.db_query_logger import get_logging_cursor
+from typing import Dict, List
+
 from domain.entities.category import Category
 from domain.repositories.category_repository import CategoryRepository
+from infrastructure.db_query_logger import get_logging_cursor
 
 
 class SQLiteCategoryDataSource(CategoryRepository):
@@ -34,22 +35,27 @@ class SQLiteCategoryDataSource(CategoryRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, name, description, parent_id
                 FROM categories
                 WHERE user_id = ?
                 ORDER BY id
-            """, (self.user_id,))
+            """,
+                (self.user_id,),
+            )
 
             categories = []
             for row in cursor.fetchall():
                 cat_id, name, description, parent_id = row
-                categories.append(Category(
-                    id=cat_id,
-                    name=name,
-                    description=description,
-                    parent_id=parent_id if parent_id else ""
-                ))
+                categories.append(
+                    Category(
+                        id=cat_id,
+                        name=name,
+                        description=description,
+                        parent_id=parent_id if parent_id else "",
+                    )
+                )
 
             return categories
 
@@ -70,11 +76,14 @@ class SQLiteCategoryDataSource(CategoryRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, name, description, parent_id
                 FROM categories
                 WHERE id = ? AND user_id = ?
-            """, (category_id, self.user_id))
+            """,
+                (category_id, self.user_id),
+            )
 
             row = cursor.fetchone()
             if row:
@@ -83,7 +92,7 @@ class SQLiteCategoryDataSource(CategoryRepository):
                     id=cat_id,
                     name=name,
                     description=description,
-                    parent_id=parent_id if parent_id else ""
+                    parent_id=parent_id if parent_id else "",
                 )
             return None
 
@@ -114,11 +123,19 @@ class SQLiteCategoryDataSource(CategoryRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO categories (id, name, description, parent_id, user_id)
                 VALUES (?, ?, ?, ?, ?)
-            """, (category.id, category.name, category.description,
-                  category.parent_id if category.parent_id else "", self.user_id))
+            """,
+                (
+                    category.id,
+                    category.name,
+                    category.description,
+                    category.parent_id if category.parent_id else "",
+                    self.user_id,
+                ),
+            )
             conn.commit()
             return True
         except sqlite3.IntegrityError:
@@ -126,8 +143,9 @@ class SQLiteCategoryDataSource(CategoryRepository):
         finally:
             conn.close()
 
-    def update_category(self, category_id: str, name: str = None,
-                       description: str = None, parent_id: str = None) -> bool:
+    def update_category(
+        self, category_id: str, name: str = None, description: str = None, parent_id: str = None
+    ) -> bool:
         """
         Update an existing category.
 
@@ -186,10 +204,13 @@ class SQLiteCategoryDataSource(CategoryRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 DELETE FROM categories
                 WHERE id = ? AND user_id = ?
-            """, (category_id, self.user_id))
+            """,
+                (category_id, self.user_id),
+            )
             conn.commit()
             return cursor.rowcount > 0
         finally:
@@ -209,10 +230,13 @@ class SQLiteCategoryDataSource(CategoryRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT COUNT(*) FROM manual_assignments
                 WHERE category_id = ? AND user_id = ?
-            """, (category_id, self.user_id))
+            """,
+                (category_id, self.user_id),
+            )
             count = cursor.fetchone()[0]
             return count > 0
         finally:
@@ -232,10 +256,13 @@ class SQLiteCategoryDataSource(CategoryRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT COUNT(*) FROM categories
                 WHERE parent_id = ? AND user_id = ?
-            """, (category_id, self.user_id))
+            """,
+                (category_id, self.user_id),
+            )
             count = cursor.fetchone()[0]
             return count > 0
         finally:
@@ -255,10 +282,13 @@ class SQLiteCategoryDataSource(CategoryRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT COUNT(*) FROM manual_assignments
                 WHERE category_id = ? AND user_id = ?
-            """, (category_id, self.user_id))
+            """,
+                (category_id, self.user_id),
+            )
             return cursor.fetchone()[0]
         finally:
             conn.close()
@@ -277,10 +307,13 @@ class SQLiteCategoryDataSource(CategoryRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT COUNT(*) FROM regexps
                 WHERE internal_category = ? AND user_id = ?
-            """, (category_id, self.user_id))
+            """,
+                (category_id, self.user_id),
+            )
             count = cursor.fetchone()[0]
             return count > 0
         finally:
@@ -300,10 +333,13 @@ class SQLiteCategoryDataSource(CategoryRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT COUNT(*) FROM regexps
                 WHERE internal_category = ? AND user_id = ?
-            """, (category_id, self.user_id))
+            """,
+                (category_id, self.user_id),
+            )
             return cursor.fetchone()[0]
         finally:
             conn.close()

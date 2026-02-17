@@ -35,7 +35,7 @@ def decode_gmail_ui_message_id(ui_id: str) -> Optional[str]:
         transformed = _transform_charset(ui_id, charset_reduced, charset_full)
 
         # Add base64 padding
-        padding = '=' * (-len(transformed) % 4)
+        padding = "=" * (-len(transformed) % 4)
 
         # Decode base64
         decoded = base64.b64decode(transformed + padding).decode("utf-8")
@@ -43,7 +43,7 @@ def decode_gmail_ui_message_id(ui_id: str) -> Optional[str]:
         # Extract message ID from decoded string
         # Format is typically "msg-f:DECIMAL" or "f:DECIMAL"
         # The number is in decimal format and needs to be converted to hex
-        match = re.search(r'(?:msg-)?([a-z]):(\d+)', decoded)
+        match = re.search(r"(?:msg-)?([a-z]):(\d+)", decoded)
         if match:
             decimal_id = match.group(2)
             # Convert decimal to hexadecimal (Gmail API expects hex format)
@@ -177,6 +177,7 @@ def get_body_from_message(msg):
     Returns:
         Extracted text body or None if extraction fails
     """
+
     def extract_text_by_mime(part, mime_type):
         """Extract text content by MIME type."""
         if part["mimeType"] == mime_type and "data" in part["body"]:
@@ -192,14 +193,14 @@ def get_body_from_message(msg):
     def strip_html_tags(html_text):
         """Simple HTML tag stripper for extracting text from HTML."""
         # Remove style and script blocks (including their content)
-        text = re.sub(r'<style[^>]*>.*?</style>', '', html_text, flags=re.DOTALL | re.IGNORECASE)
-        text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.DOTALL | re.IGNORECASE)
+        text = re.sub(r"<style[^>]*>.*?</style>", "", html_text, flags=re.DOTALL | re.IGNORECASE)
+        text = re.sub(r"<script[^>]*>.*?</script>", "", text, flags=re.DOTALL | re.IGNORECASE)
         # Remove HTML tags
-        text = re.sub(r'<[^>]+>', '', text)
+        text = re.sub(r"<[^>]+>", "", text)
         # Decode HTML entities (handles all named and numeric entities)
         text = html.unescape(text)
         # Normalize whitespace
-        text = re.sub(r'\s+', ' ', text)
+        text = re.sub(r"\s+", " ", text)
         return text.strip()
 
     # Try to extract text/plain first (preferred)
@@ -212,7 +213,9 @@ def get_body_from_message(msg):
     if plain_text:
         # Check if "plain text" is actually HTML (some senders put HTML in text/plain)
         plain_text_stripped = plain_text.strip()
-        if plain_text_stripped.startswith(('<!DOCTYPE', '<!doctype', '<html', '<HTML', '<head', '<HEAD')):
+        if plain_text_stripped.startswith(
+            ("<!DOCTYPE", "<!doctype", "<html", "<HTML", "<head", "<HEAD")
+        ):
             return strip_html_tags(plain_text)
         # Decode HTML entities even in plain text (some senders encode entities in text/plain)
         return html.unescape(plain_text)

@@ -10,20 +10,25 @@ Tests cover:
 - Getting processed IDs
 - Field encryption at rest
 """
+
 import base64
 import os
 import sqlite3
 import tempfile
+from datetime import datetime, timedelta, timezone
+
 import pytest
-from datetime import datetime, timezone, timedelta
-from infrastructure.persistence.sqlite.repositories.transaction_repository import SQLiteTransactionDataSource
-from domain.entities.transaction import Transaction, ENCRYPTED_PLACEHOLDER
+
+from domain.entities.transaction import ENCRYPTED_PLACEHOLDER, Transaction
+from infrastructure.persistence.sqlite.repositories.transaction_repository import (
+    SQLiteTransactionDataSource,
+)
 
 
 @pytest.fixture
 def temp_db():
     """Create a temporary database file."""
-    fd, db_path = tempfile.mkstemp(suffix='.db')
+    fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     yield db_path
     if os.path.exists(db_path):
@@ -68,7 +73,7 @@ class TestSingleTransaction:
             category="",
             source="Test Source",
             comment="Test comment",
-            currency="JPY"
+            currency="JPY",
         )
 
         datasource.add_transaction(tx)
@@ -107,7 +112,7 @@ class TestDuplicateHandling:
             category="",
             source="Test",
             comment="",
-            currency="JPY"
+            currency="JPY",
         )
         datasource.add_transaction(tx1)
 
@@ -120,7 +125,7 @@ class TestDuplicateHandling:
             category="",
             source="Test",
             comment="",
-            currency="JPY"
+            currency="JPY",
         )
         datasource.add_transaction(tx2)
 
@@ -148,7 +153,7 @@ class TestBatchOperations:
                 category="",
                 source="Test",
                 comment="",
-                currency="JPY"
+                currency="JPY",
             )
             for i in range(1, 6)
         ]
@@ -173,7 +178,7 @@ class TestBatchOperations:
                 category="",
                 source="Test",
                 comment="",
-                currency="JPY"
+                currency="JPY",
             )
             for i in range(1, 6)
         ]
@@ -189,7 +194,7 @@ class TestBatchOperations:
                 category="",
                 source="Test",
                 comment="",
-                currency="JPY"
+                currency="JPY",
             ),
             Transaction(
                 id="batch_tx_new",  # New
@@ -199,8 +204,8 @@ class TestBatchOperations:
                 category="",
                 source="Test",
                 comment="",
-                currency="JPY"
-            )
+                currency="JPY",
+            ),
         ]
 
         added = datasource.add_transactions_batch(new_batch)
@@ -221,7 +226,7 @@ class TestDatetimePrecision:
             category="",
             source="Test",
             comment="",
-            currency="JPY"
+            currency="JPY",
         )
         datasource.add_transaction(tx)
 
@@ -242,15 +247,36 @@ class TestFiltering:
         """Test filtering transactions by source."""
         # Add transactions from different sources
         transactions = [
-            Transaction(id="sony_1", date=datetime(2025, 10, 26, 10, 0, 0),
-                       amount=1000, description="Sony 1", category="",
-                       source="Sony Bank", comment="", currency="JPY"),
-            Transaction(id="sony_2", date=datetime(2025, 10, 26, 11, 0, 0),
-                       amount=2000, description="Sony 2", category="",
-                       source="Sony Bank", comment="", currency="JPY"),
-            Transaction(id="amazon_1", date=datetime(2025, 10, 26, 12, 0, 0),
-                       amount=3000, description="Amazon 1", category="",
-                       source="Amazon", comment="", currency="JPY"),
+            Transaction(
+                id="sony_1",
+                date=datetime(2025, 10, 26, 10, 0, 0),
+                amount=1000,
+                description="Sony 1",
+                category="",
+                source="Sony Bank",
+                comment="",
+                currency="JPY",
+            ),
+            Transaction(
+                id="sony_2",
+                date=datetime(2025, 10, 26, 11, 0, 0),
+                amount=2000,
+                description="Sony 2",
+                category="",
+                source="Sony Bank",
+                comment="",
+                currency="JPY",
+            ),
+            Transaction(
+                id="amazon_1",
+                date=datetime(2025, 10, 26, 12, 0, 0),
+                amount=3000,
+                description="Amazon 1",
+                category="",
+                source="Amazon",
+                comment="",
+                currency="JPY",
+            ),
         ]
         datasource.add_transactions_batch(transactions)
 
@@ -266,18 +292,46 @@ class TestFiltering:
         """Test efficient date range querying."""
         # Add transactions across multiple days
         transactions = [
-            Transaction(id="tx_25", date=datetime(2025, 10, 25, 10, 0, 0),
-                       amount=1000, description="Oct 25", category="",
-                       source="Test", comment="", currency="JPY"),
-            Transaction(id="tx_26_morning", date=datetime(2025, 10, 26, 9, 0, 0),
-                       amount=2000, description="Oct 26 Morning", category="",
-                       source="Test", comment="", currency="JPY"),
-            Transaction(id="tx_26_evening", date=datetime(2025, 10, 26, 18, 0, 0),
-                       amount=3000, description="Oct 26 Evening", category="",
-                       source="Test", comment="", currency="JPY"),
-            Transaction(id="tx_27", date=datetime(2025, 10, 27, 10, 0, 0),
-                       amount=4000, description="Oct 27", category="",
-                       source="Test", comment="", currency="JPY"),
+            Transaction(
+                id="tx_25",
+                date=datetime(2025, 10, 25, 10, 0, 0),
+                amount=1000,
+                description="Oct 25",
+                category="",
+                source="Test",
+                comment="",
+                currency="JPY",
+            ),
+            Transaction(
+                id="tx_26_morning",
+                date=datetime(2025, 10, 26, 9, 0, 0),
+                amount=2000,
+                description="Oct 26 Morning",
+                category="",
+                source="Test",
+                comment="",
+                currency="JPY",
+            ),
+            Transaction(
+                id="tx_26_evening",
+                date=datetime(2025, 10, 26, 18, 0, 0),
+                amount=3000,
+                description="Oct 26 Evening",
+                category="",
+                source="Test",
+                comment="",
+                currency="JPY",
+            ),
+            Transaction(
+                id="tx_27",
+                date=datetime(2025, 10, 27, 10, 0, 0),
+                amount=4000,
+                description="Oct 27",
+                category="",
+                source="Test",
+                comment="",
+                currency="JPY",
+            ),
         ]
         datasource.add_transactions_batch(transactions)
 
@@ -300,9 +354,16 @@ class TestProcessedIds:
         """Test getting all transaction IDs."""
         # Add transactions
         transactions = [
-            Transaction(id=f"id_tx_{i}", date=datetime(2025, 10, 26, i, 0, 0),
-                       amount=1000, description="Test", category="",
-                       source="Test", comment="", currency="JPY")
+            Transaction(
+                id=f"id_tx_{i}",
+                date=datetime(2025, 10, 26, i, 0, 0),
+                amount=1000,
+                description="Test",
+                category="",
+                source="Test",
+                comment="",
+                currency="JPY",
+            )
             for i in range(1, 4)
         ]
         datasource.add_transactions_batch(transactions)
@@ -334,18 +395,39 @@ class TestProcessedMailIds:
     def test_get_processed_mail_ids_all(self, datasource):
         """Test getting all mail IDs without source filter."""
         transactions = [
-            Transaction(id="tx_1", date=datetime(2025, 10, 26, 10, 0, 0),
-                       amount=1000, description="Test 1", category="",
-                       source="Source A", comment="", currency="JPY",
-                       mail_id="mail_001"),
-            Transaction(id="tx_2", date=datetime(2025, 10, 26, 11, 0, 0),
-                       amount=2000, description="Test 2", category="",
-                       source="Source B", comment="", currency="JPY",
-                       mail_id="mail_002"),
-            Transaction(id="tx_3", date=datetime(2025, 10, 26, 12, 0, 0),
-                       amount=3000, description="Test 3", category="",
-                       source="Source A", comment="", currency="JPY",
-                       mail_id="mail_003"),
+            Transaction(
+                id="tx_1",
+                date=datetime(2025, 10, 26, 10, 0, 0),
+                amount=1000,
+                description="Test 1",
+                category="",
+                source="Source A",
+                comment="",
+                currency="JPY",
+                mail_id="mail_001",
+            ),
+            Transaction(
+                id="tx_2",
+                date=datetime(2025, 10, 26, 11, 0, 0),
+                amount=2000,
+                description="Test 2",
+                category="",
+                source="Source B",
+                comment="",
+                currency="JPY",
+                mail_id="mail_002",
+            ),
+            Transaction(
+                id="tx_3",
+                date=datetime(2025, 10, 26, 12, 0, 0),
+                amount=3000,
+                description="Test 3",
+                category="",
+                source="Source A",
+                comment="",
+                currency="JPY",
+                mail_id="mail_003",
+            ),
         ]
         datasource.add_transactions_batch(transactions)
 
@@ -359,18 +441,39 @@ class TestProcessedMailIds:
     def test_get_processed_mail_ids_by_source(self, datasource):
         """Test getting mail IDs filtered by source."""
         transactions = [
-            Transaction(id="tx_1", date=datetime(2025, 10, 26, 10, 0, 0),
-                       amount=1000, description="Test 1", category="",
-                       source="Source A", comment="", currency="JPY",
-                       mail_id="mail_001"),
-            Transaction(id="tx_2", date=datetime(2025, 10, 26, 11, 0, 0),
-                       amount=2000, description="Test 2", category="",
-                       source="Source B", comment="", currency="JPY",
-                       mail_id="mail_002"),
-            Transaction(id="tx_3", date=datetime(2025, 10, 26, 12, 0, 0),
-                       amount=3000, description="Test 3", category="",
-                       source="Source A", comment="", currency="JPY",
-                       mail_id="mail_003"),
+            Transaction(
+                id="tx_1",
+                date=datetime(2025, 10, 26, 10, 0, 0),
+                amount=1000,
+                description="Test 1",
+                category="",
+                source="Source A",
+                comment="",
+                currency="JPY",
+                mail_id="mail_001",
+            ),
+            Transaction(
+                id="tx_2",
+                date=datetime(2025, 10, 26, 11, 0, 0),
+                amount=2000,
+                description="Test 2",
+                category="",
+                source="Source B",
+                comment="",
+                currency="JPY",
+                mail_id="mail_002",
+            ),
+            Transaction(
+                id="tx_3",
+                date=datetime(2025, 10, 26, 12, 0, 0),
+                amount=3000,
+                description="Test 3",
+                category="",
+                source="Source A",
+                comment="",
+                currency="JPY",
+                mail_id="mail_003",
+            ),
         ]
         datasource.add_transactions_batch(transactions)
 
@@ -389,14 +492,28 @@ class TestProcessedMailIds:
     def test_get_processed_mail_ids_excludes_null(self, datasource):
         """Test that transactions without mail_id are excluded."""
         transactions = [
-            Transaction(id="tx_with_mail", date=datetime(2025, 10, 26, 10, 0, 0),
-                       amount=1000, description="With mail", category="",
-                       source="Test", comment="", currency="JPY",
-                       mail_id="mail_001"),
-            Transaction(id="tx_without_mail", date=datetime(2025, 10, 26, 11, 0, 0),
-                       amount=2000, description="Without mail", category="",
-                       source="Test", comment="", currency="JPY",
-                       mail_id=None),
+            Transaction(
+                id="tx_with_mail",
+                date=datetime(2025, 10, 26, 10, 0, 0),
+                amount=1000,
+                description="With mail",
+                category="",
+                source="Test",
+                comment="",
+                currency="JPY",
+                mail_id="mail_001",
+            ),
+            Transaction(
+                id="tx_without_mail",
+                date=datetime(2025, 10, 26, 11, 0, 0),
+                amount=2000,
+                description="Without mail",
+                category="",
+                source="Test",
+                comment="",
+                currency="JPY",
+                mail_id=None,
+            ),
         ]
         datasource.add_transactions_batch(transactions)
 
@@ -422,7 +539,7 @@ class TestProcessedMailIds:
             source="Wise",
             comment="",
             currency="JPY",
-            mail_id="shared_mail_id_123"
+            mail_id="shared_mail_id_123",
         )
         datasource.add_transaction(tx_original)
 
@@ -457,7 +574,7 @@ class TestUpdatedAtField:
             category="",
             source="Test",
             comment="",
-            currency="JPY"
+            currency="JPY",
         )
 
         datasource.add_transaction(tx)
@@ -479,7 +596,7 @@ class TestUpdatedAtField:
                 category="",
                 source="Test",
                 comment="",
-                currency="JPY"
+                currency="JPY",
             )
             for i in range(1, 4)
         ]
@@ -506,7 +623,7 @@ class TestUpdatedAtField:
             category="",
             source="Test",
             comment="",
-            currency="JPY"
+            currency="JPY",
         )
         datasource.add_transaction(tx)
 
@@ -523,7 +640,7 @@ class TestUpdatedAtField:
             date=tx_date,
             amount=2000,
             description="Updated",
-            comment="New comment"
+            comment="New comment",
         )
 
         # Verify updated_at changed
@@ -546,7 +663,7 @@ class TestUpdatedAtField:
             category="",
             source="Test",
             comment="",
-            currency="JPY"
+            currency="JPY",
         )
         datasource.add_transaction(tx)
 
@@ -579,7 +696,7 @@ class TestUpdatedAtField:
             source="Test",
             comment="",
             groups=["group1"],
-            currency="JPY"
+            currency="JPY",
         )
         datasource.add_transaction(tx)
 
@@ -620,7 +737,7 @@ class TestCreatedAtField:
             source="Test",
             comment="",
             currency="JPY",
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
 
         datasource.add_transaction(tx)
@@ -653,7 +770,7 @@ class TestCreatedAtField:
                 source="Test",
                 comment="",
                 currency="JPY",
-                created_at=current_created_at
+                created_at=current_created_at,
             )
             for i in range(1, 4)
         ]
@@ -685,7 +802,7 @@ class TestCreatedAtField:
             source="Test",
             comment="",
             currency="JPY",
-            created_at=created_time
+            created_at=created_time,
         )
         datasource.add_transaction(tx)
 
@@ -702,7 +819,7 @@ class TestCreatedAtField:
             date=tx_date,
             amount=2000,
             description="Updated",
-            comment="New comment"
+            comment="New comment",
         )
 
         # Verify created_at did NOT change (immutability)
@@ -727,7 +844,7 @@ class TestCreatedAtField:
             source="Test",
             comment="",
             currency="JPY",
-            created_at=created_time
+            created_at=created_time,
         )
         datasource.add_transaction(tx)
 
@@ -751,7 +868,7 @@ class TestCreatedAtField:
 
 def _generate_test_key() -> str:
     """Generate a base64-encoded 256-bit key for testing."""
-    return base64.b64encode(os.urandom(32)).decode('ascii')
+    return base64.b64encode(os.urandom(32)).decode("ascii")
 
 
 class TestEncryptedTransactions:
@@ -770,7 +887,7 @@ class TestEncryptedTransactions:
             category="",
             source="Test",
             comment="secret note",
-            currency="JPY"
+            currency="JPY",
         )
         ds.add_transaction(tx)
 
@@ -792,7 +909,7 @@ class TestEncryptedTransactions:
             category="",
             source="Test",
             comment="hidden",
-            currency="JPY"
+            currency="JPY",
         )
         ds_enc.add_transaction(tx)
 
@@ -817,7 +934,7 @@ class TestEncryptedTransactions:
                 category="",
                 source="Test",
                 comment=f"note {i}",
-                currency="JPY"
+                currency="JPY",
             )
             for i in range(1, 4)
         ]
@@ -844,7 +961,7 @@ class TestEncryptedTransactions:
             category="",
             source="Test",
             comment="old note",
-            currency="JPY"
+            currency="JPY",
         )
         ds.add_transaction(tx)
 
@@ -853,7 +970,7 @@ class TestEncryptedTransactions:
             date=datetime(2025, 11, 1, 10, 0, 0),
             amount=750,
             description="Updated Encrypted",
-            comment="new note"
+            comment="new note",
         )
 
         retrieved = ds.get_all_transactions()[0]
@@ -873,7 +990,7 @@ class TestEncryptedTransactions:
             category="",
             source="Test",
             comment="visible",
-            currency="JPY"
+            currency="JPY",
         )
         ds_plain.add_transaction(tx_plain)
 
@@ -888,7 +1005,7 @@ class TestEncryptedTransactions:
             category="",
             source="Test",
             comment="secret",
-            currency="JPY"
+            currency="JPY",
         )
         ds_enc.add_transaction(tx_enc)
 
@@ -915,14 +1032,16 @@ class TestEncryptedTransactions:
             category="",
             source="Test",
             comment="",
-            currency="JPY"
+            currency="JPY",
         )
         ds.add_transaction(tx)
 
         # Check raw value
         conn = sqlite3.connect(temp_db)
         cursor = conn.cursor()
-        cursor.execute("SELECT encryption_version, description, amount FROM transactions WHERE id = 'ver_check'")
+        cursor.execute(
+            "SELECT encryption_version, description, amount FROM transactions WHERE id = 'ver_check'"
+        )
         row = cursor.fetchone()
         conn.close()
 
@@ -942,14 +1061,16 @@ class TestEncryptedTransactions:
             category="",
             source="Test",
             comment="plain comment",
-            currency="JPY"
+            currency="JPY",
         )
         ds.add_transaction(tx)
 
         # Raw SQL should show plaintext
         conn = sqlite3.connect(temp_db)
         cursor = conn.cursor()
-        cursor.execute("SELECT encryption_version, description, amount, comment FROM transactions WHERE id = 'plain_compat'")
+        cursor.execute(
+            "SELECT encryption_version, description, amount, comment FROM transactions WHERE id = 'plain_compat'"
+        )
         row = cursor.fetchone()
         conn.close()
 
@@ -976,7 +1097,7 @@ class TestEncryptedTransactions:
             category="",
             source="Sony Bank",
             comment="",
-            currency="JPY"
+            currency="JPY",
         )
         ds.add_transaction(tx)
 
@@ -998,13 +1119,12 @@ class TestEncryptedTransactions:
             category="",
             source="Test",
             comment="",
-            currency="JPY"
+            currency="JPY",
         )
         ds.add_transaction(tx)
 
         results = ds.get_transactions_by_date_range(
-            from_date=datetime(2025, 11, 1),
-            to_date=datetime(2025, 11, 30)
+            from_date=datetime(2025, 11, 1), to_date=datetime(2025, 11, 30)
         )
         assert len(results) == 1
         assert results[0].description == "Date Range Test"
@@ -1024,7 +1144,7 @@ class TestEncryptedTransactions:
             source="Test",
             comment="",
             currency="JPY",
-            groups=["group_abc"]
+            groups=["group_abc"],
         )
         ds.add_transaction(tx)
 
@@ -1046,7 +1166,7 @@ class TestEncryptedTransactions:
             category="",
             source="Test",
             comment="private",
-            currency="JPY"
+            currency="JPY",
         )
         ds1.add_transaction(tx)
 
@@ -1069,11 +1189,18 @@ class TestMigrateEncryption:
         # Insert plaintext rows (no key)
         ds_plain = SQLiteTransactionDataSource(temp_db, user_id="test_user")
         for i in range(3):
-            ds_plain.add_transaction(Transaction(
-                id=f"mig_enc_{i}", date=datetime(2025, 1, 1 + i),
-                amount=100 * i, description=f"Plain {i}", category="",
-                source="Test", comment=f"note {i}", currency="JPY",
-            ))
+            ds_plain.add_transaction(
+                Transaction(
+                    id=f"mig_enc_{i}",
+                    date=datetime(2025, 1, 1 + i),
+                    amount=100 * i,
+                    description=f"Plain {i}",
+                    category="",
+                    source="Test",
+                    comment=f"note {i}",
+                    currency="JPY",
+                )
+            )
 
         # Migrate with key
         ds_enc = SQLiteTransactionDataSource(temp_db, user_id="test_user", encryption_key=key)
@@ -1096,11 +1223,17 @@ class TestMigrateEncryption:
 
         # Insert encrypted rows
         ds = SQLiteTransactionDataSource(temp_db, user_id="test_user", encryption_key=key)
-        ds.add_transaction(Transaction(
-            id="already_enc", date=datetime(2025, 1, 1),
-            amount=500, description="Already encrypted", category="",
-            source="Test", currency="JPY",
-        ))
+        ds.add_transaction(
+            Transaction(
+                id="already_enc",
+                date=datetime(2025, 1, 1),
+                amount=500,
+                description="Already encrypted",
+                category="",
+                source="Test",
+                currency="JPY",
+            )
+        )
 
         count = ds.migrate_to_encrypted()
         assert count == 0
@@ -1112,11 +1245,18 @@ class TestMigrateEncryption:
         # Insert encrypted rows
         ds_enc = SQLiteTransactionDataSource(temp_db, user_id="test_user", encryption_key=key)
         for i in range(2):
-            ds_enc.add_transaction(Transaction(
-                id=f"mig_dec_{i}", date=datetime(2025, 2, 1 + i),
-                amount=200 * i, description=f"Secret {i}", category="",
-                source="Test", comment=f"hidden {i}", currency="JPY",
-            ))
+            ds_enc.add_transaction(
+                Transaction(
+                    id=f"mig_dec_{i}",
+                    date=datetime(2025, 2, 1 + i),
+                    amount=200 * i,
+                    description=f"Secret {i}",
+                    category="",
+                    source="Test",
+                    comment=f"hidden {i}",
+                    currency="JPY",
+                )
+            )
 
         # Decrypt back to plaintext
         count = ds_enc.migrate_to_plaintext()
@@ -1133,11 +1273,17 @@ class TestMigrateEncryption:
         key = _generate_test_key()
 
         ds_plain = SQLiteTransactionDataSource(temp_db, user_id="test_user")
-        ds_plain.add_transaction(Transaction(
-            id="already_plain", date=datetime(2025, 1, 1),
-            amount=100, description="Plaintext", category="",
-            source="Test", currency="JPY",
-        ))
+        ds_plain.add_transaction(
+            Transaction(
+                id="already_plain",
+                date=datetime(2025, 1, 1),
+                amount=100,
+                description="Plaintext",
+                category="",
+                source="Test",
+                currency="JPY",
+            )
+        )
 
         ds_enc = SQLiteTransactionDataSource(temp_db, user_id="test_user", encryption_key=key)
         count = ds_enc.migrate_to_plaintext()
@@ -1146,10 +1292,16 @@ class TestMigrateEncryption:
     def test_migrate_no_key_returns_zero(self, temp_db):
         """Calling migrate without encryption key should return 0."""
         ds = SQLiteTransactionDataSource(temp_db, user_id="test_user")
-        ds.add_transaction(Transaction(
-            id="no_key_mig", date=datetime(2025, 1, 1),
-            amount=100, description="Test", category="",
-            source="Test", currency="JPY",
-        ))
+        ds.add_transaction(
+            Transaction(
+                id="no_key_mig",
+                date=datetime(2025, 1, 1),
+                amount=100,
+                description="Test",
+                category="",
+                source="Test",
+                currency="JPY",
+            )
+        )
         assert ds.migrate_to_encrypted() == 0
         assert ds.migrate_to_plaintext() == 0

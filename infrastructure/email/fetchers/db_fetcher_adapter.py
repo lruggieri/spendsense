@@ -5,10 +5,10 @@ Wraps a database Fetcher entity to provide Gmail fetching functionality
 using regex patterns stored in the database.
 """
 
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
 
-from infrastructure.email.fetchers.pattern_parser import parse_transactions_with_patterns
 from domain.entities.fetcher import Fetcher
+from infrastructure.email.fetchers.pattern_parser import parse_transactions_with_patterns
 from infrastructure.email.gmail_utils import get_body_from_message
 
 
@@ -36,9 +36,9 @@ class DBFetcherAdapter:
     @property
     def description(self) -> str:
         """Build description from fetcher configuration."""
-        emails = ', '.join(self._fetcher.from_emails[:2])
+        emails = ", ".join(self._fetcher.from_emails[:2])
         if len(self._fetcher.from_emails) > 2:
-            emails += '...'
+            emails += "..."
         return f"Fetches transactions from {emails}"
 
     @property
@@ -80,7 +80,9 @@ class DBFetcherAdapter:
 
         return f"{from_filter}{subject_filter} after:{after_date}"
 
-    def parse_transaction(self, message: dict) -> List[Tuple[Optional[str], Optional[str], Optional[str]]]:
+    def parse_transaction(
+        self, message: dict
+    ) -> List[Tuple[Optional[str], Optional[str], Optional[str]]]:
         """
         Parse transaction from email using regex patterns.
 
@@ -100,15 +102,15 @@ class DBFetcherAdapter:
             self._fetcher.amount_pattern,
             self._fetcher.merchant_pattern,
             self._fetcher.currency_pattern,
-            self._fetcher.negate_amount
+            self._fetcher.negate_amount,
         )
 
         # Convert to tuple format expected by fetch pipeline
         result = []
         for tx in transactions:
-            amount = tx.get('amount')
-            merchant = tx.get('merchant')
-            currency = tx.get('currency')
+            amount = tx.get("amount")
+            merchant = tx.get("merchant")
+            currency = tx.get("currency")
             if amount:  # Only include if we found an amount
                 result.append((amount, merchant, currency))
 

@@ -4,16 +4,17 @@ Tests for logic/amount_utils.py
 Tests conversion between major and minor currency units for various currencies.
 """
 
-import pytest
 from decimal import Decimal
 
+import pytest
+
 from domain.services.amount_utils import (
-    to_minor_units,
+    format_amount,
+    parse_and_convert,
     to_major_units,
     to_major_units_float,
-    format_amount,
+    to_minor_units,
     validate_amount,
-    parse_and_convert
 )
 
 
@@ -93,29 +94,29 @@ class TestToMajorUnits:
 
     def test_usd_basic(self):
         """Test basic USD conversion."""
-        assert to_major_units(599, "USD") == Decimal('5.99')
-        assert to_major_units(100, "USD") == Decimal('1.00')
-        assert to_major_units(1, "USD") == Decimal('0.01')
+        assert to_major_units(599, "USD") == Decimal("5.99")
+        assert to_major_units(100, "USD") == Decimal("1.00")
+        assert to_major_units(1, "USD") == Decimal("0.01")
 
     def test_jpy_basic(self):
         """Test JPY (0 decimals)."""
-        assert to_major_units(1234, "JPY") == Decimal('1234')
-        assert to_major_units(100, "JPY") == Decimal('100')
+        assert to_major_units(1234, "JPY") == Decimal("1234")
+        assert to_major_units(100, "JPY") == Decimal("100")
 
     def test_zero_amount(self):
         """Test zero amounts."""
-        assert to_major_units(0, "USD") == Decimal('0')
-        assert to_major_units(0, "JPY") == Decimal('0')
+        assert to_major_units(0, "USD") == Decimal("0")
+        assert to_major_units(0, "JPY") == Decimal("0")
 
     def test_large_amounts(self):
         """Test large amounts."""
-        assert to_major_units(99999999, "USD") == Decimal('999999.99')
-        assert to_major_units(9999999, "JPY") == Decimal('9999999')
+        assert to_major_units(99999999, "USD") == Decimal("999999.99")
+        assert to_major_units(9999999, "JPY") == Decimal("9999999")
 
     def test_negative_amounts(self):
         """Test negative amounts."""
-        assert to_major_units(-599, "USD") == Decimal('-5.99')
-        assert to_major_units(-100, "JPY") == Decimal('-100')
+        assert to_major_units(-599, "USD") == Decimal("-5.99")
+        assert to_major_units(-100, "JPY") == Decimal("-100")
 
 
 class TestToMajorUnitsFloat:
@@ -277,7 +278,7 @@ class TestPrecisionPreservation:
 
         # Verify we can get back the exact value
         major = to_major_units(minor, "USD")
-        assert major == Decimal('5.99')
+        assert major == Decimal("5.99")
 
     def test_no_truncation_edge_cases(self):
         """Test edge cases that might cause truncation."""

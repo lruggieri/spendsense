@@ -2,8 +2,10 @@
 Unit tests for CurrencyConverterService.
 """
 
-import pytest
 from datetime import datetime, timezone
+
+import pytest
+
 from domain.services.currency_converter import CurrencyConverterService
 
 
@@ -22,7 +24,7 @@ class TestCurrencyConverterService:
         amount = 1000.0
         date = datetime(2025, 1, 1, tzinfo=timezone.utc)
 
-        result = converter.convert(amount, 'JPY', 'JPY', date)
+        result = converter.convert(amount, "JPY", "JPY", date)
         assert result == amount
 
     def test_convert_different_currencies(self):
@@ -31,7 +33,7 @@ class TestCurrencyConverterService:
         amount = 100.0
         date = datetime(2025, 1, 1, tzinfo=timezone.utc)
 
-        result = converter.convert(amount, 'USD', 'EUR', date)
+        result = converter.convert(amount, "USD", "EUR", date)
         # Result should be different from original (unless rates are exactly 1.0)
         # and should be a positive number
         assert isinstance(result, float)
@@ -43,7 +45,7 @@ class TestCurrencyConverterService:
         amount = 100.0
         date = datetime(2023, 6, 15, tzinfo=timezone.utc)
 
-        result = converter.convert(amount, 'USD', 'EUR', date)
+        result = converter.convert(amount, "USD", "EUR", date)
         assert isinstance(result, float)
         assert result > 0
 
@@ -54,7 +56,7 @@ class TestCurrencyConverterService:
         date = datetime(2025, 1, 1, tzinfo=timezone.utc)
 
         # Use a clearly unsupported currency code
-        result = converter.convert(amount, 'XXX', 'USD', date)
+        result = converter.convert(amount, "XXX", "USD", date)
         assert result == amount
 
     def test_convert_unsupported_currency_to(self):
@@ -64,7 +66,7 @@ class TestCurrencyConverterService:
         date = datetime(2025, 1, 1, tzinfo=timezone.utc)
 
         # Use a clearly unsupported currency code
-        result = converter.convert(amount, 'USD', 'XXX', date)
+        result = converter.convert(amount, "USD", "XXX", date)
         assert result == amount
 
     def test_is_supported(self):
@@ -72,14 +74,14 @@ class TestCurrencyConverterService:
         converter = CurrencyConverterService.get_instance()
 
         # Common currencies should be supported
-        assert converter.is_supported('USD')
-        assert converter.is_supported('EUR')
-        assert converter.is_supported('JPY')
-        assert converter.is_supported('GBP')
+        assert converter.is_supported("USD")
+        assert converter.is_supported("EUR")
+        assert converter.is_supported("JPY")
+        assert converter.is_supported("GBP")
 
         # Clearly fake currency should not be supported
-        assert not converter.is_supported('XXX')
-        assert not converter.is_supported('FAKE')
+        assert not converter.is_supported("XXX")
+        assert not converter.is_supported("FAKE")
 
     def test_convert_with_future_date(self):
         """Test conversion with future date uses fallback."""
@@ -88,7 +90,7 @@ class TestCurrencyConverterService:
         future_date = datetime(2030, 1, 1, tzinfo=timezone.utc)
 
         # Should use fallback_on_wrong_date and return a valid conversion
-        result = converter.convert(amount, 'USD', 'EUR', future_date)
+        result = converter.convert(amount, "USD", "EUR", future_date)
         assert isinstance(result, float)
         assert result > 0
 
@@ -98,7 +100,7 @@ class TestCurrencyConverterService:
         amount = 0.0
         date = datetime(2025, 1, 1, tzinfo=timezone.utc)
 
-        result = converter.convert(amount, 'USD', 'EUR', date)
+        result = converter.convert(amount, "USD", "EUR", date)
         assert result == 0.0
 
     def test_convert_negative_amount(self):
@@ -107,7 +109,7 @@ class TestCurrencyConverterService:
         amount = -100.0
         date = datetime(2025, 1, 1, tzinfo=timezone.utc)
 
-        result = converter.convert(amount, 'USD', 'EUR', date)
+        result = converter.convert(amount, "USD", "EUR", date)
         # Result should be negative and converted
         assert result < 0
         assert isinstance(result, float)
@@ -121,7 +123,7 @@ class TestCurrencyConverterService:
         amount = 207000
 
         # Convert JPY to EUR on a Saturday (ECB doesn't publish on weekends)
-        result = converter.convert(amount, 'JPY', 'EUR', saturday)
+        result = converter.convert(amount, "JPY", "EUR", saturday)
 
         # Should successfully convert (fallback to nearest date)
         # Expected result is around 1,280-1,285 EUR
@@ -131,7 +133,7 @@ class TestCurrencyConverterService:
 
         # Compare with Friday (should be similar)
         friday = datetime(2025, 5, 23, 10, 24, 59, tzinfo=timezone.utc)
-        friday_result = converter.convert(amount, 'JPY', 'EUR', friday)
+        friday_result = converter.convert(amount, "JPY", "EUR", friday)
 
         # Weekend and weekday results should be within 5% of each other
         assert abs(result - friday_result) / friday_result < 0.05

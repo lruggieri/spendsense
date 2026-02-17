@@ -7,9 +7,12 @@ Tests cover:
 - Batch processing
 - Single and batch similarity calculations
 """
-import pytest
+
+from unittest.mock import MagicMock, Mock
+
 import numpy as np
-from unittest.mock import Mock, MagicMock
+import pytest
+
 from domain.services.embedding_similarity_calculator import EmbeddingSimilarityCalculator
 
 
@@ -76,7 +79,7 @@ class TestEmbeddingSimilarityCalculator:
         reference_texts = {
             "ref_1": "coffee shop",
             "ref_2": "grocery store",
-            "ref_3": "train ticket"
+            "ref_3": "train ticket",
         }
 
         calculator.precompute_reference_embeddings(reference_texts)
@@ -101,7 +104,7 @@ class TestEmbeddingSimilarityCalculator:
         reference_texts = {
             "ref_1": "coffee",
             "ref_2": "coffee",  # Same text should have high similarity
-            "ref_3": "grocery"
+            "ref_3": "grocery",
         }
 
         # Calculate similarities
@@ -119,10 +122,7 @@ class TestEmbeddingSimilarityCalculator:
 
     def test_calculate_similarities_uses_cache(self, calculator, mock_model):
         """Test that calculate_similarities uses cached embeddings."""
-        reference_texts = {
-            "ref_1": "text 1",
-            "ref_2": "text 2"
-        }
+        reference_texts = {"ref_1": "text 1", "ref_2": "text 2"}
 
         # Precompute and cache
         calculator.precompute_reference_embeddings(reference_texts)
@@ -151,16 +151,9 @@ class TestEmbeddingSimilarityCalculator:
 
     def test_calculate_similarities_batch(self, calculator):
         """Test batch similarity calculation."""
-        reference_texts = {
-            "ref_1": "coffee shop",
-            "ref_2": "grocery store"
-        }
+        reference_texts = {"ref_1": "coffee shop", "ref_2": "grocery store"}
 
-        query_texts = [
-            "coffee purchase",
-            "supermarket shopping",
-            "train ticket"
-        ]
+        query_texts = ["coffee purchase", "supermarket shopping", "train ticket"]
 
         results = calculator.calculate_similarities_batch(query_texts, reference_texts)
 
@@ -185,10 +178,7 @@ class TestEmbeddingSimilarityCalculator:
 
     def test_calculate_similarities_batch_uses_cache(self, calculator, mock_model):
         """Test batch calculation uses cached reference embeddings."""
-        reference_texts = {
-            "ref_1": "text 1",
-            "ref_2": "text 2"
-        }
+        reference_texts = {"ref_1": "text 1", "ref_2": "text 2"}
 
         # Precompute
         calculator.precompute_reference_embeddings(reference_texts)
@@ -248,22 +238,19 @@ class TestEmbeddingSimilarityCalculatorRealScenarios:
         def mock_encode(texts, show_progress_bar=False):
             if isinstance(texts, str):
                 return embeddings_db.get(texts.lower(), np.array([0.5, 0.5, 0.5]))
-            return np.array([embeddings_db.get(t.lower(), np.array([0.5, 0.5, 0.5]))
-                           for t in texts])
+            return np.array(
+                [embeddings_db.get(t.lower(), np.array([0.5, 0.5, 0.5])) for t in texts]
+            )
 
         model.encode = mock_encode
         return EmbeddingSimilarityCalculator(model=model)
 
     def test_similar_transactions_high_score(self, calculator_with_mock):
         """Test that similar transactions have high similarity scores."""
-        reference_texts = {
-            "ref_1": "starbucks coffee",
-            "ref_2": "coffee shop"
-        }
+        reference_texts = {"ref_1": "starbucks coffee", "ref_2": "coffee shop"}
 
         similarities = calculator_with_mock.calculate_similarities(
-            "starbucks coffee",
-            reference_texts
+            "starbucks coffee", reference_texts
         )
 
         # Should have high similarity with ref_1 (exact match)
@@ -272,15 +259,9 @@ class TestEmbeddingSimilarityCalculatorRealScenarios:
 
     def test_dissimilar_transactions_low_score(self, calculator_with_mock):
         """Test that dissimilar transactions have low similarity scores."""
-        reference_texts = {
-            "ref_1": "train ticket",
-            "ref_2": "bus fare"
-        }
+        reference_texts = {"ref_1": "train ticket", "ref_2": "bus fare"}
 
-        similarities = calculator_with_mock.calculate_similarities(
-            "coffee shop",
-            reference_texts
-        )
+        similarities = calculator_with_mock.calculate_similarities("coffee shop", reference_texts)
 
         # Coffee should have low similarity with transport references
         scores = [score for _, score in similarities]

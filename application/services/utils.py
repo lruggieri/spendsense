@@ -23,9 +23,9 @@ def parse_date(date_str: str) -> datetime:
         ValueError: If date string cannot be parsed
     """
     # Try ISO 8601 format first
-    if 'T' in date_str:
+    if "T" in date_str:
         try:
-            dt = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+            dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=timezone.utc)
             else:
@@ -35,7 +35,7 @@ def parse_date(date_str: str) -> datetime:
             pass
 
     # Try simple date format (YYYY-MM-DD) - interpret as midnight UTC
-    if len(date_str) == 10 and date_str.count('-') == 2:
+    if len(date_str) == 10 and date_str.count("-") == 2:
         try:
             dt = datetime.strptime(date_str, "%Y-%m-%d")
             return dt.replace(tzinfo=timezone.utc)

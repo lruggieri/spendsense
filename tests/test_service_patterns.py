@@ -2,19 +2,23 @@
 Tests for pattern management using DDD PatternService and ClassificationService.
 """
 
-import unittest
-import tempfile
 import os
-import sqlite3
 import re
+import sqlite3
+import tempfile
+import unittest
 from unittest.mock import MagicMock
 
-from application.services.pattern_service import PatternService
 from application.services.category_service import CategoryService
 from application.services.classification_service import ClassificationService
-from infrastructure.persistence.sqlite.repositories.category_repository import SQLiteCategoryDataSource
+from application.services.pattern_service import PatternService
+from infrastructure.persistence.sqlite.repositories.category_repository import (
+    SQLiteCategoryDataSource,
+)
+from infrastructure.persistence.sqlite.repositories.manual_assignment_repository import (
+    SQLiteManualAssignmentDataSource,
+)
 from infrastructure.persistence.sqlite.repositories.regexp_repository import SQLiteRegexpDataSource
-from infrastructure.persistence.sqlite.repositories.manual_assignment_repository import SQLiteManualAssignmentDataSource
 
 
 class TestServicePatternManagement(unittest.TestCase):
@@ -22,12 +26,12 @@ class TestServicePatternManagement(unittest.TestCase):
 
     def setUp(self):
         """Create a temporary database and initialize services."""
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.db_path = self.temp_db.name
         self.temp_db.close()
 
         # Set the database path via environment variable
-        os.environ['DATABASE_PATH'] = self.db_path
+        os.environ["DATABASE_PATH"] = self.db_path
 
         # Initialize database schema
         conn = sqlite3.connect(self.db_path)
@@ -122,12 +126,14 @@ class TestServicePatternManagement(unittest.TestCase):
 
         # Create DDD services
         self.category_service = CategoryService(self.user_id, cat_ds, self.db_path)
-        self.pattern_service = PatternService(self.user_id, regexp_ds, self.category_service, self.db_path)
+        self.pattern_service = PatternService(
+            self.user_id, regexp_ds, self.category_service, self.db_path
+        )
 
     def tearDown(self):
         """Clean up temporary database."""
-        if 'DATABASE_PATH' in os.environ:
-            del os.environ['DATABASE_PATH']
+        if "DATABASE_PATH" in os.environ:
+            del os.environ["DATABASE_PATH"]
 
         if os.path.exists(self.db_path):
             os.remove(self.db_path)
@@ -153,10 +159,7 @@ class TestServicePatternManagement(unittest.TestCase):
 
     def test_create_pattern_success(self):
         """Test successful pattern creation."""
-        rules = [
-            {"operator": "OR", "keyword": "amazon"},
-            {"operator": "AND", "keyword": "grocery"}
-        ]
+        rules = [{"operator": "OR", "keyword": "amazon"}, {"operator": "AND", "keyword": "grocery"}]
 
         success, error, pattern_id = self.pattern_service.create_pattern(rules, "shopping")
 
@@ -220,7 +223,7 @@ class TestServicePatternManagement(unittest.TestCase):
         """Test that patterns need at least one positive rule."""
         rules = [
             {"operator": "NOT", "keyword": "gift"},
-            {"operator": "NOT_START_WITH", "keyword": "marketplace"}
+            {"operator": "NOT_START_WITH", "keyword": "marketplace"},
         ]
 
         success, error = self.pattern_service.validate_rules(rules)
@@ -254,7 +257,7 @@ class TestServicePatternManagement(unittest.TestCase):
         """Test OR operator generates correct regex with word boundaries."""
         rules = [
             {"operator": "OR", "keyword": "starbucks"},
-            {"operator": "OR", "keyword": "coffee"}
+            {"operator": "OR", "keyword": "coffee"},
         ]
 
         regex = self.pattern_service.rules_to_regex(rules)
@@ -274,7 +277,7 @@ class TestServicePatternManagement(unittest.TestCase):
         """Test AND operator uses lookahead assertions."""
         rules = [
             {"operator": "AND", "keyword": "starbucks"},
-            {"operator": "AND", "keyword": "coffee"}
+            {"operator": "AND", "keyword": "coffee"},
         ]
 
         regex = self.pattern_service.rules_to_regex(rules)
@@ -291,10 +294,7 @@ class TestServicePatternManagement(unittest.TestCase):
 
     def test_rules_to_regex_not_operator(self):
         """Test NOT operator uses negative lookahead."""
-        rules = [
-            {"operator": "OR", "keyword": "amazon"},
-            {"operator": "NOT", "keyword": "gift"}
-        ]
+        rules = [{"operator": "OR", "keyword": "amazon"}, {"operator": "NOT", "keyword": "gift"}]
 
         regex = self.pattern_service.rules_to_regex(rules)
 
@@ -340,7 +340,7 @@ class TestServicePatternManagement(unittest.TestCase):
         """Test NOT_START_WITH excludes patterns starting with keyword."""
         rules = [
             {"operator": "NOT_START_WITH", "keyword": "LAWSON"},
-            {"operator": "OR", "keyword": "store"}
+            {"operator": "OR", "keyword": "store"},
         ]
 
         regex = self.pattern_service.rules_to_regex(rules)
@@ -363,7 +363,7 @@ class TestServicePatternManagement(unittest.TestCase):
             {"operator": "OR", "keyword": "vegetables"},
             {"operator": "AND", "keyword": "delivery"},
             {"operator": "NOT", "keyword": "gift"},
-            {"operator": "END_WITH", "keyword": "JPY"}
+            {"operator": "END_WITH", "keyword": "JPY"},
         ]
 
         regex = self.pattern_service.rules_to_regex(rules)
@@ -376,10 +376,14 @@ class TestServicePatternManagement(unittest.TestCase):
         self.assertIsNotNone(pattern.search("Amazon fresh vegetables delivery 2000 JPY"))
 
         # Should NOT match
-        self.assertIsNone(pattern.search("Marketplace: Amazon grocery delivery JPY"))  # Starts with Marketplace:
+        self.assertIsNone(
+            pattern.search("Marketplace: Amazon grocery delivery JPY")
+        )  # Starts with Marketplace:
         self.assertIsNone(pattern.search("Amazon grocery 1000 JPY"))  # Missing delivery
         self.assertIsNone(pattern.search("Amazon grocery delivery gift 1000 JPY"))  # Contains gift
-        self.assertIsNone(pattern.search("Amazon grocery delivery 1000 USD"))  # Doesn't end with JPY
+        self.assertIsNone(
+            pattern.search("Amazon grocery delivery 1000 USD")
+        )  # Doesn't end with JPY
 
     def test_rules_to_regex_escapes_special_chars(self):
         """Test that regex special characters are properly escaped."""
@@ -401,10 +405,7 @@ class TestServicePatternManagement(unittest.TestCase):
 
     def test_generate_human_description_or(self):
         """Test human description for OR rules."""
-        rules = [
-            {"operator": "OR", "keyword": "amazon"},
-            {"operator": "OR", "keyword": "ebay"}
-        ]
+        rules = [{"operator": "OR", "keyword": "amazon"}, {"operator": "OR", "keyword": "ebay"}]
 
         desc = self.pattern_service.generate_human_description(rules)
 
@@ -416,7 +417,7 @@ class TestServicePatternManagement(unittest.TestCase):
         """Test human description for AND rules."""
         rules = [
             {"operator": "AND", "keyword": "starbucks"},
-            {"operator": "AND", "keyword": "coffee"}
+            {"operator": "AND", "keyword": "coffee"},
         ]
 
         desc = self.pattern_service.generate_human_description(rules)
@@ -431,7 +432,7 @@ class TestServicePatternManagement(unittest.TestCase):
             {"operator": "START_WITH", "keyword": "amazon"},
             {"operator": "AND", "keyword": "grocery"},
             {"operator": "NOT", "keyword": "gift"},
-            {"operator": "END_WITH", "keyword": "JPY"}
+            {"operator": "END_WITH", "keyword": "JPY"},
         ]
 
         desc = self.pattern_service.generate_human_description(rules)
@@ -484,9 +485,9 @@ class TestServicePatternManagement(unittest.TestCase):
 
         # Test against various cases
         test_cases = [
-            ("SEVEN-ELEVEN", True),          # Uppercase (original)
-            ("seven-eleven", True),          # Lowercase
-            ("Seven-Eleven", True),          # Mixed case
+            ("SEVEN-ELEVEN", True),  # Uppercase (original)
+            ("seven-eleven", True),  # Lowercase
+            ("Seven-Eleven", True),  # Mixed case
             ("test seven-eleven test", True),  # Lowercase in context
             ("TEST SEVEN-ELEVEN TEST", True),  # Uppercase in context
         ]
@@ -494,18 +495,19 @@ class TestServicePatternManagement(unittest.TestCase):
         for description, should_match in test_cases:
             category, source = classification_service.classify("test_tx", description)
             if should_match:
-                self.assertEqual(category, "shopping",
-                    f"Expected '{description}' to match SEVEN-ELEVEN pattern")
+                self.assertEqual(
+                    category, "shopping", f"Expected '{description}' to match SEVEN-ELEVEN pattern"
+                )
             else:
-                self.assertNotEqual(category, "shopping",
-                    f"Expected '{description}' to NOT match SEVEN-ELEVEN pattern")
+                self.assertNotEqual(
+                    category,
+                    "shopping",
+                    f"Expected '{description}' to NOT match SEVEN-ELEVEN pattern",
+                )
 
     def test_pattern_case_insensitive_or_operator(self):
         """Test that OR operator patterns are case-insensitive."""
-        rules = [
-            {"operator": "OR", "keyword": "AMAZON"},
-            {"operator": "OR", "keyword": "EBAY"}
-        ]
+        rules = [{"operator": "OR", "keyword": "AMAZON"}, {"operator": "OR", "keyword": "EBAY"}]
 
         success, error, pattern_id = self.pattern_service.create_pattern(rules, "shopping")
         self.assertTrue(success)
@@ -525,15 +527,13 @@ class TestServicePatternManagement(unittest.TestCase):
 
         for description in test_cases:
             category, source = classification_service.classify("test_tx", description)
-            self.assertEqual(category, "shopping",
-                f"Expected '{description}' to match OR pattern (AMAZON|EBAY)")
+            self.assertEqual(
+                category, "shopping", f"Expected '{description}' to match OR pattern (AMAZON|EBAY)"
+            )
 
     def test_pattern_case_insensitive_not_operator(self):
         """Test that NOT operator patterns are case-insensitive."""
-        rules = [
-            {"operator": "OR", "keyword": "AMAZON"},
-            {"operator": "NOT", "keyword": "GIFT"}
-        ]
+        rules = [{"operator": "OR", "keyword": "AMAZON"}, {"operator": "NOT", "keyword": "GIFT"}]
 
         success, error, pattern_id = self.pattern_service.create_pattern(rules, "shopping")
         self.assertTrue(success)
@@ -554,8 +554,11 @@ class TestServicePatternManagement(unittest.TestCase):
 
         for description in test_cases:
             category, _ = classification_service.classify("test_tx", description)
-            self.assertNotEqual(category, "shopping",
-                f"Expected '{description}' to NOT match pattern (excludes GIFT)")
+            self.assertNotEqual(
+                category,
+                "shopping",
+                f"Expected '{description}' to NOT match pattern (excludes GIFT)",
+            )
 
     def test_pattern_not_checks_entire_string(self):
         """
@@ -565,10 +568,7 @@ class TestServicePatternManagement(unittest.TestCase):
         matched "Eight labs test" because NOT lookahead was placed after consuming "test",
         so it only checked the remaining empty string.
         """
-        rules = [
-            {"operator": "OR", "keyword": "test"},
-            {"operator": "NOT", "keyword": "labs"}
-        ]
+        rules = [{"operator": "OR", "keyword": "test"}, {"operator": "NOT", "keyword": "labs"}]
 
         success, error, pattern_id = self.pattern_service.create_pattern(rules, "shopping")
         self.assertTrue(success)
@@ -578,16 +578,17 @@ class TestServicePatternManagement(unittest.TestCase):
 
         # These should NOT match (contain "labs")
         test_cases_no_match = [
-            "Eight labs test",      # "labs" before "test"
-            "Seven labs test",      # "labs" before "test"
-            "test labs",            # "labs" after "test"
-            "labs test labs",       # "labs" both before and after
+            "Eight labs test",  # "labs" before "test"
+            "Seven labs test",  # "labs" before "test"
+            "test labs",  # "labs" after "test"
+            "labs test labs",  # "labs" both before and after
         ]
 
         for description in test_cases_no_match:
             category, _ = classification_service.classify("test_tx", description)
-            self.assertNotEqual(category, "shopping",
-                f"Expected '{description}' to NOT match (contains 'labs')")
+            self.assertNotEqual(
+                category, "shopping", f"Expected '{description}' to NOT match (contains 'labs')"
+            )
 
         # These SHOULD match (contain "test" but not "labs")
         test_cases_match = [
@@ -598,9 +599,10 @@ class TestServicePatternManagement(unittest.TestCase):
 
         for description in test_cases_match:
             category, _ = classification_service.classify("test_tx", description)
-            self.assertEqual(category, "shopping",
-                f"Expected '{description}' to match (has 'test', no 'labs')")
+            self.assertEqual(
+                category, "shopping", f"Expected '{description}' to match (has 'test', no 'labs')"
+            )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

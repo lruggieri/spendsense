@@ -5,7 +5,8 @@ This module provides an abstract interface for transaction storage, allowing eas
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Set, Optional
+from typing import List, Optional, Set
+
 from domain.entities.transaction import Transaction
 
 
@@ -20,7 +21,6 @@ class TransactionRepository(ABC):
         Returns:
             List of all Transaction objects
         """
-        pass
 
     @abstractmethod
     def add_transaction(self, transaction: Transaction) -> None:
@@ -33,7 +33,6 @@ class TransactionRepository(ABC):
         Note:
             Should handle duplicate IDs gracefully (skip or update)
         """
-        pass
 
     @abstractmethod
     def add_transactions_batch(self, transactions: List[Transaction]) -> int:
@@ -49,7 +48,6 @@ class TransactionRepository(ABC):
         Note:
             Should handle duplicate IDs gracefully (skip duplicates)
         """
-        pass
 
     @abstractmethod
     def transaction_exists(self, tx_id: str) -> bool:
@@ -62,7 +60,6 @@ class TransactionRepository(ABC):
         Returns:
             True if transaction exists, False otherwise
         """
-        pass
 
     @abstractmethod
     def get_processed_ids(self) -> Set[str]:
@@ -75,7 +72,6 @@ class TransactionRepository(ABC):
         Note:
             Useful for deduplication when fetching new transactions
         """
-        pass
 
     @abstractmethod
     def get_processed_mail_ids(self, source: Optional[str] = None) -> Set[str]:
@@ -93,7 +89,6 @@ class TransactionRepository(ABC):
             Used for deduplication when fetching new emails.
             Multiple transactions can share the same mail_id.
         """
-        pass
 
     @abstractmethod
     def get_transactions_by_source(self, source: str) -> List[Transaction]:
@@ -106,7 +101,6 @@ class TransactionRepository(ABC):
         Returns:
             List of transactions from that source
         """
-        pass
 
     @abstractmethod
     def migrate_to_encrypted(self) -> int:
@@ -116,7 +110,6 @@ class TransactionRepository(ABC):
         Returns:
             Number of rows migrated.
         """
-        pass
 
     @abstractmethod
     def migrate_to_plaintext(self) -> int:
@@ -126,4 +119,3 @@ class TransactionRepository(ABC):
         Returns:
             Number of rows migrated.
         """
-        pass

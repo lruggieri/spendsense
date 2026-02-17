@@ -6,15 +6,15 @@ by functional domain.
 """
 
 from presentation.web.blueprints.auth import auth_bp
-from presentation.web.blueprints.main import main_bp
-from presentation.web.blueprints.transactions import transactions_bp
+from presentation.web.blueprints.categories import categories_bp
+from presentation.web.blueprints.fetchers import fetchers_bp
 from presentation.web.blueprints.gmail import gmail_bp
 from presentation.web.blueprints.groups import groups_bp
-from presentation.web.blueprints.categories import categories_bp
-from presentation.web.blueprints.patterns import patterns_bp
-from presentation.web.blueprints.fetchers import fetchers_bp
-from presentation.web.blueprints.settings import settings_bp
+from presentation.web.blueprints.main import main_bp
 from presentation.web.blueprints.onboarding import onboarding_bp
+from presentation.web.blueprints.patterns import patterns_bp
+from presentation.web.blueprints.settings import settings_bp
+from presentation.web.blueprints.transactions import transactions_bp
 from presentation.web.blueprints.webauthn import webauthn_bp
 
 

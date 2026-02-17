@@ -7,16 +7,21 @@ Tests cover:
 - Getting assigned transaction IDs
 - SQLite-specific features (get by category, clear all)
 """
+
 import os
 import tempfile
+
 import pytest
-from infrastructure.persistence.sqlite.repositories.manual_assignment_repository import SQLiteManualAssignmentDataSource
+
+from infrastructure.persistence.sqlite.repositories.manual_assignment_repository import (
+    SQLiteManualAssignmentDataSource,
+)
 
 
 @pytest.fixture
 def temp_db():
     """Create a temporary database file."""
-    fd, db_path = tempfile.mkstemp(suffix='.db')
+    fd, db_path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     yield db_path
     if os.path.exists(db_path):
@@ -79,7 +84,7 @@ class TestBatchOperations:
             "tx_2": "transport",
             "tx_3": "entertainment",
             "tx_4": "shopping",
-            "tx_5": "food"
+            "tx_5": "food",
         }
         count = datasource.add_assignments_batch(assignments)
         assert count == 5
@@ -87,11 +92,7 @@ class TestBatchOperations:
 
     def test_batch_add_verifies_all(self, datasource):
         """Test that all batch-added assignments are retrievable."""
-        assignments = {
-            "tx_1": "food",
-            "tx_2": "transport",
-            "tx_3": "entertainment"
-        }
+        assignments = {"tx_1": "food", "tx_2": "transport", "tx_3": "entertainment"}
         datasource.add_assignments_batch(assignments)
         assert datasource.get_assignment("tx_1") == "food"
         assert datasource.get_assignment("tx_3") == "entertainment"
@@ -99,16 +100,10 @@ class TestBatchOperations:
     def test_batch_update(self, datasource):
         """Test batch update (overlapping assignments)."""
         # Add initial assignments
-        datasource.add_assignments_batch({
-            "tx_1": "food",
-            "tx_2": "transport"
-        })
+        datasource.add_assignments_batch({"tx_1": "food", "tx_2": "transport"})
 
         # Batch update with overlapping and new
-        new_assignments = {
-            "tx_1": "groceries",  # Update
-            "tx_6": "utilities"   # New
-        }
+        new_assignments = {"tx_1": "groceries", "tx_6": "utilities"}  # Update  # New
         count = datasource.add_assignments_batch(new_assignments)
         assert count == 2
         assert datasource.count_assignments() == 3
@@ -120,11 +115,7 @@ class TestGetAssignedIds:
 
     def test_get_assigned_tx_ids(self, datasource):
         """Test getting all assigned transaction IDs."""
-        datasource.add_assignments_batch({
-            "tx_1": "food",
-            "tx_2": "transport",
-            "tx_3": "food"
-        })
+        datasource.add_assignments_batch({"tx_1": "food", "tx_2": "transport", "tx_3": "food"})
 
         tx_ids = datasource.get_assigned_tx_ids()
         assert isinstance(tx_ids, set)
@@ -145,12 +136,9 @@ class TestSQLiteSpecificFeatures:
 
     def test_get_by_category(self, datasource):
         """Test getting assignments by category."""
-        datasource.add_assignments_batch({
-            "tx_1": "food",
-            "tx_2": "food",
-            "tx_3": "transport",
-            "tx_4": "food"
-        })
+        datasource.add_assignments_batch(
+            {"tx_1": "food", "tx_2": "food", "tx_3": "transport", "tx_4": "food"}
+        )
 
         food_assignments = datasource.get_assignments_by_category("food")
         assert len(food_assignments) == 3
@@ -167,12 +155,9 @@ class TestSQLiteSpecificFeatures:
 
     def test_clear_all(self, datasource):
         """Test clearing all assignments."""
-        datasource.add_assignments_batch({
-            "tx_1": "food",
-            "tx_2": "food",
-            "tx_3": "transport",
-            "tx_4": "food"
-        })
+        datasource.add_assignments_batch(
+            {"tx_1": "food", "tx_2": "food", "tx_3": "transport", "tx_4": "food"}
+        )
 
         cleared = datasource.clear_all_assignments()
         assert cleared == 4

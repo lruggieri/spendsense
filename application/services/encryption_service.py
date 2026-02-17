@@ -13,7 +13,7 @@ from domain.repositories.embedding_repository import EmbeddingRepository
 from domain.repositories.encryption_repository import EncryptionRepository
 from domain.repositories.session_repository import SessionRepository
 from domain.repositories.transaction_repository import TransactionRepository
-from infrastructure.crypto.encryption import generate_dek, wrap_key, unwrap_key
+from infrastructure.crypto.encryption import generate_dek, unwrap_key, wrap_key
 
 logger = logging.getLogger(__name__)
 
@@ -21,11 +21,14 @@ logger = logging.getLogger(__name__)
 class EncryptionService:
     """Manages envelope encryption and WebAuthn credential lifecycle."""
 
-    def __init__(self, encryption_repo: EncryptionRepository,
-                 transaction_datasource: Optional[TransactionRepository] = None,
-                 session_datasource: Optional[SessionRepository] = None,
-                 encryption_key: Optional[str] = None,
-                 embedding_datasource: Optional[EmbeddingRepository] = None):
+    def __init__(
+        self,
+        encryption_repo: EncryptionRepository,
+        transaction_datasource: Optional[TransactionRepository] = None,
+        session_datasource: Optional[SessionRepository] = None,
+        encryption_key: Optional[str] = None,
+        embedding_datasource: Optional[EmbeddingRepository] = None,
+    ):
         self._encryption_repo = encryption_repo
         self._transaction_repo = transaction_datasource
         self._session_repo = session_datasource
@@ -36,8 +39,9 @@ class EncryptionService:
     # DEK management
     # =========================================================================
 
-    def setup_encryption(self, user_id: str, credential_id: str,
-                         kek_b64: str, prf_salt: str) -> str:
+    def setup_encryption(
+        self, user_id: str, credential_id: str, kek_b64: str, prf_salt: str
+    ) -> str:
         """
         Generate a new DEK, wrap it with the provided KEK, and store the wrapped DEK.
 
@@ -51,7 +55,7 @@ class EncryptionService:
         self._encryption_repo.store_wrapped_dek(user_id, credential_id, wrapped, prf_salt)
         logger.info(f"Encryption set up for user {user_id}, credential {credential_id[:8]}...")
 
-        return base64.b64encode(dek).decode('ascii')
+        return base64.b64encode(dek).decode("ascii")
 
     def unwrap_dek(self, user_id: str, credential_id: str, kek_b64: str) -> str:
         """
@@ -65,14 +69,17 @@ class EncryptionService:
         """
         wrapped_dek = self._encryption_repo.get_wrapped_dek(user_id, credential_id)
         if not wrapped_dek:
-            raise ValueError(f"No wrapped DEK found for user {user_id}, credential {credential_id[:8]}...")
+            raise ValueError(
+                f"No wrapped DEK found for user {user_id}, credential {credential_id[:8]}..."
+            )
 
         kek = base64.b64decode(kek_b64)
         dek = unwrap_key(wrapped_dek, kek)
-        return base64.b64encode(dek).decode('ascii')
+        return base64.b64encode(dek).decode("ascii")
 
-    def add_passkey_wrapper(self, user_id: str, credential_id: str,
-                            dek_b64: str, kek_b64: str, prf_salt: str) -> None:
+    def add_passkey_wrapper(
+        self, user_id: str, credential_id: str, dek_b64: str, kek_b64: str, prf_salt: str
+    ) -> None:
         """Wrap an existing DEK with a new KEK (for additional passkeys)."""
         dek = base64.b64decode(dek_b64)
         kek = base64.b64decode(kek_b64)
@@ -90,12 +97,18 @@ class EncryptionService:
     # WebAuthn credential management
     # =========================================================================
 
-    def store_credential(self, user_id: str, credential_id: str,
-                         public_key: bytes, sign_count: int,
-                         device_name: Optional[str] = None) -> None:
+    def store_credential(
+        self,
+        user_id: str,
+        credential_id: str,
+        public_key: bytes,
+        sign_count: int,
+        device_name: Optional[str] = None,
+    ) -> None:
         """Store a WebAuthn credential."""
-        self._encryption_repo.store_credential(user_id, credential_id, public_key,
-                                    sign_count, device_name)
+        self._encryption_repo.store_credential(
+            user_id, credential_id, public_key, sign_count, device_name
+        )
 
     def get_credential(self, credential_id: str) -> Optional[dict]:
         """Get a WebAuthn credential by credential_id."""

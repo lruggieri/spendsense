@@ -2,14 +2,18 @@
 Tests for SQLiteCategoryDataSource CRUD operations.
 """
 
-import unittest
-import tempfile
 import os
 import sqlite3
+import tempfile
+import unittest
 
-from infrastructure.persistence.sqlite.repositories.category_repository import SQLiteCategoryDataSource
-from infrastructure.persistence.sqlite.repositories.manual_assignment_repository import SQLiteManualAssignmentDataSource
 from domain.entities.category import Category
+from infrastructure.persistence.sqlite.repositories.category_repository import (
+    SQLiteCategoryDataSource,
+)
+from infrastructure.persistence.sqlite.repositories.manual_assignment_repository import (
+    SQLiteManualAssignmentDataSource,
+)
 
 
 class TestCategoryDataSourceCRUD(unittest.TestCase):
@@ -17,7 +21,7 @@ class TestCategoryDataSourceCRUD(unittest.TestCase):
 
     def setUp(self):
         """Create a temporary database for testing."""
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.db_path = self.temp_db.name
         self.temp_db.close()
 
@@ -221,10 +225,13 @@ class TestCategoryDataSourceCRUD(unittest.TestCase):
         # Add a regex pattern
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO regexps (id, raw, name, internal_category, user_id)
             VALUES (?, ?, ?, ?, ?)
-        """, ("regex1", ".*market.*", "Market purchases", "groceries", self.user_id))
+        """,
+            ("regex1", ".*market.*", "Market purchases", "groceries", self.user_id),
+        )
         conn.commit()
         conn.close()
 
@@ -247,14 +254,20 @@ class TestCategoryDataSourceCRUD(unittest.TestCase):
         # Add multiple regex patterns
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO regexps (id, raw, name, internal_category, user_id)
             VALUES (?, ?, ?, ?, ?)
-        """, ("regex1", ".*market.*", "Market purchases", "groceries", self.user_id))
-        cursor.execute("""
+        """,
+            ("regex1", ".*market.*", "Market purchases", "groceries", self.user_id),
+        )
+        cursor.execute(
+            """
             INSERT INTO regexps (id, raw, name, internal_category, user_id)
             VALUES (?, ?, ?, ?, ?)
-        """, ("regex2", ".*grocery.*", "Grocery purchases", "groceries", self.user_id))
+        """,
+            ("regex2", ".*grocery.*", "Grocery purchases", "groceries", self.user_id),
+        )
         conn.commit()
         conn.close()
 
@@ -305,5 +318,5 @@ class TestCategoryDataSourceCRUD(unittest.TestCase):
         self.assertIsNone(cat1_from_user2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

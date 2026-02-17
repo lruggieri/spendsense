@@ -26,7 +26,7 @@ class SQLiteEncryptionRepository(EncryptionRepository):
         conn = sqlite3.connect(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
-        cursor.execute('''
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS encryption_keys (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id TEXT NOT NULL,
@@ -36,14 +36,14 @@ class SQLiteEncryptionRepository(EncryptionRepository):
                 wrapper_type TEXT DEFAULT 'prf',
                 created_at TEXT NOT NULL
             )
-        ''')
+        """)
 
-        cursor.execute('''
+        cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_encryption_keys_user_credential
             ON encryption_keys (user_id, credential_id)
-        ''')
+        """)
 
-        cursor.execute('''
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS webauthn_credentials (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id TEXT NOT NULL,
@@ -53,7 +53,7 @@ class SQLiteEncryptionRepository(EncryptionRepository):
                 device_name TEXT,
                 created_at TEXT NOT NULL
             )
-        ''')
+        """)
 
         conn.commit()
         conn.close()
@@ -62,18 +62,26 @@ class SQLiteEncryptionRepository(EncryptionRepository):
     # Encryption keys (wrapped DEKs)
     # =========================================================================
 
-    def store_wrapped_dek(self, user_id: str, credential_id: str,
-                          wrapped_dek: bytes, prf_salt: str,
-                          wrapper_type: str = 'prf') -> None:
+    def store_wrapped_dek(
+        self,
+        user_id: str,
+        credential_id: str,
+        wrapped_dek: bytes,
+        prf_salt: str,
+        wrapper_type: str = "prf",
+    ) -> None:
         """Store a wrapped DEK for a user/credential pair."""
         conn = sqlite3.connect(self.db_filepath)
         cursor = get_logging_cursor(conn)
-        now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        cursor.execute('''
+        cursor.execute(
+            """
             INSERT INTO encryption_keys (user_id, credential_id, wrapped_dek, prf_salt, wrapper_type, created_at)
             VALUES (?, ?, ?, ?, ?, ?)
-        ''', (user_id, credential_id, wrapped_dek, prf_salt, wrapper_type, now))
+        """,
+            (user_id, credential_id, wrapped_dek, prf_salt, wrapper_type, now),
+        )
 
         conn.commit()
         conn.close()
@@ -84,14 +92,17 @@ class SQLiteEncryptionRepository(EncryptionRepository):
         conn.row_factory = sqlite3.Row
         cursor = get_logging_cursor(conn)
 
-        cursor.execute('''
+        cursor.execute(
+            """
             SELECT wrapped_dek FROM encryption_keys
             WHERE user_id = ? AND credential_id = ?
-        ''', (user_id, credential_id))
+        """,
+            (user_id, credential_id),
+        )
 
         row = cursor.fetchone()
         conn.close()
-        return bytes(row['wrapped_dek']) if row else None
+        return bytes(row["wrapped_dek"]) if row else None
 
     def get_wrapped_deks_for_user(self, user_id: str) -> List[dict]:
         """Get all wrapped DEKs for a user."""
@@ -99,10 +110,13 @@ class SQLiteEncryptionRepository(EncryptionRepository):
         conn.row_factory = sqlite3.Row
         cursor = get_logging_cursor(conn)
 
-        cursor.execute('''
+        cursor.execute(
+            """
             SELECT credential_id, wrapped_dek, prf_salt, wrapper_type, created_at
             FROM encryption_keys WHERE user_id = ?
-        ''', (user_id,))
+        """,
+            (user_id,),
+        )
 
         rows = cursor.fetchall()
         conn.close()
@@ -113,9 +127,12 @@ class SQLiteEncryptionRepository(EncryptionRepository):
         conn = sqlite3.connect(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
-        cursor.execute('''
+        cursor.execute(
+            """
             DELETE FROM encryption_keys WHERE user_id = ? AND credential_id = ?
-        ''', (user_id, credential_id))
+        """,
+            (user_id, credential_id),
+        )
 
         conn.commit()
         conn.close()
@@ -126,32 +143,43 @@ class SQLiteEncryptionRepository(EncryptionRepository):
         conn.row_factory = sqlite3.Row
         cursor = get_logging_cursor(conn)
 
-        cursor.execute('''
+        cursor.execute(
+            """
             SELECT prf_salt FROM encryption_keys
             WHERE user_id = ? AND credential_id = ?
-        ''', (user_id, credential_id))
+        """,
+            (user_id, credential_id),
+        )
 
         row = cursor.fetchone()
         conn.close()
-        return row['prf_salt'] if row else None
+        return row["prf_salt"] if row else None
 
     # =========================================================================
     # WebAuthn credentials
     # =========================================================================
 
-    def store_credential(self, user_id: str, credential_id: str,
-                         public_key: bytes, sign_count: int,
-                         device_name: Optional[str] = None) -> None:
+    def store_credential(
+        self,
+        user_id: str,
+        credential_id: str,
+        public_key: bytes,
+        sign_count: int,
+        device_name: Optional[str] = None,
+    ) -> None:
         """Store a WebAuthn credential."""
         conn = sqlite3.connect(self.db_filepath)
         cursor = get_logging_cursor(conn)
-        now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        cursor.execute('''
+        cursor.execute(
+            """
             INSERT INTO webauthn_credentials
             (user_id, credential_id, public_key, sign_count, device_name, created_at)
             VALUES (?, ?, ?, ?, ?, ?)
-        ''', (user_id, credential_id, public_key, sign_count, device_name, now))
+        """,
+            (user_id, credential_id, public_key, sign_count, device_name, now),
+        )
 
         conn.commit()
         conn.close()
@@ -162,10 +190,13 @@ class SQLiteEncryptionRepository(EncryptionRepository):
         conn.row_factory = sqlite3.Row
         cursor = get_logging_cursor(conn)
 
-        cursor.execute('''
+        cursor.execute(
+            """
             SELECT user_id, credential_id, public_key, sign_count, device_name, created_at
             FROM webauthn_credentials WHERE credential_id = ?
-        ''', (credential_id,))
+        """,
+            (credential_id,),
+        )
 
         row = cursor.fetchone()
         conn.close()
@@ -177,10 +208,13 @@ class SQLiteEncryptionRepository(EncryptionRepository):
         conn.row_factory = sqlite3.Row
         cursor = get_logging_cursor(conn)
 
-        cursor.execute('''
+        cursor.execute(
+            """
             SELECT credential_id, public_key, sign_count, device_name, created_at
             FROM webauthn_credentials WHERE user_id = ?
-        ''', (user_id,))
+        """,
+            (user_id,),
+        )
 
         rows = cursor.fetchall()
         conn.close()
@@ -191,9 +225,12 @@ class SQLiteEncryptionRepository(EncryptionRepository):
         conn = sqlite3.connect(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
-        cursor.execute('''
+        cursor.execute(
+            """
             UPDATE webauthn_credentials SET sign_count = ? WHERE credential_id = ?
-        ''', (sign_count, credential_id))
+        """,
+            (sign_count, credential_id),
+        )
 
         conn.commit()
         conn.close()
@@ -203,9 +240,12 @@ class SQLiteEncryptionRepository(EncryptionRepository):
         conn = sqlite3.connect(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
-        cursor.execute('''
+        cursor.execute(
+            """
             DELETE FROM webauthn_credentials WHERE credential_id = ?
-        ''', (credential_id,))
+        """,
+            (credential_id,),
+        )
 
         conn.commit()
         conn.close()

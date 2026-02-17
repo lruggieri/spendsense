@@ -12,4 +12,3 @@ class ManualAssignmentSource(ABC):
         Returns:
             dict[str, str]: A dictionary mapping transaction IDs to category IDs
         """
-        pass

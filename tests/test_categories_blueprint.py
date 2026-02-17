@@ -1,4 +1,5 @@
 """Tests for the categories blueprint routes."""
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,12 +13,12 @@ def mock_services():
     mock_category_service.categories = {}
 
     patches = {
-        'cat': patch(
-            'presentation.web.blueprints.categories.get_category_service',
+        "cat": patch(
+            "presentation.web.blueprints.categories.get_category_service",
             return_value=mock_category_service,
         ),
-        'invalidate': patch(
-            'presentation.web.blueprints.categories.invalidate_service_cache',
+        "invalidate": patch(
+            "presentation.web.blueprints.categories.invalidate_service_cache",
         ),
     }
 
@@ -26,8 +27,8 @@ def mock_services():
         started[key] = p.start()
 
     yield {
-        'category_service': mock_category_service,
-        'patches': started,
+        "category_service": mock_category_service,
+        "patches": started,
     }
 
     for p in patches.values():
@@ -39,5 +40,5 @@ class TestCategoriesBlueprint:
 
     def test_categories_page_loads(self, authenticated_client, mock_services):
         """GET /categories should return 200."""
-        response = authenticated_client.get('/categories')
+        response = authenticated_client.get("/categories")
         assert response.status_code == 200

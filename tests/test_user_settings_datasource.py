@@ -1,16 +1,20 @@
 """Tests for SQLiteUserSettingsDataSource."""
-import unittest
-import tempfile
+
 import os
 import sqlite3
-from infrastructure.persistence.sqlite.repositories.user_settings_repository import SQLiteUserSettingsDataSource
+import tempfile
+import unittest
+
 from domain.entities.user_settings import UserSettings
+from infrastructure.persistence.sqlite.repositories.user_settings_repository import (
+    SQLiteUserSettingsDataSource,
+)
 
 
 class TestUserSettingsDataSource(unittest.TestCase):
     def setUp(self):
         """Create temporary database for each test."""
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.db_path = self.temp_db.name
         self.temp_db.close()
         self.user_id = "test_user@example.com"
@@ -38,11 +42,11 @@ class TestUserSettingsDataSource(unittest.TestCase):
         cursor.execute("PRAGMA table_info(user_settings)")
         columns = {row[1]: row[2] for row in cursor.fetchall()}
 
-        self.assertIn('user_id', columns)
-        self.assertIn('display_language', columns)
-        self.assertIn('default_currency', columns)
-        self.assertIn('created_at', columns)
-        self.assertIn('updated_at', columns)
+        self.assertIn("user_id", columns)
+        self.assertIn("display_language", columns)
+        self.assertIn("default_currency", columns)
+        self.assertIn("created_at", columns)
+        self.assertIn("updated_at", columns)
 
         conn.close()
 
@@ -52,8 +56,8 @@ class TestUserSettingsDataSource(unittest.TestCase):
 
         self.assertIsInstance(settings, UserSettings)
         self.assertEqual(settings.user_id, self.user_id)
-        self.assertEqual(settings.language, 'en')
-        self.assertEqual(settings.currency, 'USD')
+        self.assertEqual(settings.language, "en")
+        self.assertEqual(settings.currency, "USD")
         self.assertIsNone(settings.created_at)
         self.assertIsNone(settings.updated_at)
 
@@ -62,11 +66,14 @@ class TestUserSettingsDataSource(unittest.TestCase):
         # Insert directly to DB with DB column names
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        cursor.execute('''
+        cursor.execute(
+            """
             INSERT INTO user_settings
             (user_id, display_language, default_currency, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?)
-        ''', (self.user_id, 'es', 'EUR', '2025-01-04T10:00:00Z', '2025-01-04T10:00:00Z'))
+        """,
+            (self.user_id, "es", "EUR", "2025-01-04T10:00:00Z", "2025-01-04T10:00:00Z"),
+        )
         conn.commit()
         conn.close()
 
@@ -74,18 +81,14 @@ class TestUserSettingsDataSource(unittest.TestCase):
         settings = self.datasource.get_settings()
 
         # Should use entity field names, not DB column names
-        self.assertEqual(settings.language, 'es')  # Not display_language
-        self.assertEqual(settings.currency, 'EUR')  # Not default_currency
+        self.assertEqual(settings.language, "es")  # Not display_language
+        self.assertEqual(settings.currency, "EUR")  # Not default_currency
         self.assertIsNotNone(settings.created_at)
         self.assertIsNotNone(settings.updated_at)
 
     def test_update_settings_creates_new_record(self):
         """Should insert new settings when they don't exist."""
-        settings = UserSettings(
-            user_id=self.user_id,
-            language='es',
-            currency='EUR'
-        )
+        settings = UserSettings(user_id=self.user_id, language="es", currency="EUR")
 
         success, error = self.datasource.update_settings(settings)
 
@@ -94,19 +97,19 @@ class TestUserSettingsDataSource(unittest.TestCase):
 
         # Verify in database
         retrieved = self.datasource.get_settings()
-        self.assertEqual(retrieved.language, 'es')
-        self.assertEqual(retrieved.currency, 'EUR')
+        self.assertEqual(retrieved.language, "es")
+        self.assertEqual(retrieved.currency, "EUR")
         self.assertIsNotNone(retrieved.created_at)
         self.assertIsNotNone(retrieved.updated_at)
 
     def test_update_settings_updates_existing_record(self):
         """Should update existing settings."""
         # Create initial settings
-        initial = UserSettings(user_id=self.user_id, language='en', currency='USD')
+        initial = UserSettings(user_id=self.user_id, language="en", currency="USD")
         self.datasource.update_settings(initial)
 
         # Update settings
-        updated = UserSettings(user_id=self.user_id, language='fr', currency='EUR')
+        updated = UserSettings(user_id=self.user_id, language="fr", currency="EUR")
         success, error = self.datasource.update_settings(updated)
 
         self.assertTrue(success)
@@ -114,15 +117,13 @@ class TestUserSettingsDataSource(unittest.TestCase):
 
         # Verify update
         retrieved = self.datasource.get_settings()
-        self.assertEqual(retrieved.language, 'fr')
-        self.assertEqual(retrieved.currency, 'EUR')
+        self.assertEqual(retrieved.language, "fr")
+        self.assertEqual(retrieved.currency, "EUR")
 
     def test_update_settings_maps_entity_fields_to_db_columns(self):
         """Should map entity field names to DB column names."""
         settings = UserSettings(
-            user_id=self.user_id,
-            language='ja',  # Entity field
-            currency='JPY'  # Entity field
+            user_id=self.user_id, language="ja", currency="JPY"  # Entity field  # Entity field
         )
 
         success, error = self.datasource.update_settings(settings)
@@ -131,13 +132,15 @@ class TestUserSettingsDataSource(unittest.TestCase):
         # Verify DB has correct column names
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        cursor.execute('SELECT display_language, default_currency FROM user_settings WHERE user_id = ?',
-                      (self.user_id,))
+        cursor.execute(
+            "SELECT display_language, default_currency FROM user_settings WHERE user_id = ?",
+            (self.user_id,),
+        )
         row = cursor.fetchone()
         conn.close()
 
-        self.assertEqual(row[0], 'ja')  # DB column: display_language
-        self.assertEqual(row[1], 'JPY')  # DB column: default_currency
+        self.assertEqual(row[0], "ja")  # DB column: display_language
+        self.assertEqual(row[1], "JPY")  # DB column: default_currency
 
     def test_repository_persists_without_validation(self):
         """
@@ -145,21 +148,13 @@ class TestUserSettingsDataSource(unittest.TestCase):
         Validation is now handled at the service layer.
         """
         # Test that repository accepts and persists any language value
-        settings1 = UserSettings(
-            user_id=self.user_id,
-            language='invalid',
-            currency='USD'
-        )
+        settings1 = UserSettings(user_id=self.user_id, language="invalid", currency="USD")
         success1, error1 = self.datasource.update_settings(settings1)
         self.assertTrue(success1)
         self.assertEqual(error1, "")
 
         # Test that repository accepts and persists any currency value
-        settings2 = UserSettings(
-            user_id=self.user_id,
-            language='en',
-            currency='INVALID'
-        )
+        settings2 = UserSettings(user_id=self.user_id, language="en", currency="INVALID")
         success2, error2 = self.datasource.update_settings(settings2)
         self.assertTrue(success2)
         self.assertEqual(error2, "")
@@ -167,16 +162,16 @@ class TestUserSettingsDataSource(unittest.TestCase):
     def test_validation_accepts_valid_values(self):
         """Should accept all valid language and currency codes."""
         valid_combinations = [
-            ('en', 'USD'), ('es', 'EUR'), ('fr', 'GBP'),
-            ('de', 'CHF'), ('it', 'JPY'), ('pt', 'CNY')
+            ("en", "USD"),
+            ("es", "EUR"),
+            ("fr", "GBP"),
+            ("de", "CHF"),
+            ("it", "JPY"),
+            ("pt", "CNY"),
         ]
 
         for language, currency in valid_combinations:
-            settings = UserSettings(
-                user_id=self.user_id,
-                language=language,
-                currency=currency
-            )
+            settings = UserSettings(user_id=self.user_id, language=language, currency=currency)
 
             success, error = self.datasource.update_settings(settings)
             self.assertTrue(success, f"Failed for {language}/{currency}: {error}")
@@ -190,8 +185,8 @@ class TestUserSettingsDataSource(unittest.TestCase):
         datasource2 = SQLiteUserSettingsDataSource(self.db_path, user2_id)
 
         # Set different settings for each user
-        settings1 = UserSettings(user_id=user1_id, language='en', currency='USD')
-        settings2 = UserSettings(user_id=user2_id, language='es', currency='EUR')
+        settings1 = UserSettings(user_id=user1_id, language="en", currency="USD")
+        settings2 = UserSettings(user_id=user2_id, language="es", currency="EUR")
 
         datasource1.update_settings(settings1)
         datasource2.update_settings(settings2)
@@ -200,14 +195,14 @@ class TestUserSettingsDataSource(unittest.TestCase):
         retrieved1 = datasource1.get_settings()
         retrieved2 = datasource2.get_settings()
 
-        self.assertEqual(retrieved1.language, 'en')
-        self.assertEqual(retrieved1.currency, 'USD')
-        self.assertEqual(retrieved2.language, 'es')
-        self.assertEqual(retrieved2.currency, 'EUR')
+        self.assertEqual(retrieved1.language, "en")
+        self.assertEqual(retrieved1.currency, "USD")
+        self.assertEqual(retrieved2.language, "es")
+        self.assertEqual(retrieved2.currency, "EUR")
 
     def test_timestamps_are_set_correctly(self):
         """Should set created_at and updated_at timestamps."""
-        settings = UserSettings(user_id=self.user_id, language='en', currency='USD')
+        settings = UserSettings(user_id=self.user_id, language="en", currency="USD")
 
         self.datasource.update_settings(settings)
         retrieved = self.datasource.get_settings()
@@ -227,7 +222,7 @@ class TestUserSettingsDataSource(unittest.TestCase):
         columns = [row[1] for row in cursor.fetchall()]
         conn.close()
 
-        self.assertIn('llm_call_timestamps', columns)
+        self.assertIn("llm_call_timestamps", columns)
 
     def test_get_llm_call_timestamps_returns_empty_list_for_new_user(self):
         """Should return empty list for user without timestamps."""
@@ -236,7 +231,9 @@ class TestUserSettingsDataSource(unittest.TestCase):
 
     def test_update_llm_call_timestamps_stores_timestamps(self):
         """Should store and retrieve LLM call timestamps."""
-        from datetime import datetime as dt, timezone
+        from datetime import datetime as dt
+        from datetime import timezone
+
         now = dt.now(timezone.utc)
         timestamps = [now]
 
@@ -251,7 +248,9 @@ class TestUserSettingsDataSource(unittest.TestCase):
 
     def test_update_llm_call_timestamps_creates_record_if_not_exists(self):
         """Should create user settings record if it doesn't exist."""
-        from datetime import datetime as dt, timezone
+        from datetime import datetime as dt
+        from datetime import timezone
+
         new_user_id = "new_user@example.com"
         new_datasource = SQLiteUserSettingsDataSource(self.db_path, new_user_id)
 
@@ -263,13 +262,15 @@ class TestUserSettingsDataSource(unittest.TestCase):
         # Verify record was created with default values
         settings = new_datasource.get_settings()
         self.assertEqual(settings.user_id, new_user_id)
-        self.assertEqual(settings.language, 'en')
-        self.assertEqual(settings.currency, 'USD')
+        self.assertEqual(settings.language, "en")
+        self.assertEqual(settings.currency, "USD")
         self.assertEqual(len(settings.llm_call_timestamps), 1)
 
     def test_update_llm_call_timestamps_preserves_multiple_timestamps(self):
         """Should correctly store and retrieve multiple timestamps."""
-        from datetime import datetime as dt, timezone, timedelta
+        from datetime import datetime as dt
+        from datetime import timedelta, timezone
+
         base_time = dt.now(timezone.utc)
         timestamps = [base_time - timedelta(hours=i) for i in range(5)]
 
@@ -281,7 +282,9 @@ class TestUserSettingsDataSource(unittest.TestCase):
 
     def test_settings_entity_includes_llm_call_timestamps(self):
         """Should include llm_call_timestamps in UserSettings entity."""
-        from datetime import datetime as dt, timezone
+        from datetime import datetime as dt
+        from datetime import timezone
+
         now = dt.now(timezone.utc)
 
         # Update timestamps
@@ -294,7 +297,9 @@ class TestUserSettingsDataSource(unittest.TestCase):
 
     def test_update_settings_preserves_llm_call_timestamps(self):
         """Should preserve llm_call_timestamps when updating other settings."""
-        from datetime import datetime as dt, timezone
+        from datetime import datetime as dt
+        from datetime import timezone
+
         now = dt.now(timezone.utc)
 
         # First, add some timestamps
@@ -302,18 +307,15 @@ class TestUserSettingsDataSource(unittest.TestCase):
 
         # Then update language/currency
         settings = UserSettings(
-            user_id=self.user_id,
-            language='es',
-            currency='EUR',
-            llm_call_timestamps=[now]
+            user_id=self.user_id, language="es", currency="EUR", llm_call_timestamps=[now]
         )
         self.datasource.update_settings(settings)
 
         # Verify timestamps are preserved
         retrieved = self.datasource.get_settings()
-        self.assertEqual(retrieved.language, 'es')
+        self.assertEqual(retrieved.language, "es")
         self.assertEqual(len(retrieved.llm_call_timestamps), 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

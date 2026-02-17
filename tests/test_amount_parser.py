@@ -6,7 +6,7 @@ from pathlib import Path
 # Add parent directory to path to enable imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from domain.services.amount_parser import parse_amount, _detect_locale
+from domain.services.amount_parser import _detect_locale, parse_amount
 
 
 def test_european_format_with_comma_decimal():

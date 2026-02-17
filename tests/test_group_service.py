@@ -12,22 +12,29 @@ Tests cover:
 """
 
 import os
-import tempfile
 import sqlite3
+import tempfile
 import unittest
 from datetime import datetime, timezone
 
+from application.services.category_service import CategoryService
 from application.services.group_service import GroupService
 from application.services.transaction_service import TransactionService
-from application.services.category_service import CategoryService
 from application.services.user_settings_service import UserSettingsService
 from domain.entities.transaction import Transaction
-from infrastructure.persistence.sqlite.repositories.transaction_repository import SQLiteTransactionDataSource
-from infrastructure.persistence.sqlite.repositories.manual_assignment_repository import SQLiteManualAssignmentDataSource
-from infrastructure.persistence.sqlite.repositories.category_repository import SQLiteCategoryDataSource
+from infrastructure.persistence.sqlite.repositories.category_repository import (
+    SQLiteCategoryDataSource,
+)
 from infrastructure.persistence.sqlite.repositories.group_repository import SQLiteGroupDataSource
-from infrastructure.persistence.sqlite.repositories.user_settings_repository import SQLiteUserSettingsDataSource
-
+from infrastructure.persistence.sqlite.repositories.manual_assignment_repository import (
+    SQLiteManualAssignmentDataSource,
+)
+from infrastructure.persistence.sqlite.repositories.transaction_repository import (
+    SQLiteTransactionDataSource,
+)
+from infrastructure.persistence.sqlite.repositories.user_settings_repository import (
+    SQLiteUserSettingsDataSource,
+)
 
 USER_ID = "test_user"
 
@@ -36,44 +43,45 @@ class TestGroupService(unittest.TestCase):
     """Test suite for GroupService with real SQLite database."""
 
     def setUp(self):
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.db_path = self.temp_db.name
         self.temp_db.close()
-        os.environ['DATABASE_PATH'] = self.db_path
+        os.environ["DATABASE_PATH"] = self.db_path
 
         # Create all needed tables
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        cursor.execute('''CREATE TABLE IF NOT EXISTS categories (
+        cursor.execute("""CREATE TABLE IF NOT EXISTS categories (
             id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL,
-            parent_id TEXT DEFAULT '', user_id TEXT)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS transactions (
+            parent_id TEXT DEFAULT '', user_id TEXT)""")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS transactions (
             id TEXT PRIMARY KEY, date TEXT NOT NULL, amount INTEGER NOT NULL,
             description TEXT NOT NULL, source TEXT NOT NULL, comment TEXT DEFAULT '',
             user_id TEXT, groups TEXT DEFAULT '[]', updated_at TEXT,
             mail_id TEXT, currency TEXT NOT NULL DEFAULT 'JPY',
-            created_at TEXT NOT NULL DEFAULT (datetime('now')), fetcher_id TEXT)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS manual_assignments (
-            tx_id TEXT PRIMARY KEY, category_id TEXT NOT NULL, user_id TEXT)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS regexps (
+            created_at TEXT NOT NULL DEFAULT (datetime('now')), fetcher_id TEXT)""")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS manual_assignments (
+            tx_id TEXT PRIMARY KEY, category_id TEXT NOT NULL, user_id TEXT)""")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS regexps (
             id TEXT PRIMARY KEY, raw TEXT NOT NULL, name TEXT NOT NULL,
             internal_category TEXT NOT NULL, user_id TEXT,
-            order_index INTEGER NOT NULL DEFAULT 0, visual_description TEXT)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS groups (
-            id TEXT PRIMARY KEY, name TEXT NOT NULL, user_id TEXT NOT NULL)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS embeddings (
+            order_index INTEGER NOT NULL DEFAULT 0, visual_description TEXT)""")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS groups (
+            id TEXT PRIMARY KEY, name TEXT NOT NULL, user_id TEXT NOT NULL)""")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS embeddings (
             tx_id TEXT PRIMARY KEY, user_id TEXT NOT NULL,
             embedding BLOB NOT NULL, description_hash TEXT NOT NULL,
-            created_at TEXT NOT NULL)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS user_settings (
+            created_at TEXT NOT NULL)""")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS user_settings (
             user_id TEXT PRIMARY KEY, display_language TEXT DEFAULT 'en',
             default_currency TEXT DEFAULT 'USD', browser_settings TEXT,
-            created_at TEXT, updated_at TEXT, llm_call_timestamps TEXT DEFAULT '[]')''')
+            created_at TEXT, updated_at TEXT, llm_call_timestamps TEXT DEFAULT '[]')""")
 
         # Seed a category
         cursor.execute(
             "INSERT INTO categories (id, name, description, parent_id, user_id) VALUES (?, ?, ?, ?, ?)",
-            ("food", "Food", "Food expenses", "", USER_ID))
+            ("food", "Food", "Food expenses", "", USER_ID),
+        )
 
         conn.commit()
         conn.close()
@@ -94,19 +102,19 @@ class TestGroupService(unittest.TestCase):
             manual_assignment_datasource=self.ma_ds,
             category_service=self.category_service,
             user_settings_service=self.user_settings_service,
-            db_path=self.db_path
+            db_path=self.db_path,
         )
 
         self.service = GroupService(
             user_id=USER_ID,
             group_datasource=self.group_ds,
             transaction_service=self.transaction_service,
-            db_path=self.db_path
+            db_path=self.db_path,
         )
 
     def tearDown(self):
-        if 'DATABASE_PATH' in os.environ:
-            del os.environ['DATABASE_PATH']
+        if "DATABASE_PATH" in os.environ:
+            del os.environ["DATABASE_PATH"]
         if os.path.exists(self.db_path):
             os.unlink(self.db_path)
 
@@ -120,18 +128,36 @@ class TestGroupService(unittest.TestCase):
     def _add_sample_transactions(self):
         """Add sample transactions for testing."""
         txs = [
-            Transaction(id="tx1", date=datetime(2025, 1, 15, 10, 0, 0, tzinfo=timezone.utc),
-                        amount=1000, description="Lunch", category="food",
-                        source="Test", currency="JPY",
-                        created_at=datetime.now(timezone.utc)),
-            Transaction(id="tx2", date=datetime(2025, 2, 20, 14, 30, 0, tzinfo=timezone.utc),
-                        amount=500, description="Coffee", category="food",
-                        source="Test", currency="JPY",
-                        created_at=datetime.now(timezone.utc)),
-            Transaction(id="tx3", date=datetime(2025, 3, 10, 9, 0, 0, tzinfo=timezone.utc),
-                        amount=2000, description="Dinner", category="food",
-                        source="Test", currency="JPY",
-                        created_at=datetime.now(timezone.utc)),
+            Transaction(
+                id="tx1",
+                date=datetime(2025, 1, 15, 10, 0, 0, tzinfo=timezone.utc),
+                amount=1000,
+                description="Lunch",
+                category="food",
+                source="Test",
+                currency="JPY",
+                created_at=datetime.now(timezone.utc),
+            ),
+            Transaction(
+                id="tx2",
+                date=datetime(2025, 2, 20, 14, 30, 0, tzinfo=timezone.utc),
+                amount=500,
+                description="Coffee",
+                category="food",
+                source="Test",
+                currency="JPY",
+                created_at=datetime.now(timezone.utc),
+            ),
+            Transaction(
+                id="tx3",
+                date=datetime(2025, 3, 10, 9, 0, 0, tzinfo=timezone.utc),
+                amount=2000,
+                description="Dinner",
+                category="food",
+                source="Test",
+                currency="JPY",
+                created_at=datetime.now(timezone.utc),
+            ),
         ]
         self.tx_ds.add_transactions_batch(txs)
 
@@ -331,7 +357,8 @@ class TestGroupService(unittest.TestCase):
         self.assertTrue(success)
 
         success, error, count = self.service.add_transactions_to_group(
-            ["tx1", "tx2", "tx3"], group_id)
+            ["tx1", "tx2", "tx3"], group_id
+        )
         self.assertTrue(success)
         self.assertEqual(count, 3)
 
@@ -344,7 +371,8 @@ class TestGroupService(unittest.TestCase):
         """Test bulk adding transactions to nonexistent group."""
         self._add_sample_transactions()
         success, error, count = self.service.add_transactions_to_group(
-            ["tx1", "tx2"], "nonexistent")
+            ["tx1", "tx2"], "nonexistent"
+        )
         self.assertFalse(success)
         self.assertEqual(count, 0)
 
@@ -361,7 +389,8 @@ class TestGroupService(unittest.TestCase):
 
         # Remove some
         success, error, count = self.service.remove_transactions_from_group(
-            ["tx1", "tx3"], group_id)
+            ["tx1", "tx3"], group_id
+        )
         self.assertTrue(success)
         self.assertEqual(count, 2)
 
@@ -374,5 +403,5 @@ class TestGroupService(unittest.TestCase):
         self.assertNotIn(group_id, tx3.groups)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -1,10 +1,10 @@
 """Gemini LLM provider implementation for transaction pattern generation."""
 
+import logging
 import os
 import re
-from typing import Dict, Optional
-import logging
 from pathlib import Path
+from typing import Dict, Optional
 
 try:
     from google import genai
@@ -27,9 +27,9 @@ class GeminiProvider(BaseLLMProvider):
         prompt_file = current_dir / "pattern_generation_prompt.txt"
 
         try:
-            prompt_template = prompt_file.read_text(encoding='utf-8')
+            prompt_template = prompt_file.read_text(encoding="utf-8")
             # Use replace instead of format() to avoid issues with {} in regex examples
-            return prompt_template.replace('{email_text}', email_text)
+            return prompt_template.replace("{email_text}", email_text)
         except FileNotFoundError:
             raise LLMProviderError(f"Prompt template file not found: {prompt_file}")
         except Exception as e:
@@ -48,18 +48,15 @@ class GeminiProvider(BaseLLMProvider):
         """
         if genai is None:
             raise ImportError(
-                "google-genai package not installed. "
-                "Install with: pip install google-genai"
+                "google-genai package not installed. " "Install with: pip install google-genai"
             )
 
-        self.api_key = api_key or os.getenv('GEMINI_API_KEY')
+        self.api_key = api_key or os.getenv("GEMINI_API_KEY")
         if not self.api_key:
-            raise ValueError(
-                "Gemini API key not found. Set GEMINI_API_KEY environment variable."
-            )
+            raise ValueError("Gemini API key not found. Set GEMINI_API_KEY environment variable.")
 
         self.client = genai.Client(api_key=self.api_key)
-        self.model_name = 'gemini-flash-latest'
+        self.model_name = "gemini-flash-latest"
 
     def generate_patterns(self, email_text: str) -> Dict[str, Optional[str]]:
         """
@@ -78,11 +75,7 @@ class GeminiProvider(BaseLLMProvider):
         try:
             prompt = self._build_prompt(email_text)
             response = self.client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config={
-                    'temperature': 0
-                }
+                model=self.model_name, contents=prompt, config={"temperature": 0}
             )
 
             if not response.text:
@@ -114,16 +107,12 @@ class GeminiProvider(BaseLLMProvider):
         Raises:
             PatternParsingError: If patterns cannot be extracted
         """
-        patterns = {
-            'amount_pattern': None,
-            'merchant_pattern': None,
-            'currency_pattern': None
-        }
+        patterns = {"amount_pattern": None, "merchant_pattern": None, "currency_pattern": None}
 
         # Extract patterns using regex
-        amount_match = re.search(r'AMOUNT_PATTERN:\s*(.+)', response_text)
-        merchant_match = re.search(r'MERCHANT_PATTERN:\s*(.+)', response_text)
-        currency_match = re.search(r'CURRENCY_PATTERN:\s*(.+)', response_text)
+        amount_match = re.search(r"AMOUNT_PATTERN:\s*(.+)", response_text)
+        merchant_match = re.search(r"MERCHANT_PATTERN:\s*(.+)", response_text)
+        currency_match = re.search(r"CURRENCY_PATTERN:\s*(.+)", response_text)
 
         # Check that all required pattern lines are present in response (even if value is "None")
         if not amount_match or not merchant_match or not currency_match:
@@ -140,17 +129,17 @@ class GeminiProvider(BaseLLMProvider):
 
         # Parse pattern values (may be "None")
         amount_str = amount_match.group(1).strip()
-        patterns['amount_pattern'] = None if amount_str.lower() == 'none' else amount_str
+        patterns["amount_pattern"] = None if amount_str.lower() == "none" else amount_str
 
         merchant_str = merchant_match.group(1).strip()
-        patterns['merchant_pattern'] = None if merchant_str.lower() == 'none' else merchant_str
+        patterns["merchant_pattern"] = None if merchant_str.lower() == "none" else merchant_str
 
         currency_str = currency_match.group(1).strip()
-        patterns['currency_pattern'] = None if currency_str.lower() == 'none' else currency_str
+        patterns["currency_pattern"] = None if currency_str.lower() == "none" else currency_str
 
         # Validate pattern combinations
         # Case 1: No transaction data - all patterns are None (valid)
-        if patterns['amount_pattern'] is None and patterns['merchant_pattern'] is None:
+        if patterns["amount_pattern"] is None and patterns["merchant_pattern"] is None:
             # This is valid - email contains no transaction data
             return patterns
 

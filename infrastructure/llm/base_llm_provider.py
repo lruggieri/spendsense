@@ -23,14 +23,11 @@ class BaseLLMProvider(ABC):
             LLMProviderError: If the LLM request fails
             PatternParsingError: If the LLM response cannot be parsed
         """
-        pass
 
 
 class LLMProviderError(Exception):
     """Raised when LLM provider request fails."""
-    pass
 
 
 class PatternParsingError(Exception):
     """Raised when LLM response cannot be parsed."""
-    pass

@@ -16,17 +16,18 @@ Tests cover:
 """
 
 import os
-import tempfile
 import sqlite3
+import tempfile
 import unittest
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 from application.services.classification_service import ClassificationService
-from domain.entities.transaction import Transaction, CategorySource, ENCRYPTED_PLACEHOLDER
-from infrastructure.persistence.sqlite.repositories.manual_assignment_repository import SQLiteManualAssignmentDataSource
+from domain.entities.transaction import ENCRYPTED_PLACEHOLDER, CategorySource, Transaction
+from infrastructure.persistence.sqlite.repositories.manual_assignment_repository import (
+    SQLiteManualAssignmentDataSource,
+)
 from infrastructure.persistence.sqlite.repositories.regexp_repository import SQLiteRegexpDataSource
-
 
 USER_ID = "test_user"
 
@@ -35,54 +36,57 @@ class TestClassificationService(unittest.TestCase):
     """Test suite for ClassificationService with real SQLite database."""
 
     def setUp(self):
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.db_path = self.temp_db.name
         self.temp_db.close()
-        os.environ['DATABASE_PATH'] = self.db_path
+        os.environ["DATABASE_PATH"] = self.db_path
 
         # Create needed tables
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        cursor.execute('''CREATE TABLE IF NOT EXISTS categories (
+        cursor.execute("""CREATE TABLE IF NOT EXISTS categories (
             id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL,
-            parent_id TEXT DEFAULT '', user_id TEXT)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS transactions (
+            parent_id TEXT DEFAULT '', user_id TEXT)""")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS transactions (
             id TEXT PRIMARY KEY, date TEXT NOT NULL, amount INTEGER NOT NULL,
             description TEXT NOT NULL, source TEXT NOT NULL, comment TEXT DEFAULT '',
             user_id TEXT, groups TEXT DEFAULT '[]', updated_at TEXT,
             mail_id TEXT, currency TEXT NOT NULL DEFAULT 'JPY',
-            created_at TEXT NOT NULL DEFAULT (datetime('now')), fetcher_id TEXT)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS manual_assignments (
-            tx_id TEXT PRIMARY KEY, category_id TEXT NOT NULL, user_id TEXT)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS regexps (
+            created_at TEXT NOT NULL DEFAULT (datetime('now')), fetcher_id TEXT)""")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS manual_assignments (
+            tx_id TEXT PRIMARY KEY, category_id TEXT NOT NULL, user_id TEXT)""")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS regexps (
             id TEXT PRIMARY KEY, raw TEXT NOT NULL, name TEXT NOT NULL,
             internal_category TEXT NOT NULL, user_id TEXT,
-            order_index INTEGER NOT NULL DEFAULT 0, visual_description TEXT)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS groups (
-            id TEXT PRIMARY KEY, name TEXT NOT NULL, user_id TEXT NOT NULL)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS embeddings (
+            order_index INTEGER NOT NULL DEFAULT 0, visual_description TEXT)""")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS groups (
+            id TEXT PRIMARY KEY, name TEXT NOT NULL, user_id TEXT NOT NULL)""")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS embeddings (
             tx_id TEXT PRIMARY KEY, user_id TEXT NOT NULL,
             embedding BLOB NOT NULL, description_hash TEXT NOT NULL,
-            created_at TEXT NOT NULL)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS user_settings (
+            created_at TEXT NOT NULL)""")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS user_settings (
             user_id TEXT PRIMARY KEY, display_language TEXT DEFAULT 'en',
             default_currency TEXT DEFAULT 'USD', browser_settings TEXT,
-            created_at TEXT, updated_at TEXT, llm_call_timestamps TEXT DEFAULT '[]')''')
+            created_at TEXT, updated_at TEXT, llm_call_timestamps TEXT DEFAULT '[]')""")
 
         # Seed a manual assignment
         cursor.execute(
             "INSERT INTO manual_assignments (tx_id, category_id, user_id) VALUES (?, ?, ?)",
-            ("tx_manual", "food", USER_ID))
+            ("tx_manual", "food", USER_ID),
+        )
 
         # Seed regex patterns
         cursor.execute(
             "INSERT INTO regexps (id, raw, name, internal_category, user_id, order_index, visual_description) "
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            ("regex1", ".*train.*", "Train Pattern", "transport", USER_ID, 0, ""))
+            ("regex1", ".*train.*", "Train Pattern", "transport", USER_ID, 0, ""),
+        )
         cursor.execute(
             "INSERT INTO regexps (id, raw, name, internal_category, user_id, order_index, visual_description) "
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            ("regex2", ".*coffee.*", "Coffee Pattern", "food", USER_ID, 1, ""))
+            ("regex2", ".*coffee.*", "Coffee Pattern", "food", USER_ID, 1, ""),
+        )
 
         conn.commit()
         conn.close()
@@ -99,12 +103,12 @@ class TestClassificationService(unittest.TestCase):
             regexp_datasource=self.regexp_ds,
             embedding_datasource=self.mock_embedding_ds,
             db_path=self.db_path,
-            skip_similarity=True
+            skip_similarity=True,
         )
 
     def tearDown(self):
-        if 'DATABASE_PATH' in os.environ:
-            del os.environ['DATABASE_PATH']
+        if "DATABASE_PATH" in os.environ:
+            del os.environ["DATABASE_PATH"]
         if os.path.exists(self.db_path):
             os.unlink(self.db_path)
 
@@ -161,18 +165,30 @@ class TestClassificationService(unittest.TestCase):
             "tx_manual": Transaction(
                 id="tx_manual",
                 date=datetime(2025, 1, 1, tzinfo=timezone.utc),
-                amount=1000, description="Sushi", category="",
-                source="Test", currency="JPY"),
+                amount=1000,
+                description="Sushi",
+                category="",
+                source="Test",
+                currency="JPY",
+            ),
             "tx_regexp": Transaction(
                 id="tx_regexp",
                 date=datetime(2025, 1, 2, tzinfo=timezone.utc),
-                amount=500, description="Train ticket", category="",
-                source="Test", currency="JPY"),
+                amount=500,
+                description="Train ticket",
+                category="",
+                source="Test",
+                currency="JPY",
+            ),
             "tx_none": Transaction(
                 id="tx_none",
                 date=datetime(2025, 1, 3, tzinfo=timezone.utc),
-                amount=2000, description="Mystery", category="",
-                source="Test", currency="JPY"),
+                amount=2000,
+                description="Mystery",
+                category="",
+                source="Test",
+                currency="JPY",
+            ),
         }
         result = self.service.classify_transactions(transactions)
 
@@ -191,8 +207,12 @@ class TestClassificationService(unittest.TestCase):
             "tx_manual": Transaction(
                 id="tx_manual",
                 date=datetime(2025, 1, 1, tzinfo=timezone.utc),
-                amount=1000, description="Lunch", category="old_category",
-                source="Test", currency="JPY"),
+                amount=1000,
+                description="Lunch",
+                category="old_category",
+                source="Test",
+                currency="JPY",
+            ),
         }
         result = self.service.recategorize_all(transactions)
         self.assertEqual(result["tx_manual"].category, "food")
@@ -226,7 +246,8 @@ class TestClassificationService(unittest.TestCase):
         cursor.execute(
             "INSERT INTO regexps (id, raw, name, internal_category, user_id, order_index, visual_description) "
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            ("regex3", ".*pizza.*", "Pizza Pattern", "food", USER_ID, 2, ""))
+            ("regex3", ".*pizza.*", "Pizza Pattern", "food", USER_ID, 2, ""),
+        )
         conn.commit()
         conn.close()
 
@@ -261,7 +282,7 @@ class TestClassificationService(unittest.TestCase):
             regexp_datasource=self.regexp_ds,
             embedding_datasource=None,
             db_path=self.db_path,
-            skip_similarity=True
+            skip_similarity=True,
         )
         # Should not raise
         service.invalidate_embedding("tx_manual")
@@ -288,7 +309,7 @@ class TestClassificationService(unittest.TestCase):
             regexp_datasource=self.regexp_ds,
             embedding_datasource=self.mock_embedding_ds,
             db_path=self.db_path,
-            similarity_calculator=mock_calculator
+            similarity_calculator=mock_calculator,
         )
         self.assertTrue(service.has_similarity_calculator)
 
@@ -297,13 +318,10 @@ class TestClassificationService(unittest.TestCase):
     def test_investigate_similarity_no_calculator(self):
         """Test investigate_similarity when no similarity calculator available."""
         result = self.service.investigate_similarity(
-            tx_id="tx1",
-            description="Test description",
-            transactions={},
-            categories={}
+            tx_id="tx1", description="Test description", transactions={}, categories={}
         )
-        self.assertFalse(result['success'])
-        self.assertIn("not available", result['error'])
+        self.assertFalse(result["success"])
+        self.assertIn("not available", result["error"])
 
     def test_investigate_similarity_success(self):
         """Test investigate_similarity with a working similarity calculator."""
@@ -320,15 +338,19 @@ class TestClassificationService(unittest.TestCase):
             regexp_datasource=self.regexp_ds,
             embedding_datasource=self.mock_embedding_ds,
             db_path=self.db_path,
-            similarity_calculator=mock_calculator
+            similarity_calculator=mock_calculator,
         )
 
         # Set manual descriptions so the classifier knows about them
         ref_tx = Transaction(
             id="tx_ref1",
             date=datetime(2025, 1, 1, tzinfo=timezone.utc),
-            amount=1000, description="Reference lunch",
-            category="food", source="Test", currency="JPY")
+            amount=1000,
+            description="Reference lunch",
+            category="food",
+            source="Test",
+            currency="JPY",
+        )
 
         transactions = {"tx_ref1": ref_tx}
 
@@ -337,7 +359,8 @@ class TestClassificationService(unittest.TestCase):
         cursor = conn.cursor()
         cursor.execute(
             "INSERT OR REPLACE INTO manual_assignments (tx_id, category_id, user_id) VALUES (?, ?, ?)",
-            ("tx_ref1", "food", USER_ID))
+            ("tx_ref1", "food", USER_ID),
+        )
         conn.commit()
         conn.close()
 
@@ -349,28 +372,31 @@ class TestClassificationService(unittest.TestCase):
             regexp_datasource=self.regexp_ds,
             embedding_datasource=self.mock_embedding_ds,
             db_path=self.db_path,
-            similarity_calculator=mock_calculator
+            similarity_calculator=mock_calculator,
         )
 
         # Set manual descriptions
         service.set_manual_descriptions({"tx_manual": "Sushi", "tx_ref1": "Reference lunch"})
 
         from domain.entities.category import Category
+
         categories = {"food": Category("food", "Food", "Food category", "")}
 
         result = service.investigate_similarity(
             tx_id="tx_test",
             description="Lunch somewhere",
             transactions=transactions,
-            categories=categories
+            categories=categories,
         )
 
-        self.assertTrue(result['success'])
-        self.assertEqual(result['threshold'], 0.7)
+        self.assertTrue(result["success"])
+        self.assertEqual(result["threshold"], 0.7)
         # tx_ref1 should be in similar_transactions (score 0.85 >= 0.7)
-        self.assertEqual(len(result['similar_transactions']), 1)
-        self.assertEqual(result['similar_transactions'][0]['tx_id'], "tx_ref1")
-        self.assertAlmostEqual(result['similar_transactions'][0]['similarity_score'], 0.85, places=2)
+        self.assertEqual(len(result["similar_transactions"]), 1)
+        self.assertEqual(result["similar_transactions"][0]["tx_id"], "tx_ref1")
+        self.assertAlmostEqual(
+            result["similar_transactions"][0]["similarity_score"], 0.85, places=2
+        )
 
     # --- embedding_datasource property ---
 
@@ -384,37 +410,39 @@ class TestClassificationServiceEncryptedTransactions(unittest.TestCase):
     """Test suite for encrypted transaction handling in classify_transactions."""
 
     def setUp(self):
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.db_path = self.temp_db.name
         self.temp_db.close()
-        os.environ['DATABASE_PATH'] = self.db_path
+        os.environ["DATABASE_PATH"] = self.db_path
 
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        cursor.execute('''CREATE TABLE IF NOT EXISTS categories (
+        cursor.execute("""CREATE TABLE IF NOT EXISTS categories (
             id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL,
-            parent_id TEXT DEFAULT '', user_id TEXT)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS manual_assignments (
-            tx_id TEXT PRIMARY KEY, category_id TEXT NOT NULL, user_id TEXT)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS regexps (
+            parent_id TEXT DEFAULT '', user_id TEXT)""")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS manual_assignments (
+            tx_id TEXT PRIMARY KEY, category_id TEXT NOT NULL, user_id TEXT)""")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS regexps (
             id TEXT PRIMARY KEY, raw TEXT NOT NULL, name TEXT NOT NULL,
             internal_category TEXT NOT NULL, user_id TEXT,
-            order_index INTEGER NOT NULL DEFAULT 0, visual_description TEXT)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS embeddings (
+            order_index INTEGER NOT NULL DEFAULT 0, visual_description TEXT)""")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS embeddings (
             tx_id TEXT PRIMARY KEY, user_id TEXT NOT NULL,
             embedding BLOB NOT NULL, description_hash TEXT NOT NULL,
-            created_at TEXT NOT NULL)''')
+            created_at TEXT NOT NULL)""")
 
         # Seed manual assignment for an encrypted tx
         cursor.execute(
             "INSERT INTO manual_assignments (tx_id, category_id, user_id) VALUES (?, ?, ?)",
-            ("tx_enc_manual", "food", USER_ID))
+            ("tx_enc_manual", "food", USER_ID),
+        )
 
         # Seed regex pattern
         cursor.execute(
             "INSERT INTO regexps (id, raw, name, internal_category, user_id, order_index, visual_description) "
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            ("regex1", ".*coffee.*", "Coffee Pattern", "food", USER_ID, 0, ""))
+            ("regex1", ".*coffee.*", "Coffee Pattern", "food", USER_ID, 0, ""),
+        )
 
         conn.commit()
         conn.close()
@@ -433,8 +461,8 @@ class TestClassificationServiceEncryptedTransactions(unittest.TestCase):
         )
 
     def tearDown(self):
-        if 'DATABASE_PATH' in os.environ:
-            del os.environ['DATABASE_PATH']
+        if "DATABASE_PATH" in os.environ:
+            del os.environ["DATABASE_PATH"]
         if os.path.exists(self.db_path):
             os.unlink(self.db_path)
 
@@ -442,13 +470,19 @@ class TestClassificationServiceEncryptedTransactions(unittest.TestCase):
         return Transaction(
             id=tx_id,
             date=datetime(2025, 1, 1, tzinfo=timezone.utc),
-            amount=1000, description=description, category="",
-            source="Test", currency="JPY", encrypted=encrypted,
+            amount=1000,
+            description=description,
+            category="",
+            source="Test",
+            currency="JPY",
+            encrypted=encrypted,
         )
 
     def test_encrypted_tx_with_manual_assignment_gets_none(self):
         """Encrypted placeholder gets no classification, even with a manual assignment."""
-        txs = {"tx_enc_manual": self._make_tx("tx_enc_manual", ENCRYPTED_PLACEHOLDER, encrypted=True)}
+        txs = {
+            "tx_enc_manual": self._make_tx("tx_enc_manual", ENCRYPTED_PLACEHOLDER, encrypted=True)
+        }
         result = self.service.classify_transactions(txs)
         self.assertIsNone(result["tx_enc_manual"].category)
         self.assertIsNone(result["tx_enc_manual"].category_source)
@@ -468,7 +502,8 @@ class TestClassificationServiceEncryptedTransactions(unittest.TestCase):
         cursor.execute(
             "INSERT INTO regexps (id, raw, name, internal_category, user_id, order_index, visual_description) "
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            ("regex_enc", ".*Encrypted.*", "Encrypted Pattern", "misc", USER_ID, 1, ""))
+            ("regex_enc", ".*Encrypted.*", "Encrypted Pattern", "misc", USER_ID, 1, ""),
+        )
         conn.commit()
         conn.close()
 
@@ -548,5 +583,5 @@ class TestClassificationServiceEncryptedTransactions(unittest.TestCase):
         self.assertEqual(descriptions_arg["tx_plain"], "Real description")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

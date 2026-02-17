@@ -5,7 +5,8 @@ This module provides an abstract interface for regex pattern storage, allowing e
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
+
 from domain.entities.regexp import Regexp
 
 
@@ -20,7 +21,6 @@ class RegexpRepository(ABC):
         Returns:
             List of Regexp objects ordered by order_index (ascending)
         """
-        pass
 
     @abstractmethod
     def get_regexp_by_id(self, regexp_id: str) -> Optional[Regexp]:
@@ -33,7 +33,6 @@ class RegexpRepository(ABC):
         Returns:
             Regexp object or None if not found
         """
-        pass
 
     @abstractmethod
     def get_regexps_for_category(self, category_id: str) -> List[Regexp]:
@@ -46,7 +45,6 @@ class RegexpRepository(ABC):
         Returns:
             List of Regexp objects ordered by order_index (ascending)
         """
-        pass
 
     @abstractmethod
     def get_all_regexps_with_metadata(self) -> List[Regexp]:
@@ -59,11 +57,17 @@ class RegexpRepository(ABC):
         Note:
             This method is equivalent to get_all_regexps() but kept for backward compatibility.
         """
-        pass
 
     @abstractmethod
-    def create_regexp(self, regexp_id: str, raw: str, name: str,
-                      visual_description: str, category: str, order_index: int) -> bool:
+    def create_regexp(
+        self,
+        regexp_id: str,
+        raw: str,
+        name: str,
+        visual_description: str,
+        category: str,
+        order_index: int,
+    ) -> bool:
         """
         Create a new regexp pattern.
 
@@ -78,11 +82,16 @@ class RegexpRepository(ABC):
         Returns:
             True if successful, False otherwise
         """
-        pass
 
     @abstractmethod
-    def update_regexp(self, regexp_id: str, raw: str = None, name: str = None,
-                      visual_description: str = None, category: str = None) -> bool:
+    def update_regexp(
+        self,
+        regexp_id: str,
+        raw: str = None,
+        name: str = None,
+        visual_description: str = None,
+        category: str = None,
+    ) -> bool:
         """
         Update an existing regexp pattern.
 
@@ -99,7 +108,6 @@ class RegexpRepository(ABC):
         Note:
             order_index is NOT updated here - use reorder_regexps() for that
         """
-        pass
 
     @abstractmethod
     def delete_regexp(self, regexp_id: str) -> bool:
@@ -112,7 +120,6 @@ class RegexpRepository(ABC):
         Returns:
             True if successful, False otherwise
         """
-        pass
 
     @abstractmethod
     def reorder_regexps(self, order_updates: List[Tuple[str, int]]) -> bool:
@@ -125,7 +132,6 @@ class RegexpRepository(ABC):
         Returns:
             True if successful, False otherwise
         """
-        pass
 
     @abstractmethod
     def get_max_order_index(self) -> int:
@@ -135,4 +141,3 @@ class RegexpRepository(ABC):
         Returns:
             Maximum order_index, or 0 if no patterns exist
         """
-        pass

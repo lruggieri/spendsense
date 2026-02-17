@@ -10,12 +10,12 @@ from application.services.transaction_service import TransactionService
 from application.services.user_settings_service import UserSettingsService
 
 __all__ = [
-    'CategoryService',
-    'ClassificationService',
-    'EncryptionService',
-    'FetcherService',
-    'GroupService',
-    'PatternService',
-    'TransactionService',
-    'UserSettingsService',
+    "CategoryService",
+    "ClassificationService",
+    "EncryptionService",
+    "FetcherService",
+    "GroupService",
+    "PatternService",
+    "TransactionService",
+    "UserSettingsService",
 ]

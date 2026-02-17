@@ -3,9 +3,11 @@ SQLite datasource for embeddings.
 """
 
 import sqlite3
-import numpy as np
-from typing import Dict, List, Tuple
 from datetime import datetime, timezone
+from typing import Dict, List, Tuple
+
+import numpy as np
+
 from domain.repositories.embedding_repository import EmbeddingRepository
 from infrastructure.db_query_logger import get_logging_cursor
 
@@ -63,8 +65,7 @@ class SQLiteEmbeddingDataSource(EmbeddingRepository):
             conn.close()
 
     def get_cached_embeddings(
-        self,
-        transactions: List[Tuple[str, str]]
+        self, transactions: List[Tuple[str, str]]
     ) -> Tuple[Dict[str, np.ndarray], List[Tuple[str, str]]]:
         """
         Load embeddings from cache for transactions whose descriptions haven't changed.
@@ -102,13 +103,16 @@ class SQLiteEmbeddingDataSource(EmbeddingRepository):
             cached_results = {}
 
             for i in range(0, len(tx_ids), CHUNK_SIZE):
-                chunk = tx_ids[i:i + CHUNK_SIZE]
-                placeholders = ','.join('?' * len(chunk))
-                cursor.execute(f"""
+                chunk = tx_ids[i : i + CHUNK_SIZE]
+                placeholders = ",".join("?" * len(chunk))
+                cursor.execute(
+                    f"""
                     SELECT tx_id, embedding, description_hash
                     FROM embeddings
                     WHERE tx_id IN ({placeholders}) AND user_id = ?
-                """, chunk + [self.user_id])
+                """,
+                    chunk + [self.user_id],
+                )
 
                 # Merge results from this chunk
                 for row in cursor.fetchall():
@@ -160,18 +164,21 @@ class SQLiteEmbeddingDataSource(EmbeddingRepository):
                     self.user_id,
                     embedding.astype(np.float32).tobytes(),
                     self.get_description_hash(description),
-                    now
+                    now,
                 )
                 for tx_id, (embedding, description) in embeddings.items()
             ]
 
             # Insert in chunks
             for i in range(0, len(batch_data), CHUNK_SIZE):
-                chunk = batch_data[i:i + CHUNK_SIZE]
-                cursor.executemany("""
+                chunk = batch_data[i : i + CHUNK_SIZE]
+                cursor.executemany(
+                    """
                     INSERT OR REPLACE INTO embeddings (tx_id, user_id, embedding, description_hash, created_at)
                     VALUES (?, ?, ?, ?, ?)
-                """, chunk)
+                """,
+                    chunk,
+                )
 
             conn.commit()
 
@@ -192,10 +199,13 @@ class SQLiteEmbeddingDataSource(EmbeddingRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 DELETE FROM embeddings
                 WHERE tx_id = ? AND user_id = ?
-            """, (tx_id, self.user_id))
+            """,
+                (tx_id, self.user_id),
+            )
             conn.commit()
 
             return cursor.rowcount > 0
@@ -241,9 +251,11 @@ class SQLiteEmbeddingDataSource(EmbeddingRepository):
             total_transactions = cursor.fetchone()[0]
 
             return {
-                'total_cached': total_cached,
-                'total_transactions': total_transactions,
-                'cache_hit_rate': (total_cached / total_transactions * 100) if total_transactions > 0 else 0
+                "total_cached": total_cached,
+                "total_transactions": total_transactions,
+                "cache_hit_rate": (
+                    (total_cached / total_transactions * 100) if total_transactions > 0 else 0
+                ),
             }
 
         finally:

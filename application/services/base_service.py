@@ -3,6 +3,7 @@ Base service class providing common functionality for all services.
 """
 
 import logging
+
 from config import get_database_path
 
 logger = logging.getLogger(__name__)

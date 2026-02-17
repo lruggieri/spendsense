@@ -1,4 +1,5 @@
 """Tests for the SQLite session repository."""
+
 import base64
 import json
 import os
@@ -7,14 +8,16 @@ import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 
-from infrastructure.persistence.sqlite.repositories.session_repository import SQLiteSessionDataSource
+from infrastructure.persistence.sqlite.repositories.session_repository import (
+    SQLiteSessionDataSource,
+)
 
 
 class TestSQLiteSessionRepository(unittest.TestCase):
     """Tests for SQLiteSessionDataSource session management."""
 
     def setUp(self):
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.db_path = self.temp_db.name
         self.temp_db.close()
 
@@ -165,14 +168,14 @@ class TestSQLiteSessionRepository(unittest.TestCase):
 
 def _generate_test_key() -> str:
     """Generate a base64-encoded 256-bit key for testing."""
-    return base64.b64encode(os.urandom(32)).decode('ascii')
+    return base64.b64encode(os.urandom(32)).decode("ascii")
 
 
 class TestEncryptedSessions(unittest.TestCase):
     """Tests for google_token encryption in sessions."""
 
     def setUp(self):
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.db_path = self.temp_db.name
         self.temp_db.close()
         self.ds = SQLiteSessionDataSource(self.db_path)
@@ -187,7 +190,9 @@ class TestEncryptedSessions(unittest.TestCase):
         """Create session with encryption, retrieve with key — roundtrip."""
         expiration = datetime.now(timezone.utc) + timedelta(days=7)
         google_token = {"access_token": "tok123", "refresh_token": "ref456"}
-        token = self.ds.create_session(self.user_id, google_token, expiration, encryption_key=self.key)
+        token = self.ds.create_session(
+            self.user_id, google_token, expiration, encryption_key=self.key
+        )
 
         session = self.ds.get_session(token, encryption_key=self.key)
         self.assertIsNotNone(session)
@@ -196,18 +201,26 @@ class TestEncryptedSessions(unittest.TestCase):
     def test_get_session_encrypted_without_key(self):
         """Get encrypted session without key — fallback to user_id/empty picture."""
         expiration = datetime.now(timezone.utc) + timedelta(days=7)
-        google_token = {"access_token": "tok123", "user_name": "John Doe", "user_picture": "http://pic"}
-        token = self.ds.create_session(self.user_id, google_token, expiration, encryption_key=self.key)
+        google_token = {
+            "access_token": "tok123",
+            "user_name": "John Doe",
+            "user_picture": "http://pic",
+        }
+        token = self.ds.create_session(
+            self.user_id, google_token, expiration, encryption_key=self.key
+        )
 
         session = self.ds.get_session(token)  # no key
         self.assertIsNotNone(session)
-        self.assertEqual(session.google_token['user_name'], self.user_id)
-        self.assertEqual(session.google_token['user_picture'], '')
+        self.assertEqual(session.google_token["user_name"], self.user_id)
+        self.assertEqual(session.google_token["user_picture"], "")
 
     def test_update_google_token_encrypted(self):
         """Update token with encryption — preserves encryption."""
         expiration = datetime.now(timezone.utc) + timedelta(days=7)
-        token = self.ds.create_session(self.user_id, {"access_token": "old"}, expiration, encryption_key=self.key)
+        token = self.ds.create_session(
+            self.user_id, {"access_token": "old"}, expiration, encryption_key=self.key
+        )
 
         new_token = {"access_token": "refreshed", "refresh_token": "new_ref"}
         result = self.ds.update_google_token(token, new_token, encryption_key=self.key)
@@ -231,13 +244,15 @@ class TestEncryptedSessions(unittest.TestCase):
 
         # Without key should get fallback
         session_no_key = self.ds.get_session(token)
-        self.assertEqual(session_no_key.google_token['user_name'], self.user_id)
+        self.assertEqual(session_no_key.google_token["user_name"], self.user_id)
 
     def test_decrypt_google_token_migration(self):
         """Decrypt encrypted session token back to plaintext."""
         expiration = datetime.now(timezone.utc) + timedelta(days=7)
         google_token = {"access_token": "tok", "user_name": "Test"}
-        token = self.ds.create_session(self.user_id, google_token, expiration, encryption_key=self.key)
+        token = self.ds.create_session(
+            self.user_id, google_token, expiration, encryption_key=self.key
+        )
 
         result = self.ds.decrypt_google_token(token, self.key)
         self.assertTrue(result)
@@ -259,7 +274,9 @@ class TestEncryptedSessions(unittest.TestCase):
     def test_encrypt_already_encrypted_noop(self):
         """encrypt_google_token on already-encrypted row returns False."""
         expiration = datetime.now(timezone.utc) + timedelta(days=7)
-        token = self.ds.create_session(self.user_id, {"t": "1"}, expiration, encryption_key=self.key)
+        token = self.ds.create_session(
+            self.user_id, {"t": "1"}, expiration, encryption_key=self.key
+        )
 
         result = self.ds.encrypt_google_token(token, self.key)
         self.assertFalse(result)
@@ -279,8 +296,8 @@ class TestEncryptedSessions(unittest.TestCase):
         cursor.execute("PRAGMA table_info(sessions)")
         columns = [row[1] for row in cursor.fetchall()]
         conn.close()
-        self.assertIn('encryption_version', columns)
+        self.assertIn("encryption_version", columns)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

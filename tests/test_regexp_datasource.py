@@ -2,10 +2,10 @@
 Tests for SQLiteRegexpDataSource CRUD operations.
 """
 
-import unittest
-import tempfile
 import os
 import sqlite3
+import tempfile
+import unittest
 
 from infrastructure.persistence.sqlite.repositories.regexp_repository import SQLiteRegexpDataSource
 
@@ -15,7 +15,7 @@ class TestRegexpDataSourceCRUD(unittest.TestCase):
 
     def setUp(self):
         """Create a temporary database and initialize datasource."""
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.db_path = self.temp_db.name
         self.temp_db.close()
 
@@ -58,7 +58,7 @@ class TestRegexpDataSourceCRUD(unittest.TestCase):
             name="Amazon purchases",
             visual_description='{"type":"visual_rule","version":1,"rules":[{"operator":"START_WITH","keyword":"amazon"}]}',
             category="shopping",
-            order_index=0
+            order_index=0,
         )
 
         self.assertTrue(success)
@@ -75,9 +75,9 @@ class TestRegexpDataSourceCRUD(unittest.TestCase):
             regexp_id="pattern1",
             raw="^amazon.*$",
             name="Amazon",
-            visual_description='{}',
+            visual_description="{}",
             category="shopping",
-            order_index=0
+            order_index=0,
         )
 
         # Try to create another with same ID
@@ -85,9 +85,9 @@ class TestRegexpDataSourceCRUD(unittest.TestCase):
             regexp_id="pattern1",
             raw="^ebay.*$",
             name="Ebay",
-            visual_description='{}',
+            visual_description="{}",
             category="shopping",
-            order_index=1
+            order_index=1,
         )
 
         self.assertFalse(success)
@@ -99,9 +99,9 @@ class TestRegexpDataSourceCRUD(unittest.TestCase):
             regexp_id="pattern1",
             raw="^amazon.*$",
             name="Amazon",
-            visual_description='{}',
+            visual_description="{}",
             category="shopping",
-            order_index=0
+            order_index=0,
         )
 
         # Update it
@@ -110,7 +110,7 @@ class TestRegexpDataSourceCRUD(unittest.TestCase):
             raw="^amazon(?=.*grocery).*$",
             name="Amazon Grocery",
             visual_description='{"rules":[{"operator":"START_WITH","keyword":"amazon"},{"operator":"AND","keyword":"grocery"}]}',
-            category="groceries"
+            category="groceries",
         )
 
         self.assertTrue(success)
@@ -126,16 +126,13 @@ class TestRegexpDataSourceCRUD(unittest.TestCase):
             regexp_id="pattern1",
             raw="^amazon.*$",
             name="Amazon",
-            visual_description='{}',
+            visual_description="{}",
             category="shopping",
-            order_index=0
+            order_index=0,
         )
 
         # Update only name
-        success = self.datasource.update_regexp(
-            regexp_id="pattern1",
-            name="Amazon Updated"
-        )
+        success = self.datasource.update_regexp(regexp_id="pattern1", name="Amazon Updated")
 
         self.assertTrue(success)
 
@@ -145,10 +142,7 @@ class TestRegexpDataSourceCRUD(unittest.TestCase):
 
     def test_update_regexp_nonexistent(self):
         """Test updating non-existent pattern."""
-        success = self.datasource.update_regexp(
-            regexp_id="nonexistent",
-            name="Test"
-        )
+        success = self.datasource.update_regexp(regexp_id="nonexistent", name="Test")
 
         self.assertFalse(success)
 
@@ -158,9 +152,9 @@ class TestRegexpDataSourceCRUD(unittest.TestCase):
             regexp_id="pattern1",
             raw="^amazon.*$",
             name="Amazon",
-            visual_description='{}',
+            visual_description="{}",
             category="shopping",
-            order_index=0
+            order_index=0,
         )
 
         success = self.datasource.delete_regexp("pattern1")
@@ -178,16 +172,14 @@ class TestRegexpDataSourceCRUD(unittest.TestCase):
     def test_reorder_regexps_success(self):
         """Test batch reordering of regexps."""
         # Create 3 patterns
-        self.datasource.create_regexp("pattern1", ".*a.*", "A", '{}', "cat1", 0)
-        self.datasource.create_regexp("pattern2", ".*b.*", "B", '{}', "cat2", 1)
-        self.datasource.create_regexp("pattern3", ".*c.*", "C", '{}', "cat3", 2)
+        self.datasource.create_regexp("pattern1", ".*a.*", "A", "{}", "cat1", 0)
+        self.datasource.create_regexp("pattern2", ".*b.*", "B", "{}", "cat2", 1)
+        self.datasource.create_regexp("pattern3", ".*c.*", "C", "{}", "cat3", 2)
 
         # Reorder: pattern3 first, pattern1 second, pattern2 third
-        success = self.datasource.reorder_regexps([
-            ("pattern3", 0),
-            ("pattern1", 1),
-            ("pattern2", 2)
-        ])
+        success = self.datasource.reorder_regexps(
+            [("pattern3", 0), ("pattern1", 1), ("pattern2", 2)]
+        )
 
         self.assertTrue(success)
 
@@ -200,9 +192,9 @@ class TestRegexpDataSourceCRUD(unittest.TestCase):
     def test_get_all_regexps_ordered(self):
         """Test that get_all_regexps returns patterns ordered by order_index."""
         # Create patterns in non-sequential order
-        self.datasource.create_regexp("pattern1", ".*a.*", "A", '{}', "cat1", 5)
-        self.datasource.create_regexp("pattern2", ".*b.*", "B", '{}', "cat2", 2)
-        self.datasource.create_regexp("pattern3", ".*c.*", "C", '{}', "cat3", 10)
+        self.datasource.create_regexp("pattern1", ".*a.*", "A", "{}", "cat1", 5)
+        self.datasource.create_regexp("pattern2", ".*b.*", "B", "{}", "cat2", 2)
+        self.datasource.create_regexp("pattern3", ".*c.*", "C", "{}", "cat3", 10)
 
         patterns = self.datasource.get_all_regexps()
 
@@ -219,8 +211,8 @@ class TestRegexpDataSourceCRUD(unittest.TestCase):
         self.assertEqual(max_idx, 0)
 
         # Add patterns
-        self.datasource.create_regexp("pattern1", ".*a.*", "A", '{}', "cat1", 5)
-        self.datasource.create_regexp("pattern2", ".*b.*", "B", '{}', "cat2", 10)
+        self.datasource.create_regexp("pattern1", ".*a.*", "A", "{}", "cat1", 5)
+        self.datasource.create_regexp("pattern2", ".*b.*", "B", "{}", "cat2", 10)
 
         max_idx = self.datasource.get_max_order_index()
         self.assertEqual(max_idx, 10)
@@ -231,9 +223,9 @@ class TestRegexpDataSourceCRUD(unittest.TestCase):
             regexp_id="pattern1",
             raw="^amazon.*$",
             name="Amazon",
-            visual_description='{}',
+            visual_description="{}",
             category="shopping",
-            order_index=0
+            order_index=0,
         )
 
         pattern = self.datasource.get_regexp_by_id("pattern1")
@@ -254,7 +246,7 @@ class TestRegexpDataSourceCRUD(unittest.TestCase):
         datasource_user2 = SQLiteRegexpDataSource(self.db_path, "user2")
 
         # Create pattern for user1
-        datasource_user1.create_regexp("pattern1", ".*a.*", "A", '{}', "cat1", 0)
+        datasource_user1.create_regexp("pattern1", ".*a.*", "A", "{}", "cat1", 0)
 
         # User2 should not see it
         patterns_user2 = datasource_user2.get_all_regexps()
@@ -265,5 +257,5 @@ class TestRegexpDataSourceCRUD(unittest.TestCase):
         self.assertEqual(len(patterns_user1), 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

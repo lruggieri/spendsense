@@ -11,22 +11,29 @@ Tests cover:
 """
 
 import os
-import tempfile
 import sqlite3
+import tempfile
 import unittest
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
-from application.services.transaction_service import TransactionService
 from application.services.category_service import CategoryService
+from application.services.transaction_service import TransactionService
 from application.services.user_settings_service import UserSettingsService
-from domain.entities.transaction import Transaction, CategorySource
 from domain.entities.category_tree import UNKNOWN_CATEGORY_ID
-from infrastructure.persistence.sqlite.repositories.transaction_repository import SQLiteTransactionDataSource
-from infrastructure.persistence.sqlite.repositories.manual_assignment_repository import SQLiteManualAssignmentDataSource
-from infrastructure.persistence.sqlite.repositories.category_repository import SQLiteCategoryDataSource
-from infrastructure.persistence.sqlite.repositories.user_settings_repository import SQLiteUserSettingsDataSource
-
+from domain.entities.transaction import CategorySource, Transaction
+from infrastructure.persistence.sqlite.repositories.category_repository import (
+    SQLiteCategoryDataSource,
+)
+from infrastructure.persistence.sqlite.repositories.manual_assignment_repository import (
+    SQLiteManualAssignmentDataSource,
+)
+from infrastructure.persistence.sqlite.repositories.transaction_repository import (
+    SQLiteTransactionDataSource,
+)
+from infrastructure.persistence.sqlite.repositories.user_settings_repository import (
+    SQLiteUserSettingsDataSource,
+)
 
 USER_ID = "test_user"
 
@@ -35,50 +42,53 @@ class TestTransactionServiceDDD(unittest.TestCase):
     """Test suite for TransactionService with real SQLite database."""
 
     def setUp(self):
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.db_path = self.temp_db.name
         self.temp_db.close()
-        os.environ['DATABASE_PATH'] = self.db_path
+        os.environ["DATABASE_PATH"] = self.db_path
 
         # Create all needed tables
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        cursor.execute('''CREATE TABLE IF NOT EXISTS categories (
+        cursor.execute("""CREATE TABLE IF NOT EXISTS categories (
             id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL,
-            parent_id TEXT DEFAULT '', user_id TEXT)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS transactions (
+            parent_id TEXT DEFAULT '', user_id TEXT)""")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS transactions (
             id TEXT PRIMARY KEY, date TEXT NOT NULL, amount INTEGER NOT NULL,
             description TEXT NOT NULL, source TEXT NOT NULL, comment TEXT DEFAULT '',
             user_id TEXT, groups TEXT DEFAULT '[]', updated_at TEXT,
             mail_id TEXT, currency TEXT NOT NULL DEFAULT 'JPY',
-            created_at TEXT NOT NULL DEFAULT (datetime('now')), fetcher_id TEXT)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS manual_assignments (
-            tx_id TEXT PRIMARY KEY, category_id TEXT NOT NULL, user_id TEXT)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS regexps (
+            created_at TEXT NOT NULL DEFAULT (datetime('now')), fetcher_id TEXT)""")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS manual_assignments (
+            tx_id TEXT PRIMARY KEY, category_id TEXT NOT NULL, user_id TEXT)""")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS regexps (
             id TEXT PRIMARY KEY, raw TEXT NOT NULL, name TEXT NOT NULL,
             internal_category TEXT NOT NULL, user_id TEXT,
-            order_index INTEGER NOT NULL DEFAULT 0, visual_description TEXT)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS groups (
-            id TEXT PRIMARY KEY, name TEXT NOT NULL, user_id TEXT NOT NULL)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS embeddings (
+            order_index INTEGER NOT NULL DEFAULT 0, visual_description TEXT)""")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS groups (
+            id TEXT PRIMARY KEY, name TEXT NOT NULL, user_id TEXT NOT NULL)""")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS embeddings (
             tx_id TEXT PRIMARY KEY, user_id TEXT NOT NULL,
             embedding BLOB NOT NULL, description_hash TEXT NOT NULL,
-            created_at TEXT NOT NULL)''')
-        cursor.execute('''CREATE TABLE IF NOT EXISTS user_settings (
+            created_at TEXT NOT NULL)""")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS user_settings (
             user_id TEXT PRIMARY KEY, display_language TEXT DEFAULT 'en',
             default_currency TEXT DEFAULT 'USD', browser_settings TEXT,
-            created_at TEXT, updated_at TEXT, llm_call_timestamps TEXT DEFAULT '[]')''')
+            created_at TEXT, updated_at TEXT, llm_call_timestamps TEXT DEFAULT '[]')""")
 
         # Seed categories
         cursor.execute(
             "INSERT INTO categories (id, name, description, parent_id, user_id) VALUES (?, ?, ?, ?, ?)",
-            ("food", "Food", "Food expenses", "", USER_ID))
+            ("food", "Food", "Food expenses", "", USER_ID),
+        )
         cursor.execute(
             "INSERT INTO categories (id, name, description, parent_id, user_id) VALUES (?, ?, ?, ?, ?)",
-            ("transport", "Transport", "Transport expenses", "", USER_ID))
+            ("transport", "Transport", "Transport expenses", "", USER_ID),
+        )
         cursor.execute(
             "INSERT INTO categories (id, name, description, parent_id, user_id) VALUES (?, ?, ?, ?, ?)",
-            ("restaurant", "Restaurant", "Restaurant expenses", "food", USER_ID))
+            ("restaurant", "Restaurant", "Restaurant expenses", "food", USER_ID),
+        )
 
         conn.commit()
         conn.close()
@@ -98,12 +108,12 @@ class TestTransactionServiceDDD(unittest.TestCase):
             manual_assignment_datasource=self.ma_ds,
             category_service=self.category_service,
             user_settings_service=self.user_settings_service,
-            db_path=self.db_path
+            db_path=self.db_path,
         )
 
     def tearDown(self):
-        if 'DATABASE_PATH' in os.environ:
-            del os.environ['DATABASE_PATH']
+        if "DATABASE_PATH" in os.environ:
+            del os.environ["DATABASE_PATH"]
         if os.path.exists(self.db_path):
             os.unlink(self.db_path)
 
@@ -112,21 +122,39 @@ class TestTransactionServiceDDD(unittest.TestCase):
     def _add_sample_transactions(self):
         """Add sample transactions to the database for testing."""
         txs = [
-            Transaction(id="tx1", date=datetime(2025, 1, 15, 10, 0, 0, tzinfo=timezone.utc),
-                        amount=1000, description="Sushi Lunch", category="food",
-                        source="Sony Bank", currency="JPY",
-                        category_source=CategorySource.MANUAL,
-                        created_at=datetime.now(timezone.utc)),
-            Transaction(id="tx2", date=datetime(2025, 2, 20, 14, 30, 0, tzinfo=timezone.utc),
-                        amount=500, description="Train ticket", category="transport",
-                        source="Amazon", currency="JPY",
-                        category_source=CategorySource.REGEXP,
-                        created_at=datetime.now(timezone.utc)),
-            Transaction(id="tx3", date=datetime(2025, 3, 10, 9, 0, 0, tzinfo=timezone.utc),
-                        amount=2000, description="Mystery purchase", category="",
-                        source="Sony Bank", currency="JPY",
-                        category_source=CategorySource.SIMILARITY,
-                        created_at=datetime.now(timezone.utc)),
+            Transaction(
+                id="tx1",
+                date=datetime(2025, 1, 15, 10, 0, 0, tzinfo=timezone.utc),
+                amount=1000,
+                description="Sushi Lunch",
+                category="food",
+                source="Sony Bank",
+                currency="JPY",
+                category_source=CategorySource.MANUAL,
+                created_at=datetime.now(timezone.utc),
+            ),
+            Transaction(
+                id="tx2",
+                date=datetime(2025, 2, 20, 14, 30, 0, tzinfo=timezone.utc),
+                amount=500,
+                description="Train ticket",
+                category="transport",
+                source="Amazon",
+                currency="JPY",
+                category_source=CategorySource.REGEXP,
+                created_at=datetime.now(timezone.utc),
+            ),
+            Transaction(
+                id="tx3",
+                date=datetime(2025, 3, 10, 9, 0, 0, tzinfo=timezone.utc),
+                amount=2000,
+                description="Mystery purchase",
+                category="",
+                source="Sony Bank",
+                currency="JPY",
+                category_source=CategorySource.SIMILARITY,
+                created_at=datetime.now(timezone.utc),
+            ),
         ]
         self.tx_ds.add_transactions_batch(txs)
         # Add manual assignments for tx1
@@ -176,7 +204,8 @@ class TestTransactionServiceDDD(unittest.TestCase):
         """Test filtering by date range."""
         self._add_sample_transactions()
         result = self.service.get_all_transactions_filtered(
-            from_date="2025-02-01", to_date="2025-02-28")
+            from_date="2025-02-01", to_date="2025-02-28"
+        )
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].id, "tx2")
 
@@ -295,8 +324,9 @@ class TestTransactionServiceDDD(unittest.TestCase):
         # Filter: regexp + date range that includes only tx3 (March)
         result = self.service.get_all_transactions_filtered(
             category_source="regexp",
-            from_date="2025-03-01", to_date="2025-03-31",
-            transactions=all_txs
+            from_date="2025-03-01",
+            to_date="2025-03-31",
+            transactions=all_txs,
         )
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].id, "tx3")
@@ -327,10 +357,7 @@ class TestTransactionServiceDDD(unittest.TestCase):
     def test_add_new_transaction_success(self):
         """Test adding a new transaction successfully."""
         success, error = self.service.add_new_transaction(
-            date_str="2025-06-15",
-            amount="1500",
-            description="Coffee shop",
-            currency="JPY"
+            date_str="2025-06-15", amount="1500", description="Coffee shop", currency="JPY"
         )
         self.assertTrue(success)
         self.assertEqual(error, "")
@@ -344,16 +371,19 @@ class TestTransactionServiceDDD(unittest.TestCase):
     def test_add_new_transaction_missing_fields(self):
         """Test adding transaction with missing required fields."""
         success, error = self.service.add_new_transaction(
-            date_str="", amount="1000", description="Test")
+            date_str="", amount="1000", description="Test"
+        )
         self.assertFalse(success)
         self.assertIn("required", error.lower())
 
         success, error = self.service.add_new_transaction(
-            date_str="2025-01-01", amount="", description="Test")
+            date_str="2025-01-01", amount="", description="Test"
+        )
         self.assertFalse(success)
 
         success, error = self.service.add_new_transaction(
-            date_str="2025-01-01", amount="1000", description="")
+            date_str="2025-01-01", amount="1000", description=""
+        )
         self.assertFalse(success)
 
     def test_add_new_transaction_invalid_currency(self):
@@ -362,7 +392,7 @@ class TestTransactionServiceDDD(unittest.TestCase):
             date_str="2025-06-15",
             amount="1500",
             description="Test purchase",
-            currency="INVALID_CURRENCY"
+            currency="INVALID_CURRENCY",
         )
         self.assertFalse(success)
         self.assertIn("Unsupported currency", error)
@@ -374,7 +404,7 @@ class TestTransactionServiceDDD(unittest.TestCase):
             amount="1500",
             description="Sushi dinner",
             category="food",
-            currency="JPY"
+            currency="JPY",
         )
         self.assertTrue(success)
         self.assertEqual(error, "")
@@ -396,7 +426,7 @@ class TestTransactionServiceDDD(unittest.TestCase):
             amount="500",
             description="Train ticket",
             currency="JPY",
-            classifier=mock_classifier
+            classifier=mock_classifier,
         )
         self.assertTrue(success)
         mock_classifier.classify.assert_called_once()
@@ -404,9 +434,7 @@ class TestTransactionServiceDDD(unittest.TestCase):
     def test_add_new_transaction_default_currency(self):
         """Test that default currency is used when none provided."""
         success, error = self.service.add_new_transaction(
-            date_str="2025-06-15",
-            amount="1500",
-            description="Coffee shop"
+            date_str="2025-06-15", amount="1500", description="Coffee shop"
         )
         self.assertTrue(success)
 
@@ -426,7 +454,7 @@ class TestTransactionServiceDDD(unittest.TestCase):
             amount="2000",
             description="Updated description",
             comment="Updated comment",
-            currency="JPY"
+            currency="JPY",
         )
         self.assertTrue(success)
         self.assertEqual(error, "")
@@ -445,7 +473,7 @@ class TestTransactionServiceDDD(unittest.TestCase):
             date_str="2025-01-15",
             amount="2000",
             description="Test",
-            comment=""
+            comment="",
         )
         self.assertFalse(success)
         self.assertIn("not found", error.lower())
@@ -462,7 +490,7 @@ class TestTransactionServiceDDD(unittest.TestCase):
             description="Completely new description",
             comment="",
             currency="JPY",
-            embedding_datasource=mock_embedding_ds
+            embedding_datasource=mock_embedding_ds,
         )
         self.assertTrue(success)
         mock_embedding_ds.invalidate_embedding.assert_called_once_with("tx1")
@@ -479,7 +507,7 @@ class TestTransactionServiceDDD(unittest.TestCase):
             description="Sushi Lunch",  # Same as original
             comment="",
             currency="JPY",
-            embedding_datasource=mock_embedding_ds
+            embedding_datasource=mock_embedding_ds,
         )
         self.assertTrue(success)
         mock_embedding_ds.invalidate_embedding.assert_not_called()
@@ -499,10 +527,7 @@ class TestTransactionServiceDDD(unittest.TestCase):
     def test_assign_categories_bulk_add(self):
         """Test bulk adding category assignments."""
         self._add_sample_transactions()
-        self.service.assign_categories_bulk({
-            "tx2": "food",
-            "tx3": "transport"
-        })
+        self.service.assign_categories_bulk({"tx2": "food", "tx3": "transport"})
 
         assignments = self.ma_ds.get_assignments()
         self.assertEqual(assignments["tx2"], "food")
@@ -520,11 +545,9 @@ class TestTransactionServiceDDD(unittest.TestCase):
     def test_assign_categories_bulk_mixed(self):
         """Test bulk with both adds and removes."""
         self._add_sample_transactions()
-        self.service.assign_categories_bulk({
-            "tx1": "",           # Remove
-            "tx2": "food",       # Add
-            "tx3": "transport"   # Add
-        })
+        self.service.assign_categories_bulk(
+            {"tx1": "", "tx2": "food", "tx3": "transport"}  # Remove  # Add  # Add
+        )
 
         assignments = self.ma_ds.get_assignments()
         self.assertNotIn("tx1", assignments)
@@ -558,5 +581,5 @@ class TestTransactionServiceDDD(unittest.TestCase):
         self.assertIn("restaurant", categories)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

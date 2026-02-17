@@ -7,7 +7,8 @@ Handles pattern CRUD operations, rule validation, and regex generation.
 import json
 import logging
 import re
-from typing import List, Dict, Tuple, Optional
+from typing import Dict, List, Tuple
+
 from uuid6 import uuid7
 
 from application.services.base_service import BaseService
@@ -25,8 +26,13 @@ class PatternService(BaseService):
     validation, and human-readable description generation.
     """
 
-    def __init__(self, user_id: str, regexp_datasource: RegexpRepository,
-                 category_service: CategoryService, db_path: str = None):
+    def __init__(
+        self,
+        user_id: str,
+        regexp_datasource: RegexpRepository,
+        category_service: CategoryService,
+        db_path: str = None,
+    ):
         """
         Initialize PatternService.
 
@@ -67,16 +73,20 @@ class PatternService(BaseService):
         if pattern.visual_description:
             try:
                 visual_data = json.loads(pattern.visual_description)
-                rules = visual_data.get('rules', [])
+                rules = visual_data.get("rules", [])
             except json.JSONDecodeError:
                 pass
 
-        return True, "", {
-            'id': pattern.id,
-            'name': pattern.name,
-            'category_id': pattern.internal_category,
-            'rules': rules
-        }
+        return (
+            True,
+            "",
+            {
+                "id": pattern.id,
+                "name": pattern.name,
+                "category_id": pattern.internal_category,
+                "rules": rules,
+            },
+        )
 
     def get_all_patterns(self) -> List[dict]:
         """
@@ -96,7 +106,7 @@ class PatternService(BaseService):
             if pattern.visual_description:
                 try:
                     visual_data = json.loads(pattern.visual_description)
-                    rules = visual_data.get('rules', [])
+                    rules = visual_data.get("rules", [])
                 except json.JSONDecodeError:
                     pass
 
@@ -105,17 +115,23 @@ class PatternService(BaseService):
 
             # Get category name
             from domain.entities.category import Category
-            category_name = categories.get(pattern.internal_category, Category(pattern.internal_category, pattern.internal_category, "", "")).name
 
-            result.append({
-                'id': pattern.id,
-                'name': pattern.name,
-                'human_description': human_desc,
-                'category_name': category_name,
-                'category_id': pattern.internal_category,
-                'order_index': pattern.order_index,
-                'rules': rules
-            })
+            category_name = categories.get(
+                pattern.internal_category,
+                Category(pattern.internal_category, pattern.internal_category, "", ""),
+            ).name
+
+            result.append(
+                {
+                    "id": pattern.id,
+                    "name": pattern.name,
+                    "human_description": human_desc,
+                    "category_name": category_name,
+                    "category_id": pattern.internal_category,
+                    "order_index": pattern.order_index,
+                    "rules": rules,
+                }
+            )
 
         return result
 
@@ -130,7 +146,9 @@ class PatternService(BaseService):
         patterns = regexp_datasource.get_all_regexps()
         return len(patterns)
 
-    def create_pattern(self, rules: List[dict], category_id: str, name: str = "") -> Tuple[bool, str, str]:
+    def create_pattern(
+        self, rules: List[dict], category_id: str, name: str = ""
+    ) -> Tuple[bool, str, str]:
         """
         Create a new pattern from visual rules.
 
@@ -168,11 +186,7 @@ class PatternService(BaseService):
             name = self.generate_human_description(rules)[:40]  # Max 40 chars
 
         # Create visual description JSON
-        visual_desc = json.dumps({
-            "type": "visual_rule",
-            "version": 1,
-            "rules": rules
-        })
+        visual_desc = json.dumps({"type": "visual_rule", "version": 1, "rules": rules})
 
         # Get next order_index
         regexp_datasource = self.datasource
@@ -183,12 +197,16 @@ class PatternService(BaseService):
         pattern_id = str(uuid7())
 
         # Create pattern
-        if regexp_datasource.create_regexp(pattern_id, raw_regex, name, visual_desc, category_id, next_order):
+        if regexp_datasource.create_regexp(
+            pattern_id, raw_regex, name, visual_desc, category_id, next_order
+        ):
             return (True, "", pattern_id)
         else:
             return (False, "Failed to save pattern to database", "")
 
-    def update_pattern(self, pattern_id: str, rules: List[dict], category_id: str, name: str = "") -> Tuple[bool, str]:
+    def update_pattern(
+        self, pattern_id: str, rules: List[dict], category_id: str, name: str = ""
+    ) -> Tuple[bool, str]:
         """
         Update an existing pattern.
 
@@ -227,11 +245,7 @@ class PatternService(BaseService):
             name = self.generate_human_description(rules)[:40]
 
         # Create visual description JSON
-        visual_desc = json.dumps({
-            "type": "visual_rule",
-            "version": 1,
-            "rules": rules
-        })
+        visual_desc = json.dumps({"type": "visual_rule", "version": 1, "rules": rules})
 
         # Update pattern
         regexp_datasource = self.datasource
@@ -300,11 +314,11 @@ class PatternService(BaseService):
         has_end = False
 
         for rule in rules:
-            if 'operator' not in rule or 'keyword' not in rule:
+            if "operator" not in rule or "keyword" not in rule:
                 return (False, "Each rule must have 'operator' and 'keyword'")
 
-            operator = rule['operator']
-            keyword = rule['keyword'].strip()
+            operator = rule["operator"]
+            keyword = rule["keyword"].strip()
 
             # Check keyword is not empty
             if not keyword:
@@ -315,23 +329,26 @@ class PatternService(BaseService):
                 return (False, "Keywords must be under 100 characters")
 
             # Count positive rules
-            if operator in ['OR', 'AND', 'START_WITH', 'END_WITH']:
+            if operator in ["OR", "AND", "START_WITH", "END_WITH"]:
                 positive_count += 1
 
             # Check for multiple START_WITH or END_WITH
-            if operator == 'START_WITH':
+            if operator == "START_WITH":
                 if has_start:
                     return (False, "Only one START_WITH rule allowed")
                 has_start = True
 
-            if operator == 'END_WITH':
+            if operator == "END_WITH":
                 if has_end:
                     return (False, "Only one END_WITH rule allowed")
                 has_end = True
 
         # Must have at least one positive rule
         if positive_count == 0:
-            return (False, "Pattern must have at least one positive rule (OR, AND, START_WITH, or END_WITH)")
+            return (
+                False,
+                "Pattern must have at least one positive rule (OR, AND, START_WITH, or END_WITH)",
+            )
 
         # Check rule count
         if len(rules) > 20:
@@ -351,12 +368,12 @@ class PatternService(BaseService):
         Returns:
             Regex pattern string
         """
-        not_start = [r['keyword'] for r in rules if r['operator'] == 'NOT_START_WITH']
-        start = [r['keyword'] for r in rules if r['operator'] == 'START_WITH']
-        or_kw = [r['keyword'] for r in rules if r['operator'] == 'OR']
-        and_kw = [r['keyword'].lower() for r in rules if r['operator'] == 'AND']
-        not_kw = [r['keyword'].lower() for r in rules if r['operator'] == 'NOT']
-        end = [r['keyword'] for r in rules if r['operator'] == 'END_WITH']
+        not_start = [r["keyword"] for r in rules if r["operator"] == "NOT_START_WITH"]
+        start = [r["keyword"] for r in rules if r["operator"] == "START_WITH"]
+        or_kw = [r["keyword"] for r in rules if r["operator"] == "OR"]
+        and_kw = [r["keyword"].lower() for r in rules if r["operator"] == "AND"]
+        not_kw = [r["keyword"].lower() for r in rules if r["operator"] == "NOT"]
+        end = [r["keyword"] for r in rules if r["operator"] == "END_WITH"]
 
         # Use positional pattern (with lookaheads at start) if:
         # - Has positional operators (START_WITH, END_WITH, NOT_START_WITH), OR
@@ -366,7 +383,7 @@ class PatternService(BaseService):
 
         if has_positional:
             # Positional pattern (no word boundaries)
-            parts.append('^')
+            parts.append("^")
 
             # NOT_START_WITH: negative lookaheads at start
             for kw in not_start:
@@ -397,7 +414,7 @@ class PatternService(BaseService):
                 parts.append(f"(?!.*{re.escape(kw)})")
 
             # Match any text up to end
-            parts.append('.*')
+            parts.append(".*")
 
             # END_WITH: match at end
             if end:
@@ -407,7 +424,7 @@ class PatternService(BaseService):
                     escaped = [re.escape(kw) for kw in end]
                     parts.append(f"({'|'.join(escaped)})")
 
-            parts.append('$')
+            parts.append("$")
 
         else:
             # Pure contains pattern (with word boundaries)
@@ -446,7 +463,7 @@ class PatternService(BaseService):
         """
         try:
             visual_data = json.loads(visual_description)
-            return visual_data.get('rules', [])
+            return visual_data.get("rules", [])
         except json.JSONDecodeError:
             return []
 
@@ -465,12 +482,12 @@ class PatternService(BaseService):
 
         parts = []
 
-        not_start = [r['keyword'] for r in rules if r['operator'] == 'NOT_START_WITH']
-        start = [r['keyword'] for r in rules if r['operator'] == 'START_WITH']
-        or_kw = [r['keyword'] for r in rules if r['operator'] == 'OR']
-        and_kw = [r['keyword'] for r in rules if r['operator'] == 'AND']
-        not_kw = [r['keyword'] for r in rules if r['operator'] == 'NOT']
-        end = [r['keyword'] for r in rules if r['operator'] == 'END_WITH']
+        not_start = [r["keyword"] for r in rules if r["operator"] == "NOT_START_WITH"]
+        start = [r["keyword"] for r in rules if r["operator"] == "START_WITH"]
+        or_kw = [r["keyword"] for r in rules if r["operator"] == "OR"]
+        and_kw = [r["keyword"] for r in rules if r["operator"] == "AND"]
+        not_kw = [r["keyword"] for r in rules if r["operator"] == "NOT"]
+        end = [r["keyword"] for r in rules if r["operator"] == "END_WITH"]
 
         if not_start:
             parts.append(f"Not starts with {' or '.join(not_start)}")

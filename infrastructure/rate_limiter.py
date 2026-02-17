@@ -4,8 +4,8 @@ Rate limiter for LLM API calls.
 Limits the number of LLM calls per user within a rolling 24-hour window.
 """
 
-from datetime import datetime, timezone, timedelta
-from typing import Tuple, Dict, Any
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, Tuple
 
 from domain.repositories.user_settings_repository import UserSettingsRepository
 
@@ -76,14 +76,10 @@ class LLMRateLimiter:
         remaining = max(0, self.MAX_CALLS - calls_made)
         allowed = calls_made < self.MAX_CALLS
 
-        info = {
-            'limit': self.MAX_CALLS,
-            'remaining': remaining,
-            'calls_made': calls_made
-        }
+        info = {"limit": self.MAX_CALLS, "remaining": remaining, "calls_made": calls_made}
 
         if not allowed:
-            info['reset_at'] = self._get_reset_time(timestamps).strftime('%Y-%m-%dT%H:%M:%SZ')
+            info["reset_at"] = self._get_reset_time(timestamps).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         return allowed, info
 
