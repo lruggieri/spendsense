@@ -1,6 +1,6 @@
 {
   "name": "SpendSense",
-  "short_name": "Expenses",
+  "short_name": "SpendSense",
   "description": "Track and categorize your expenses automatically",
   "start_url": "/review",
   "display": "standalone",
