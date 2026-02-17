@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
-from presentation.web.auth_utils import ONBOARDING_VERSION, needs_onboarding
+from presentation.web.auth_utils import ONBOARDING_VERSION
 from presentation.web.decorators import login_required
 from presentation.web.utils import (
     get_category_service,
