@@ -11,7 +11,7 @@ import urllib.request
 from datetime import date, datetime
 
 import certifi
-from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore[import-untyped]
 from currency_converter import ECB_URL
 
 from config import get_currency_data_file

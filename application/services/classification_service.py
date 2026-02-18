@@ -70,7 +70,8 @@ class ClassificationService(BaseService):
         """
         if self._classifier is None:
             self._initialize_classifier()
-        assert self._classifier is not None
+        if self._classifier is None:
+            raise RuntimeError("Classifier initialization failed")
         return self._classifier
 
     def _initialize_classifier(self):

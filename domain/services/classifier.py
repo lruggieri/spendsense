@@ -166,7 +166,8 @@ class Classifier:
             Category ID based on majority vote of similar transactions, or None
         """
         # Calculate similarities with all manually assigned transactions
-        assert self.similarity_calculator is not None
+        if self.similarity_calculator is None:
+            raise RuntimeError("Similarity calculator not initialized")
         similarities = self.similarity_calculator.calculate_similarities(
             description, self.manual_descriptions
         )
@@ -207,7 +208,8 @@ class Classifier:
 
         # Calculate similarities for all descriptions at once
         # Pass tx_ids for persistent caching if available
-        assert self.similarity_calculator is not None
+        if self.similarity_calculator is None:
+            raise RuntimeError("Similarity calculator not initialized")
         all_similarities = self.similarity_calculator.calculate_similarities_batch(
             descriptions, self.manual_descriptions, text_ids=tx_ids
         )
