@@ -5,6 +5,7 @@ Base service class providing common functionality for all services.
 import logging
 
 from config import get_database_path
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +18,7 @@ class BaseService:
     All services should inherit from this class.
     """
 
-    def __init__(self, user_id: str, db_path: str = None):
+    def __init__(self, user_id: str, db_path: Optional[str] = None):
         """
         Initialize base service.
 

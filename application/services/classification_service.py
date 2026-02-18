@@ -37,7 +37,7 @@ class ClassificationService(BaseService):
         manual_assignment_datasource: ManualAssignmentRepository,
         regexp_datasource: RegexpRepository,
         embedding_datasource: EmbeddingRepository,
-        db_path: str = None,
+        db_path: Optional[str] = None,
         similarity_calculator: Optional[EmbeddingSimilarityCalculator] = None,
         skip_similarity: bool = False,
     ):
@@ -70,6 +70,8 @@ class ClassificationService(BaseService):
         """
         if self._classifier is None:
             self._initialize_classifier()
+        if self._classifier is None:
+            raise RuntimeError("Classifier initialization failed")
         return self._classifier
 
     def _initialize_classifier(self):
@@ -114,7 +116,7 @@ class ClassificationService(BaseService):
         self._get_classifier()
         return self._embedding_datasource
 
-    def classify(self, tx_id: str, description: str) -> Tuple[str, CategorySource]:
+    def classify(self, tx_id: str, description: str) -> Tuple[Optional[str], Optional[CategorySource]]:
         """
         Classify a single transaction.
 
@@ -130,7 +132,7 @@ class ClassificationService(BaseService):
 
     def classify_batch(
         self, transactions: List[Tuple[str, str]]
-    ) -> Dict[str, Tuple[str, CategorySource]]:
+    ) -> Dict[str, Tuple[Optional[str], Optional[CategorySource]]]:
         """
         Classify multiple transactions in a batch.
 
@@ -284,7 +286,7 @@ class ClassificationService(BaseService):
 
                 if ref_tx and ref_category:
                     category_name = (
-                        categories.get(ref_category).name
+                        categories[ref_category].name
                         if ref_category in categories
                         else "Unknown"
                     )

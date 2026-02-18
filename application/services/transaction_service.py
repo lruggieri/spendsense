@@ -38,7 +38,7 @@ class TransactionService(BaseService):
         manual_assignment_datasource: ManualAssignmentRepository,
         category_service: CategoryService,
         user_settings_service: UserSettingsService,
-        db_path: str = None,
+        db_path: Optional[str] = None,
     ):
         """
         Initialize TransactionService.
@@ -193,7 +193,7 @@ class TransactionService(BaseService):
         description: str,
         category: str = "",
         comment: str = "",
-        currency: str = None,
+        currency: Optional[str] = None,
         classifier=None,
     ) -> Tuple[bool, str]:
         """
@@ -304,7 +304,7 @@ class TransactionService(BaseService):
         amount: str,
         description: str,
         comment: str,
-        currency: str = None,
+        currency: Optional[str] = None,
         embedding_datasource=None,
     ) -> Tuple[bool, str]:
         """

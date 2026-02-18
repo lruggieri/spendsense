@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from domain.entities.category import Category
 from domain.entities.transaction import Transaction
@@ -24,7 +24,7 @@ class CategoryTree:
     def __init__(self, categories: Dict[str, list[Category]]):
         self.categories = {cat.id: cat for cat in categories["internal"]}
         self.root = self._build_tree()
-        self.filtered_transactions = None  # Initialize attribute
+        self.filtered_transactions: Optional[List[Transaction]] = None  # Initialize attribute
 
     def _build_tree(self) -> CategoryNode:
         # Create the root category
@@ -97,7 +97,7 @@ class CategoryTree:
 
         return filtered
 
-    def _parse_date(self, date_input: any) -> Optional[datetime]:
+    def _parse_date(self, date_input: Any) -> Optional[datetime]:
         # If already a datetime object, return it
         if isinstance(date_input, datetime):
             return date_input
@@ -228,7 +228,7 @@ class CategoryTree:
             logger.info("No transactions to analyze")
             return
 
-        uncategorized = {}
+        uncategorized: Dict[str, Any] = {}
         for tx in self.filtered_transactions:
             if tx.category is None or tx.category not in self.categories:
                 if tx.description not in uncategorized:
@@ -262,7 +262,7 @@ class CategoryTree:
             total = node.total_expense
 
         indent_str = "  " * indent
-        percentage = (node.total_expense / total * 100) if total > 0 else 0
+        percentage = (node.total_expense / total * 100) if total is not None and total > 0 else 0
         logger.debug(
             f"{indent_str}{node.category.name}: ${node.total_expense:.2f} ({percentage:.1f}%)"
         )

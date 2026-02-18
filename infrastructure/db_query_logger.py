@@ -116,7 +116,7 @@ class LoggingCursor:
         """Fetch all rows."""
         return self._cursor.fetchall()
 
-    def fetchmany(self, size: int = None):
+    def fetchmany(self, size: Optional[int] = None):
         """Fetch many rows."""
         return self._cursor.fetchmany(size)
 

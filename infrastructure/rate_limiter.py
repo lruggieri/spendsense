@@ -76,7 +76,7 @@ class LLMRateLimiter:
         remaining = max(0, self.MAX_CALLS - calls_made)
         allowed = calls_made < self.MAX_CALLS
 
-        info = {"limit": self.MAX_CALLS, "remaining": remaining, "calls_made": calls_made}
+        info: Dict[str, Any] = {"limit": self.MAX_CALLS, "remaining": remaining, "calls_made": calls_made}
 
         if not allowed:
             info["reset_at"] = self._get_reset_time(timestamps).strftime("%Y-%m-%dT%H:%M:%SZ")

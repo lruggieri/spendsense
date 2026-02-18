@@ -20,7 +20,7 @@ class Transaction:
     date: datetime
     amount: int
     description: str
-    category: str
+    category: Optional[str]
     source: str  # Source of the transaction (e.g., "Sony Bank", "Amazon", "PayPay (IFTTT)")
     currency: str = "JPY"  # ISO 4217 currency code (e.g., JPY, USD, EUR)
     category_source: Optional[CategorySource] = None

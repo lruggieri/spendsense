@@ -87,10 +87,10 @@ class RegexpRepository(ABC):
     def update_regexp(
         self,
         regexp_id: str,
-        raw: str = None,
-        name: str = None,
-        visual_description: str = None,
-        category: str = None,
+        raw: Optional[str] = None,
+        name: Optional[str] = None,
+        visual_description: Optional[str] = None,
+        category: Optional[str] = None,
     ) -> bool:
         """
         Update an existing regexp pattern.

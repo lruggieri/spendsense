@@ -5,7 +5,7 @@ Handles category CRUD operations and hierarchy management.
 """
 
 import logging
-from typing import Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple
 
 from uuid6 import uuid7
 
@@ -25,7 +25,7 @@ class CategoryService(BaseService):
     including cycle detection and validation.
     """
 
-    def __init__(self, user_id: str, category_datasource: CategoryRepository, db_path: str = None):
+    def __init__(self, user_id: str, category_datasource: CategoryRepository, db_path: Optional[str] = None):
         """
         Initialize CategoryService.
 
@@ -180,7 +180,7 @@ class CategoryService(BaseService):
             return (False, "Failed to create category in database", "")
 
     def update_category(
-        self, category_id: str, name: str = None, description: str = None, parent_id: str = None
+        self, category_id: str, name: Optional[str] = None, description: Optional[str] = None, parent_id: Optional[str] = None
     ) -> Tuple[bool, str]:
         """
         Update an existing category.

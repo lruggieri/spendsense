@@ -57,7 +57,7 @@ class CategoryRepository(ABC):
 
     @abstractmethod
     def update_category(
-        self, category_id: str, name: str = None, description: str = None, parent_id: str = None
+        self, category_id: str, name: Optional[str] = None, description: Optional[str] = None, parent_id: Optional[str] = None
     ) -> bool:
         """
         Update an existing category.

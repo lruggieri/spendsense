@@ -7,6 +7,7 @@ Guides users through setting up fetchers, categories, and patterns.
 
 import logging
 from datetime import datetime, timezone
+from typing import Any, Dict, List, NotRequired, TypedDict
 
 from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
@@ -20,12 +21,23 @@ from presentation.web.utils import (
     get_user_settings_service,
 )
 
+
+class OnboardingStepDef(TypedDict):
+    number: int
+    key: str
+    title: str
+    description: str
+    icon: str
+    create_url_name: NotRequired[str]
+    list_url_name: NotRequired[str]
+    optional: NotRequired[bool]
+
 logger = logging.getLogger(__name__)
 
 onboarding_bp = Blueprint("onboarding", __name__)
 
 # Step definitions
-ONBOARDING_STEPS = [
+ONBOARDING_STEPS: List[OnboardingStepDef] = [
     {
         "number": 1,
         "key": "fetchers",
@@ -209,7 +221,7 @@ def step(step_num: int):
     # Build step data with counts
     steps_data = []
     for step_def in ONBOARDING_STEPS:
-        step_data = step_def.copy()
+        step_data: Dict[str, Any] = dict(step_def)
         step_data["count"] = counts[step_def["key"]]
         step_data["is_complete"] = step_data["count"] > 0
         step_data["is_current"] = step_def["number"] == step_num

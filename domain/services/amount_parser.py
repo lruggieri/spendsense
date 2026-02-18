@@ -55,6 +55,8 @@ def parse_amount(amount_str: str) -> Optional[str]:
     if not cleaned:
         return None
 
+    result: Optional[str] = None
+
     # Try to use Babel for intelligent parsing if available
     try:
         from babel.numbers import NumberFormatError, parse_decimal

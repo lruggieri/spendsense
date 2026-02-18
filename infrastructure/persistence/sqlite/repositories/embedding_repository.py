@@ -111,7 +111,7 @@ class SQLiteEmbeddingDataSource(EmbeddingRepository):
                     FROM embeddings
                     WHERE tx_id IN ({placeholders}) AND user_id = ?
                 """,
-                    chunk + [self.user_id],
+                    tuple(chunk) + (self.user_id,),
                 )
 
                 # Merge results from this chunk

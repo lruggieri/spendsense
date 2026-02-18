@@ -5,6 +5,7 @@ This module provides an abstract interface for transaction storage, allowing eas
 """
 
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import List, Optional, Set
 
 from domain.entities.transaction import Transaction
@@ -118,4 +119,114 @@ class TransactionRepository(ABC):
 
         Returns:
             Number of rows migrated.
+        """
+
+    @abstractmethod
+    def get_transactions_by_group(self, group_id: str) -> List[Transaction]:
+        """
+        Get all transactions belonging to a specific group.
+
+        Args:
+            group_id: Group ID to filter by
+
+        Returns:
+            List of transactions in the group
+        """
+
+    @abstractmethod
+    def update_transaction(
+        self,
+        tx_id: str,
+        date: datetime,
+        amount: int,
+        description: str,
+        comment: str,
+        currency: str = "JPY",
+    ) -> bool:
+        """
+        Update all fields of a transaction.
+
+        Args:
+            tx_id: Transaction ID to update
+            date: New transaction date
+            amount: New amount
+            description: New description
+            comment: New comment text
+            currency: ISO 4217 currency code
+
+        Returns:
+            True on success, False if transaction not found
+        """
+
+    @abstractmethod
+    def get_last_transaction_date(self) -> Optional[datetime]:
+        """
+        Get the date of the most recent transaction.
+
+        Returns:
+            Date of the most recent transaction, or None if no transactions exist
+        """
+
+    @abstractmethod
+    def add_group_to_transaction(self, tx_id: str, group_id: str) -> bool:
+        """
+        Add a group to a single transaction.
+
+        Args:
+            tx_id: Transaction ID
+            group_id: Group ID to add
+
+        Returns:
+            True on success, False if transaction not found
+        """
+
+    @abstractmethod
+    def remove_group_from_transaction(self, tx_id: str, group_id: str) -> bool:
+        """
+        Remove a group from a single transaction.
+
+        Args:
+            tx_id: Transaction ID
+            group_id: Group ID to remove
+
+        Returns:
+            True on success, False if transaction not found
+        """
+
+    @abstractmethod
+    def add_group_to_transactions_batch(self, tx_ids: List[str], group_id: str) -> int:
+        """
+        Add a group to multiple transactions in a batch.
+
+        Args:
+            tx_ids: List of transaction IDs
+            group_id: Group ID to add
+
+        Returns:
+            Number of transactions updated
+        """
+
+    @abstractmethod
+    def remove_group_from_transactions_batch(self, tx_ids: List[str], group_id: str) -> int:
+        """
+        Remove a group from multiple transactions in a batch.
+
+        Args:
+            tx_ids: List of transaction IDs
+            group_id: Group ID to remove
+
+        Returns:
+            Number of transactions updated
+        """
+
+    @abstractmethod
+    def remove_group_from_all_transactions(self, group_id: str) -> int:
+        """
+        Remove a group from all transactions that have it.
+
+        Args:
+            group_id: Group ID to remove
+
+        Returns:
+            Number of transactions updated
         """
