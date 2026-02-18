@@ -613,12 +613,15 @@ class TestDecryptAll:
 class TestEncryptionMiddleware:
     """Tests for the encryption key extraction middleware."""
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def middleware_app(self):
         """Use the real app with its actual encryption middleware."""
+        from unittest.mock import patch
+
         from presentation.web.app import create_app
 
-        app = create_app()
+        with patch("presentation.web.extensions.init_extensions"):
+            app = create_app()
         app.config["TESTING"] = True
         return app
 
