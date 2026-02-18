@@ -611,8 +611,6 @@ class TestUpdatedAtField:
 
     def test_update_transaction_changes_updated_at(self, datasource):
         """Test that updating a transaction updates the updated_at field."""
-        import time
-
         # Add initial transaction
         tx_date = datetime(2025, 10, 26, 10, 0, 0)
         tx = Transaction(
@@ -627,12 +625,9 @@ class TestUpdatedAtField:
         )
         datasource.add_transaction(tx)
 
-        # Get initial updated_at
+        # Get initial updated_at (= tx_date, a fixed past date)
         retrieved = datasource.get_all_transactions()[0]
         initial_updated_at = retrieved.updated_at
-
-        # Wait a moment to ensure time difference
-        time.sleep(0.1)
 
         # Update the transaction
         datasource.update_transaction(
@@ -652,8 +647,6 @@ class TestUpdatedAtField:
 
     def test_add_group_updates_updated_at(self, datasource):
         """Test that adding a group updates the updated_at field."""
-        import time
-
         # Add initial transaction
         tx = Transaction(
             id="test_group_updated_at",
@@ -667,12 +660,9 @@ class TestUpdatedAtField:
         )
         datasource.add_transaction(tx)
 
-        # Get initial updated_at
+        # Get initial updated_at (= tx date, a fixed past date)
         retrieved = datasource.get_all_transactions()[0]
         initial_updated_at = retrieved.updated_at
-
-        # Wait a moment
-        time.sleep(0.1)
 
         # Add group
         datasource.add_group_to_transaction("test_group_updated_at", "group1")
@@ -684,8 +674,6 @@ class TestUpdatedAtField:
 
     def test_remove_group_updates_updated_at(self, datasource):
         """Test that removing a group updates the updated_at field."""
-        import time
-
         # Add initial transaction with a group
         tx = Transaction(
             id="test_remove_group_updated_at",
@@ -700,12 +688,9 @@ class TestUpdatedAtField:
         )
         datasource.add_transaction(tx)
 
-        # Get initial updated_at
+        # Get initial updated_at (= tx date, a fixed past date)
         retrieved = datasource.get_all_transactions()[0]
         initial_updated_at = retrieved.updated_at
-
-        # Wait a moment
-        time.sleep(0.1)
 
         # Remove group
         datasource.remove_group_from_transaction("test_remove_group_updated_at", "group1")
@@ -788,11 +773,11 @@ class TestCreatedAtField:
 
     def test_update_transaction_does_not_change_created_at(self, datasource):
         """Test that updating a transaction does NOT change created_at (immutability)."""
-        import time
-
         # Add initial transaction
+        # Use a past timestamp so updated_at (set to now()) is guaranteed to be greater
+        # without needing to sleep for SQLite's second-precision clock.
         tx_date = datetime(2025, 10, 26, 10, 0, 0)
-        created_time = datetime.now(timezone.utc)
+        created_time = datetime.now(timezone.utc) - timedelta(seconds=2)
         tx = Transaction(
             id="test_immutable_created_at",
             date=tx_date,
@@ -809,9 +794,6 @@ class TestCreatedAtField:
         # Get initial created_at
         retrieved = datasource.get_all_transactions()[0]
         initial_created_at = retrieved.created_at
-
-        # Wait a full second to ensure time difference (SQLite stores without microseconds)
-        time.sleep(1.1)
 
         # Update the transaction
         datasource.update_transaction(
@@ -831,10 +813,10 @@ class TestCreatedAtField:
 
     def test_add_group_does_not_change_created_at(self, datasource):
         """Test that adding a group does NOT change created_at (immutability)."""
-        import time
-
         # Add initial transaction
-        created_time = datetime.now(timezone.utc)
+        # Use a past timestamp so updated_at (set to now()) is guaranteed to be greater
+        # without needing to sleep for SQLite's second-precision clock.
+        created_time = datetime.now(timezone.utc) - timedelta(seconds=2)
         tx = Transaction(
             id="test_group_immutable_created_at",
             date=datetime(2025, 10, 26, 10, 0, 0),
@@ -851,9 +833,6 @@ class TestCreatedAtField:
         # Get initial created_at
         retrieved = datasource.get_all_transactions()[0]
         initial_created_at = retrieved.created_at
-
-        # Wait a full second to ensure time difference (SQLite stores without microseconds)
-        time.sleep(1.1)
 
         # Add group
         datasource.add_group_to_transaction("test_group_immutable_created_at", "group1")

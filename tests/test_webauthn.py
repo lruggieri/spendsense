@@ -613,12 +613,17 @@ class TestDecryptAll:
 class TestEncryptionMiddleware:
     """Tests for the encryption key extraction middleware."""
 
-    @pytest.fixture
+    @pytest.fixture(scope="class")
     def middleware_app(self):
         """Use the real app with its actual encryption middleware."""
+        from unittest.mock import patch
+
         from presentation.web.app import create_app
 
-        app = create_app()
+        # Mock init_extensions to skip loading the ML model, Redis, and background
+        # threads — none of which are needed to test the request middleware.
+        with patch("presentation.web.extensions.init_extensions"):
+            app = create_app()
         app.config["TESTING"] = True
         return app
 
