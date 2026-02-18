@@ -9,17 +9,6 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, NotRequired, TypedDict
 
-
-class OnboardingStepDef(TypedDict):
-    number: int
-    key: str
-    title: str
-    description: str
-    icon: str
-    create_url_name: NotRequired[str]
-    list_url_name: NotRequired[str]
-    optional: NotRequired[bool]
-
 from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
 from presentation.web.auth_utils import ONBOARDING_VERSION
@@ -31,6 +20,17 @@ from presentation.web.utils import (
     get_pattern_service,
     get_user_settings_service,
 )
+
+
+class OnboardingStepDef(TypedDict):
+    number: int
+    key: str
+    title: str
+    description: str
+    icon: str
+    create_url_name: NotRequired[str]
+    list_url_name: NotRequired[str]
+    optional: NotRequired[bool]
 
 logger = logging.getLogger(__name__)
 

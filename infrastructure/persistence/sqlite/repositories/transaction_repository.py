@@ -106,7 +106,8 @@ class SQLiteTransactionDataSource(TransactionRepository):
 
     def _encrypt_value(self, value: str) -> str:
         """Encrypt a field value. Caller must check _encryption_key first."""
-        assert self._encryption_key is not None
+        if self._encryption_key is None:
+            raise RuntimeError("Encryption key required but not set")
         return encrypt_field(str(value), self._encryption_key)
 
     def _decrypt_text_fields(self, row: tuple, encryption_version: int) -> Tuple[str, str]:
