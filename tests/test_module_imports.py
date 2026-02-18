@@ -1,4 +1,5 @@
 """Integration tests for module imports - smoke tests to catch import-time errors."""
+
 import pytest
 
 
@@ -62,6 +63,7 @@ def test_all_sqlite_datasources_importable():
     """Test all SQLite datasource implementations can be imported."""
     # Arrange & Act
     try:
+        import infrastructure.persistence.sqlite.factory
         import infrastructure.persistence.sqlite.repositories.category_repository
         import infrastructure.persistence.sqlite.repositories.embedding_repository
         import infrastructure.persistence.sqlite.repositories.fetcher_repository
@@ -71,7 +73,6 @@ def test_all_sqlite_datasources_importable():
         import infrastructure.persistence.sqlite.repositories.session_repository
         import infrastructure.persistence.sqlite.repositories.transaction_repository
         import infrastructure.persistence.sqlite.repositories.user_settings_repository
-        import infrastructure.persistence.sqlite.factory
     except (ImportError, NameError) as e:
         # Assert
         pytest.fail(f"Failed to import SQLite datasource: {e}")
@@ -116,8 +117,8 @@ def test_service_type_hints_dont_cause_nameerror():
     try:
         # Import services that use type hints
         from application.services.classification_service import ClassificationService
-        from application.services.transaction_service import TransactionService
         from application.services.group_service import GroupService
+        from application.services.transaction_service import TransactionService
 
         # If we got here, type hints are valid
         assert ClassificationService is not None
@@ -135,12 +136,12 @@ def test_factory_functions_importable():
     try:
         from presentation.web.utils import (
             get_category_service,
-            get_pattern_service,
-            get_user_settings_service,
-            get_transaction_service,
             get_classification_service,
             get_fetcher_service,
-            get_group_service
+            get_group_service,
+            get_pattern_service,
+            get_transaction_service,
+            get_user_settings_service,
         )
 
         # Assert - Functions are callable
@@ -163,24 +164,26 @@ def test_no_circular_import_in_services():
         # Import all services at once - would fail if circular imports exist
         from application.services import (
             CategoryService,
-            PatternService,
-            UserSettingsService,
-            TransactionService,
             ClassificationService,
             FetcherService,
-            GroupService
+            GroupService,
+            PatternService,
+            TransactionService,
+            UserSettingsService,
         )
 
         # Assert
-        assert all([
-            CategoryService,
-            PatternService,
-            UserSettingsService,
-            TransactionService,
-            ClassificationService,
-            FetcherService,
-            GroupService
-        ])
+        assert all(
+            [
+                CategoryService,
+                PatternService,
+                UserSettingsService,
+                TransactionService,
+                ClassificationService,
+                FetcherService,
+                GroupService,
+            ]
+        )
 
     except ImportError as e:
         if "circular import" in str(e).lower():
@@ -193,12 +196,12 @@ def test_entity_classes_importable():
     """Test that entity classes can be imported."""
     # Arrange & Act
     try:
-        from domain.entities.transaction import Transaction
         from domain.entities.category import Category
-        from domain.entities.regexp import Regexp
-        from domain.entities.session import Session
         from domain.entities.fetcher import Fetcher
         from domain.entities.group import Group
+        from domain.entities.regexp import Regexp
+        from domain.entities.session import Session
+        from domain.entities.transaction import Transaction
 
         # Assert
         assert all([Transaction, Category, Regexp, Session, Fetcher, Group])
@@ -211,9 +214,9 @@ def test_logic_modules_importable():
     """Test that domain service modules can be imported."""
     # Arrange & Act
     try:
+        import domain.services.amount_utils
         import domain.services.classifier
         import domain.services.embedding_similarity_calculator
-        import domain.services.amount_utils
 
         # Assert
         assert domain.services.classifier is not None

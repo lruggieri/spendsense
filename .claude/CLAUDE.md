@@ -92,6 +92,8 @@ const RUNTIME_CACHE = 'spendsense-runtime-vXX';  // Increment XX
 
 **Avoid migration references:** Never use terms like "migration period", "post-migration", or "during migration" in code comments. Future readers won't know what migration you're referring to. Instead, use "backward-compatibility" or "for backward-compatibility" when explaining fallback logic or default values.
 
-## PR creation
-Always prepend branch names with chore, feat or fix.
-Commit names should be "feat|chore|fix/{shortname}: {commit description}"
+## PR Creation
+
+**Format:** `{type}/{shortname}: {description}` where type is `feat`, `chore`, or `fix`
+
+**IMPORTANT:** This format applies to branch names, commit messages, AND PR titles.

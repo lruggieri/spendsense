@@ -5,15 +5,14 @@ Handles group CRUD operations and transaction grouping.
 """
 
 import logging
-from typing import List, Optional, Tuple, Dict
+from typing import List, Optional, Tuple
 
 from uuid6 import uuid7
 
 from application.services.base_service import BaseService
 from application.services.transaction_service import TransactionService
-from domain.repositories.group_repository import GroupRepository
 from domain.entities.group import Group
-from domain.entities.transaction import Transaction
+from domain.repositories.group_repository import GroupRepository
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +24,13 @@ class GroupService(BaseService):
     Provides CRUD operations for groups and transaction assignment.
     """
 
-    def __init__(self, user_id: str, group_datasource: GroupRepository,
-                 transaction_service: TransactionService, db_path: str = None):
+    def __init__(
+        self,
+        user_id: str,
+        group_datasource: GroupRepository,
+        transaction_service: TransactionService,
+        db_path: str = None,
+    ):
         """
         Initialize GroupService.
 
@@ -193,7 +197,9 @@ class GroupService(BaseService):
         count = self._transaction_service.add_group_to_transactions_batch(tx_ids, group_id)
         return (True, "", count)
 
-    def remove_transactions_from_group(self, tx_ids: List[str], group_id: str) -> Tuple[bool, str, int]:
+    def remove_transactions_from_group(
+        self, tx_ids: List[str], group_id: str
+    ) -> Tuple[bool, str, int]:
         """
         Remove multiple transactions from a group.
 

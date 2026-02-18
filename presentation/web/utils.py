@@ -7,43 +7,41 @@ Contains helper functions used across multiple blueprints.
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
-
-from domain.entities.category_tree import CategoryNode
-from domain.entities.transaction import Transaction
 from urllib.parse import parse_qs
 
 from flask import g, request
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 
-from config import get_database_path
-from infrastructure.persistence.sqlite.factory import SQLiteDataSourceFactory
-from infrastructure.persistence.factory import DataSourceFactory
-from presentation.web.extensions import (
-    get_sentence_model, get_cache_manager, get_session_datasource,
-    get_credentials_loader_instance
-)
-from domain.services.embedding_similarity_calculator import EmbeddingSimilarityCalculator
-
 # Import focused services
 from application.services import (
     CategoryService,
-    EncryptionService,
-    PatternService,
-    UserSettingsService,
-    TransactionService,
     ClassificationService,
+    EncryptionService,
     FetcherService,
-    GroupService
+    GroupService,
+    PatternService,
+    TransactionService,
+    UserSettingsService,
 )
-
+from config import get_database_path
+from domain.entities.category_tree import CategoryNode
+from domain.entities.transaction import Transaction
+from domain.services.embedding_similarity_calculator import EmbeddingSimilarityCalculator
+from infrastructure.persistence.factory import DataSourceFactory
+from infrastructure.persistence.sqlite.factory import SQLiteDataSourceFactory
+from presentation.web.extensions import (
+    get_cache_manager,
+    get_credentials_loader_instance,
+    get_sentence_model,
+    get_session_datasource,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class EncryptionKeyRequired(Exception):
     """Raised when an operation requires the encryption key but it's not available."""
-    pass
 
 
 def invalidate_service_cache(user_id: str = None):
@@ -89,9 +87,9 @@ def extract_date_part(date_string):
         Date part as string (YYYY-MM-DD) or empty string if None
     """
     if not date_string:
-        return ''
-    if 'T' in date_string:
-        return date_string.split('T')[0]
+        return ""
+    if "T" in date_string:
+        return date_string.split("T")[0]
     return date_string
 
 
@@ -108,14 +106,16 @@ def refresh_google_token_if_needed(session_token, google_token, encryption_key=N
         Updated google_token dictionary with fresh access token
     """
     # If the token is a fallback (decryption failed or no key), it won't have OAuth fields
-    if 'token' not in google_token:
-        raise EncryptionKeyRequired('Google token unavailable — encryption key may be missing or incorrect')
+    if "token" not in google_token:
+        raise EncryptionKeyRequired(
+            "Google token unavailable — encryption key may be missing or incorrect"
+        )
 
     session_datasource = get_session_datasource()
     credentials_loader = get_credentials_loader_instance()
 
     # Check if access token is expired
-    access_token_expiry = google_token.get('access_token_expiry')
+    access_token_expiry = google_token.get("access_token_expiry")
     if not access_token_expiry:
         # No expiry info, assume it needs refresh
         needs_refresh = True
@@ -132,17 +132,17 @@ def refresh_google_token_if_needed(session_token, google_token, encryption_key=N
 
     # Load client credentials from config
     client_config = credentials_loader.get_client_config()
-    client_id = client_config['client_id']
-    client_secret = client_config['client_secret']
+    client_id = client_config["client_id"]
+    client_secret = client_config["client_secret"]
 
     # Create credentials object
     creds = Credentials(
-        token=google_token['token'],
-        refresh_token=google_token['refresh_token'],
-        token_uri=google_token['token_uri'],
+        token=google_token["token"],
+        refresh_token=google_token["refresh_token"],
+        token_uri=google_token["token_uri"],
         client_id=client_id,
         client_secret=client_secret,
-        scopes=google_token['scopes']
+        scopes=google_token["scopes"],
     )
 
     # Refresh the token
@@ -150,13 +150,17 @@ def refresh_google_token_if_needed(session_token, google_token, encryption_key=N
         creds.refresh(Request())
 
         # Update the token dictionary with new access token
-        google_token['token'] = creds.token
-        google_token['access_token_expiry'] = creds.expiry.isoformat() if creds.expiry else None
+        google_token["token"] = creds.token
+        google_token["access_token_expiry"] = creds.expiry.isoformat() if creds.expiry else None
 
         # Update session in database with refreshed token (preserves session_token)
-        session_datasource.update_google_token(session_token, google_token, encryption_key=encryption_key)
+        session_datasource.update_google_token(
+            session_token, google_token, encryption_key=encryption_key
+        )
 
-        logger.info(f"Successfully refreshed access token (expires: {google_token['access_token_expiry']})")
+        logger.info(
+            f"Successfully refreshed access token (expires: {google_token['access_token_expiry']})"
+        )
         return google_token
 
     except Exception as e:
@@ -169,8 +173,10 @@ def refresh_google_token_if_needed(session_token, google_token, encryption_key=N
 # Classification Helpers
 # =============================================================================
 
-def load_and_classify(tx_service: TransactionService,
-                      classification_service: ClassificationService) -> Dict[str, Transaction]:
+
+def load_and_classify(
+    tx_service: TransactionService, classification_service: ClassificationService
+) -> Dict[str, Transaction]:
     """
     Load all transactions and classify them.
 
@@ -191,6 +197,7 @@ def load_and_classify(tx_service: TransactionService,
 # Focused Service Factory Functions
 # =============================================================================
 
+
 def _get_user_id() -> str:
     """
     Get current user ID from request context.
@@ -201,7 +208,7 @@ def _get_user_id() -> str:
     Raises:
         RuntimeError: If called without authenticated user
     """
-    user_id = getattr(request, 'user_id', None)
+    user_id = getattr(request, "user_id", None)
     if not user_id:
         raise RuntimeError("Service factory called without authenticated user")
     return user_id
@@ -220,7 +227,7 @@ def _get_datasource_factory() -> DataSourceFactory:
     """
     user_id = _get_user_id()
     db_path = get_database_path()
-    encryption_key = getattr(g, 'encryption_key', None)
+    encryption_key = getattr(g, "encryption_key", None)
     return SQLiteDataSourceFactory(db_path, user_id, encryption_key=encryption_key)
 
 
@@ -235,7 +242,7 @@ def get_category_service() -> CategoryService:
     return CategoryService(
         user_id=_get_user_id(),
         category_datasource=factory.get_category_datasource(),
-        db_path=get_database_path()
+        db_path=get_database_path(),
     )
 
 
@@ -255,7 +262,7 @@ def get_pattern_service(category_service: Optional[CategoryService] = None) -> P
         user_id=_get_user_id(),
         regexp_datasource=factory.get_regexp_datasource(),
         category_service=category_service,
-        db_path=get_database_path()
+        db_path=get_database_path(),
     )
 
 
@@ -270,12 +277,14 @@ def get_user_settings_service() -> UserSettingsService:
     return UserSettingsService(
         user_id=_get_user_id(),
         user_settings_datasource=factory.get_user_settings_datasource(),
-        db_path=get_database_path()
+        db_path=get_database_path(),
     )
 
 
-def get_transaction_service(category_service: Optional[CategoryService] = None,
-                            user_settings_service: Optional[UserSettingsService] = None) -> TransactionService:
+def get_transaction_service(
+    category_service: Optional[CategoryService] = None,
+    user_settings_service: Optional[UserSettingsService] = None,
+) -> TransactionService:
     """
     Get slimmed TransactionService instance for the current logged-in user.
 
@@ -297,7 +306,7 @@ def get_transaction_service(category_service: Optional[CategoryService] = None,
         manual_assignment_datasource=factory.get_manual_assignment_datasource(),
         category_service=category_service,
         user_settings_service=user_settings_service,
-        db_path=get_database_path()
+        db_path=get_database_path(),
     )
 
 
@@ -317,8 +326,7 @@ def get_classification_service(skip_similarity: bool = False) -> ClassificationS
     similarity_calculator = None
     if not skip_similarity:
         similarity_calculator = EmbeddingSimilarityCalculator(
-            model=get_sentence_model(),
-            embedding_datasource=factory.get_embedding_datasource()
+            model=get_sentence_model(), embedding_datasource=factory.get_embedding_datasource()
         )
 
     return ClassificationService(
@@ -328,11 +336,13 @@ def get_classification_service(skip_similarity: bool = False) -> ClassificationS
         embedding_datasource=factory.get_embedding_datasource(),
         db_path=get_database_path(),
         similarity_calculator=similarity_calculator,
-        skip_similarity=skip_similarity
+        skip_similarity=skip_similarity,
     )
 
 
-def get_fetcher_service(user_settings_service: Optional[UserSettingsService] = None) -> FetcherService:
+def get_fetcher_service(
+    user_settings_service: Optional[UserSettingsService] = None,
+) -> FetcherService:
     """
     Get FetcherService instance for the current logged-in user.
 
@@ -348,7 +358,7 @@ def get_fetcher_service(user_settings_service: Optional[UserSettingsService] = N
         user_id=_get_user_id(),
         fetcher_datasource=factory.get_fetcher_datasource(),
         user_settings_service=user_settings_service,
-        db_path=get_database_path()
+        db_path=get_database_path(),
     )
 
 
@@ -368,7 +378,7 @@ def get_group_service(transaction_service: Optional[TransactionService] = None) 
         user_id=_get_user_id(),
         group_datasource=factory.get_group_datasource(),
         transaction_service=transaction_service,
-        db_path=get_database_path()
+        db_path=get_database_path(),
     )
 
 
@@ -380,7 +390,7 @@ def get_encryption_service() -> EncryptionService:
     Includes transaction and session datasources for migration operations.
     """
     factory = _get_datasource_factory()
-    encryption_key = getattr(g, 'encryption_key', None)
+    encryption_key = getattr(g, "encryption_key", None)
     return EncryptionService(
         encryption_repo=factory.get_encryption_datasource(),
         transaction_datasource=factory.get_transaction_datasource(),
@@ -393,6 +403,7 @@ def get_encryption_service() -> EncryptionService:
 # =============================================================================
 # Tree / Chart Helpers
 # =============================================================================
+
 
 def tree_to_dict(node: CategoryNode, parent_id: Optional[str] = None) -> dict:
     """
@@ -408,28 +419,30 @@ def tree_to_dict(node: CategoryNode, parent_id: Optional[str] = None) -> dict:
         Dictionary with id, name, total, children keys
     """
     result = {
-        'id': node.category.id,
-        'name': node.category.name,
-        'total': round(node.total_expense, 2),
-        'children': []
+        "id": node.category.id,
+        "name": node.category.name,
+        "total": round(node.total_expense, 2),
+        "children": [],
     }
 
     if parent_id:
-        result['parent_id'] = parent_id
+        result["parent_id"] = parent_id
 
     # Recursively process children
     for child in sorted(node.children, key=lambda x: x.total_expense, reverse=True):
         if child.total_expense > 0:  # Only include categories with expenses
-            result['children'].append(tree_to_dict(child, node.category.id))
+            result["children"].append(tree_to_dict(child, node.category.id))
 
     return result
 
 
-def build_category_tree_data(category_service: CategoryService,
-                             user_settings_service: UserSettingsService,
-                             transactions: List[Transaction],
-                             from_date: Optional[str] = None,
-                             to_date: Optional[str] = None) -> dict:
+def build_category_tree_data(
+    category_service: CategoryService,
+    user_settings_service: UserSettingsService,
+    transactions: List[Transaction],
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+) -> dict:
     """
     Build category tree data for visualization.
 
@@ -453,7 +466,7 @@ def build_category_tree_data(category_service: CategoryService,
 
     # Get user currency and converter for currency conversion
     user_settings = user_settings_service.get_user_settings()
-    user_currency = user_settings.currency if user_settings else 'JPY'
+    user_currency = user_settings.currency if user_settings else "JPY"
     converter = user_settings_service.get_currency_converter()
 
     # Calculate expenses with currency conversion

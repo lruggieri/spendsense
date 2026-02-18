@@ -1,26 +1,41 @@
 """Tests for the SQLite datasource factory."""
+
 import os
 import sqlite3
 import tempfile
 import unittest
 
 from infrastructure.persistence.sqlite.factory import SQLiteDataSourceFactory
-from infrastructure.persistence.sqlite.repositories.category_repository import SQLiteCategoryDataSource
-from infrastructure.persistence.sqlite.repositories.transaction_repository import SQLiteTransactionDataSource
-from infrastructure.persistence.sqlite.repositories.manual_assignment_repository import SQLiteManualAssignmentDataSource
-from infrastructure.persistence.sqlite.repositories.regexp_repository import SQLiteRegexpDataSource
-from infrastructure.persistence.sqlite.repositories.session_repository import SQLiteSessionDataSource
-from infrastructure.persistence.sqlite.repositories.user_settings_repository import SQLiteUserSettingsDataSource
-from infrastructure.persistence.sqlite.repositories.fetcher_repository import SQLiteFetcherDataSource
+from infrastructure.persistence.sqlite.repositories.category_repository import (
+    SQLiteCategoryDataSource,
+)
+from infrastructure.persistence.sqlite.repositories.embedding_repository import (
+    SQLiteEmbeddingDataSource,
+)
+from infrastructure.persistence.sqlite.repositories.fetcher_repository import (
+    SQLiteFetcherDataSource,
+)
 from infrastructure.persistence.sqlite.repositories.group_repository import SQLiteGroupDataSource
-from infrastructure.persistence.sqlite.repositories.embedding_repository import SQLiteEmbeddingDataSource
+from infrastructure.persistence.sqlite.repositories.manual_assignment_repository import (
+    SQLiteManualAssignmentDataSource,
+)
+from infrastructure.persistence.sqlite.repositories.regexp_repository import SQLiteRegexpDataSource
+from infrastructure.persistence.sqlite.repositories.session_repository import (
+    SQLiteSessionDataSource,
+)
+from infrastructure.persistence.sqlite.repositories.transaction_repository import (
+    SQLiteTransactionDataSource,
+)
+from infrastructure.persistence.sqlite.repositories.user_settings_repository import (
+    SQLiteUserSettingsDataSource,
+)
 
 
 class TestSQLiteDataSourceFactory(unittest.TestCase):
     """Tests for SQLiteDataSourceFactory instance creation and caching."""
 
     def setUp(self):
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.db_path = self.temp_db.name
         self.temp_db.close()
 
@@ -101,5 +116,5 @@ class TestSQLiteDataSourceFactory(unittest.TestCase):
         self.assertIsNot(ds1, ds2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -1,4 +1,5 @@
 """Tests for the SQLite fetcher repository."""
+
 import json
 import os
 import sqlite3
@@ -7,14 +8,16 @@ import unittest
 from datetime import datetime, timezone
 
 from domain.entities.fetcher import Fetcher
-from infrastructure.persistence.sqlite.repositories.fetcher_repository import SQLiteFetcherDataSource
+from infrastructure.persistence.sqlite.repositories.fetcher_repository import (
+    SQLiteFetcherDataSource,
+)
 
 
 class TestSQLiteFetcherRepository(unittest.TestCase):
     """Tests for SQLiteFetcherDataSource CRUD operations."""
 
     def setUp(self):
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.db_path = self.temp_db.name
         self.temp_db.close()
 
@@ -49,8 +52,9 @@ class TestSQLiteFetcherRepository(unittest.TestCase):
         if os.path.exists(self.db_path):
             os.remove(self.db_path)
 
-    def _make_fetcher(self, fetcher_id="f1", name="Test Fetcher",
-                      enabled=True, group_id=None, version=1):
+    def _make_fetcher(
+        self, fetcher_id="f1", name="Test Fetcher", enabled=True, group_id=None, version=1
+    ):
         """Helper to create a Fetcher entity."""
         now = datetime.now(timezone.utc)
         return Fetcher(
@@ -103,13 +107,31 @@ class TestSQLiteFetcherRepository(unittest.TestCase):
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         now = datetime.now(timezone.utc).isoformat()
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO fetchers (id, user_id, name, from_emails, subject_filter,
                 amount_pattern, merchant_pattern, currency_pattern, default_currency,
                 negate_amount, enabled, created_at, updated_at, group_id, version)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, ("other_f1", "other_user", "Other", "[]", "", "p", "p",
-              "", "USD", 0, 1, now, now, "other_f1", 1))
+        """,
+            (
+                "other_f1",
+                "other_user",
+                "Other",
+                "[]",
+                "",
+                "p",
+                "p",
+                "",
+                "USD",
+                0,
+                1,
+                now,
+                now,
+                "other_f1",
+                1,
+            ),
+        )
         conn.commit()
         conn.close()
 
@@ -163,8 +185,12 @@ class TestSQLiteFetcherRepository(unittest.TestCase):
     def test_get_enabled_version(self):
         """get_enabled_version should return the enabled version in a group."""
         group = "group_abc"
-        self.ds.create_fetcher(self._make_fetcher("f1", "V1", enabled=False, group_id=group, version=1))
-        self.ds.create_fetcher(self._make_fetcher("f2", "V2", enabled=True, group_id=group, version=2))
+        self.ds.create_fetcher(
+            self._make_fetcher("f1", "V1", enabled=False, group_id=group, version=1)
+        )
+        self.ds.create_fetcher(
+            self._make_fetcher("f2", "V2", enabled=True, group_id=group, version=2)
+        )
 
         enabled = self.ds.get_enabled_version(group)
         self.assertIsNotNone(enabled)
@@ -174,7 +200,9 @@ class TestSQLiteFetcherRepository(unittest.TestCase):
     def test_get_enabled_version_none(self):
         """get_enabled_version should return None if no enabled version exists."""
         group = "group_abc"
-        self.ds.create_fetcher(self._make_fetcher("f1", "V1", enabled=False, group_id=group, version=1))
+        self.ds.create_fetcher(
+            self._make_fetcher("f1", "V1", enabled=False, group_id=group, version=1)
+        )
 
         enabled = self.ds.get_enabled_version(group)
         self.assertIsNone(enabled)
@@ -217,8 +245,12 @@ class TestSQLiteFetcherRepository(unittest.TestCase):
     def test_toggle_fetcher_enabled_disables_others_in_group(self):
         """Enabling a fetcher should disable other enabled versions in the group."""
         group = "group_abc"
-        self.ds.create_fetcher(self._make_fetcher("f1", "V1", enabled=True, group_id=group, version=1))
-        self.ds.create_fetcher(self._make_fetcher("f2", "V2", enabled=False, group_id=group, version=2))
+        self.ds.create_fetcher(
+            self._make_fetcher("f1", "V1", enabled=True, group_id=group, version=1)
+        )
+        self.ds.create_fetcher(
+            self._make_fetcher("f2", "V2", enabled=False, group_id=group, version=2)
+        )
 
         # Enable f2 -- should disable f1
         result = self.ds.toggle_fetcher_enabled("f2")
@@ -268,5 +300,5 @@ class TestSQLiteFetcherRepository(unittest.TestCase):
         self.assertTrue(stored.negate_amount)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

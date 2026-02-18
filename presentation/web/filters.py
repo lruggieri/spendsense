@@ -15,8 +15,8 @@ def register_filters(app):
         app: Flask application instance
     """
 
-    @app.template_filter('format_amount')
-    def format_amount_filter(amount_minor, currency='JPY', decimals=True, thousands_sep=False):
+    @app.template_filter("format_amount")
+    def format_amount_filter(amount_minor, currency="JPY", decimals=True, thousands_sep=False):
         """
         Jinja2 filter: Convert minor units to formatted display string.
 
@@ -36,8 +36,8 @@ def register_filters(app):
         """
         return format_amount(amount_minor, currency, decimals, thousands_sep)
 
-    @app.template_filter('amount_major')
-    def amount_major_filter(amount_minor, currency='JPY'):
+    @app.template_filter("amount_major")
+    def amount_major_filter(amount_minor, currency="JPY"):
         """
         Jinja2 filter: Convert minor units to major units as float.
 
@@ -54,8 +54,8 @@ def register_filters(app):
         """
         return to_major_units_float(amount_minor, currency)
 
-    @app.template_filter('format_major_amount')
-    def format_major_amount_filter(amount_major, currency='JPY', thousands_sep=True):
+    @app.template_filter("format_major_amount")
+    def format_major_amount_filter(amount_major, currency="JPY", thousands_sep=True):
         """
         Jinja2 filter: Format an amount that's already in major units.
 

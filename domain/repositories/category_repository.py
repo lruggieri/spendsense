@@ -5,7 +5,8 @@ This module provides an abstract interface for category storage, allowing easy m
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
+
 from domain.entities.category import Category
 
 
@@ -20,7 +21,6 @@ class CategoryRepository(ABC):
         Returns:
             List of Category objects
         """
-        pass
 
     @abstractmethod
     def get_category_by_id(self, category_id: str) -> Optional[Category]:
@@ -33,7 +33,6 @@ class CategoryRepository(ABC):
         Returns:
             Category object or None if not found
         """
-        pass
 
     @abstractmethod
     def get_categories_dict(self) -> Dict[str, Category]:
@@ -43,7 +42,6 @@ class CategoryRepository(ABC):
         Returns:
             Dictionary mapping category ID to Category object
         """
-        pass
 
     @abstractmethod
     def create_category(self, category: Category) -> bool:
@@ -56,11 +54,11 @@ class CategoryRepository(ABC):
         Returns:
             True on success, False if category ID already exists
         """
-        pass
 
     @abstractmethod
-    def update_category(self, category_id: str, name: str = None,
-                       description: str = None, parent_id: str = None) -> bool:
+    def update_category(
+        self, category_id: str, name: str = None, description: str = None, parent_id: str = None
+    ) -> bool:
         """
         Update an existing category.
 
@@ -73,7 +71,6 @@ class CategoryRepository(ABC):
         Returns:
             True on success, False if category not found
         """
-        pass
 
     @abstractmethod
     def delete_category(self, category_id: str) -> bool:
@@ -86,7 +83,6 @@ class CategoryRepository(ABC):
         Returns:
             True on success, False if category not found
         """
-        pass
 
     @abstractmethod
     def has_transactions(self, category_id: str) -> bool:
@@ -99,7 +95,6 @@ class CategoryRepository(ABC):
         Returns:
             True if category has transactions, False otherwise
         """
-        pass
 
     @abstractmethod
     def has_children(self, category_id: str) -> bool:
@@ -112,7 +107,6 @@ class CategoryRepository(ABC):
         Returns:
             True if category has children, False otherwise
         """
-        pass
 
     @abstractmethod
     def get_transaction_count(self, category_id: str) -> int:
@@ -125,7 +119,6 @@ class CategoryRepository(ABC):
         Returns:
             Number of transactions assigned to this category
         """
-        pass
 
     @abstractmethod
     def has_regexps(self, category_id: str) -> bool:
@@ -138,7 +131,6 @@ class CategoryRepository(ABC):
         Returns:
             True if category has regex patterns, False otherwise
         """
-        pass
 
     @abstractmethod
     def get_regexp_count(self, category_id: str) -> int:
@@ -151,4 +143,3 @@ class CategoryRepository(ABC):
         Returns:
             Number of regex patterns assigned to this category
         """
-        pass

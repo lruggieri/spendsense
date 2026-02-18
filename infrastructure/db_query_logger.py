@@ -4,10 +4,10 @@ Database query logger utility.
 Provides wrappers for sqlite3 cursor methods to log all SQL queries.
 """
 
+import logging
 import sqlite3
 import time
-import logging
-from typing import Any, Tuple, List, Optional
+from typing import Any, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ def log_query(query: str, params: Optional[Any] = None, duration_ms: Optional[fl
         duration_ms: Query execution time in milliseconds
     """
     # Clean up whitespace in query for better display
-    clean_query = ' '.join(query.split())
+    clean_query = " ".join(query.split())
 
     # Build log message
     log_parts = []

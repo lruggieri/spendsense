@@ -1,18 +1,21 @@
 """Tests for LLMRateLimiter."""
-import unittest
-import tempfile
+
 import os
-from datetime import datetime, timezone, timedelta
+import tempfile
+import unittest
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch
 
-from infrastructure.persistence.sqlite.repositories.user_settings_repository import SQLiteUserSettingsDataSource
+from infrastructure.persistence.sqlite.repositories.user_settings_repository import (
+    SQLiteUserSettingsDataSource,
+)
 from infrastructure.rate_limiter import LLMRateLimiter
 
 
 class TestLLMRateLimiter(unittest.TestCase):
     def setUp(self):
         """Create temporary database for each test."""
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.db_path = self.temp_db.name
         self.temp_db.close()
         self.user_id = "test_user@example.com"
@@ -29,10 +32,10 @@ class TestLLMRateLimiter(unittest.TestCase):
         allowed, info = self.rate_limiter.check_rate_limit()
 
         self.assertTrue(allowed)
-        self.assertEqual(info['limit'], 50)
-        self.assertEqual(info['remaining'], 50)
-        self.assertEqual(info['calls_made'], 0)
-        self.assertNotIn('reset_at', info)
+        self.assertEqual(info["limit"], 50)
+        self.assertEqual(info["remaining"], 50)
+        self.assertEqual(info["calls_made"], 0)
+        self.assertNotIn("reset_at", info)
 
     def test_allows_up_to_max_calls(self):
         """Should allow up to MAX_CALLS (50) calls."""
@@ -43,8 +46,8 @@ class TestLLMRateLimiter(unittest.TestCase):
         allowed, info = self.rate_limiter.check_rate_limit()
 
         self.assertTrue(allowed)
-        self.assertEqual(info['remaining'], 1)
-        self.assertEqual(info['calls_made'], 49)
+        self.assertEqual(info["remaining"], 1)
+        self.assertEqual(info["calls_made"], 49)
 
     def test_blocks_after_max_calls(self):
         """Should block the 51st call."""
@@ -55,9 +58,9 @@ class TestLLMRateLimiter(unittest.TestCase):
         allowed, info = self.rate_limiter.check_rate_limit()
 
         self.assertFalse(allowed)
-        self.assertEqual(info['remaining'], 0)
-        self.assertEqual(info['calls_made'], 50)
-        self.assertIn('reset_at', info)
+        self.assertEqual(info["remaining"], 0)
+        self.assertEqual(info["calls_made"], 50)
+        self.assertIn("reset_at", info)
 
     def test_cleanup_removes_old_timestamps(self):
         """Should remove timestamps older than 24 hours."""
@@ -72,8 +75,8 @@ class TestLLMRateLimiter(unittest.TestCase):
         allowed, info = self.rate_limiter.check_rate_limit()
 
         self.assertTrue(allowed)
-        self.assertEqual(info['calls_made'], 1)  # Only the recent one
-        self.assertEqual(info['remaining'], 49)
+        self.assertEqual(info["calls_made"], 1)  # Only the recent one
+        self.assertEqual(info["remaining"], 49)
 
     def test_allows_call_after_oldest_expires(self):
         """Should allow a call after the oldest timestamp expires from the window."""
@@ -88,8 +91,8 @@ class TestLLMRateLimiter(unittest.TestCase):
         allowed, info = self.rate_limiter.check_rate_limit()
 
         self.assertTrue(allowed)
-        self.assertEqual(info['calls_made'], 49)  # Old one cleaned up
-        self.assertEqual(info['remaining'], 1)
+        self.assertEqual(info["calls_made"], 49)  # Old one cleaned up
+        self.assertEqual(info["remaining"], 1)
 
     def test_multi_user_isolation(self):
         """Should isolate rate limits per user."""
@@ -109,12 +112,12 @@ class TestLLMRateLimiter(unittest.TestCase):
         # User 1 should be blocked
         allowed1, info1 = rate_limiter1.check_rate_limit()
         self.assertFalse(allowed1)
-        self.assertEqual(info1['calls_made'], 50)
+        self.assertEqual(info1["calls_made"], 50)
 
         # User 2 should still be allowed
         allowed2, info2 = rate_limiter2.check_rate_limit()
         self.assertTrue(allowed2)
-        self.assertEqual(info2['calls_made'], 0)
+        self.assertEqual(info2["calls_made"], 0)
 
     def test_record_call_returns_true_on_success(self):
         """Should return True when recording a call succeeds."""
@@ -131,10 +134,10 @@ class TestLLMRateLimiter(unittest.TestCase):
         allowed, info = self.rate_limiter.check_rate_limit()
 
         self.assertFalse(allowed)
-        self.assertIn('reset_at', info)
+        self.assertIn("reset_at", info)
 
         # Parse reset_at and verify it's oldest + 24h
-        reset_at = datetime.fromisoformat(info['reset_at'].rstrip('Z')).replace(tzinfo=timezone.utc)
+        reset_at = datetime.fromisoformat(info["reset_at"].rstrip("Z")).replace(tzinfo=timezone.utc)
         expected_reset = base_time + timedelta(hours=24)
 
         # Allow 1 second tolerance
@@ -145,10 +148,10 @@ class TestLLMRateLimiter(unittest.TestCase):
         """Should return rate limit info with correct structure."""
         info = self.rate_limiter.get_rate_limit_info()
 
-        self.assertIn('limit', info)
-        self.assertIn('remaining', info)
-        self.assertIn('calls_made', info)
-        self.assertEqual(info['limit'], 50)
+        self.assertIn("limit", info)
+        self.assertIn("remaining", info)
+        self.assertIn("calls_made", info)
+        self.assertEqual(info["limit"], 50)
 
     def test_cleanup_preserves_boundary_timestamps(self):
         """Should preserve timestamps exactly at the 24-hour boundary."""
@@ -160,7 +163,7 @@ class TestLLMRateLimiter(unittest.TestCase):
         allowed, info = self.rate_limiter.check_rate_limit()
 
         self.assertTrue(allowed)
-        self.assertEqual(info['calls_made'], 1)  # Should still be counted
+        self.assertEqual(info["calls_made"], 1)  # Should still be counted
 
 
 class TestLLMRateLimiterConstants(unittest.TestCase):
@@ -175,5 +178,5 @@ class TestLLMRateLimiterConstants(unittest.TestCase):
         self.assertEqual(LLMRateLimiter.WINDOW_HOURS, 24)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

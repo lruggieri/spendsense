@@ -19,19 +19,19 @@ Note: Dates are stored in ISO 8601 format with explicit UTC timezone (Z suffix).
 """
 
 import binascii
+import json
 import logging
 import sqlite3
-import json
 import unicodedata
 from datetime import datetime, timezone
-from typing import List, Set, Optional, Tuple
+from typing import List, Optional, Set, Tuple
 
 from cryptography.exceptions import InvalidTag
 
+from domain.entities.transaction import ENCRYPTED_PLACEHOLDER, Transaction
 from domain.repositories.transaction_repository import TransactionRepository
-from infrastructure.crypto.encryption import encrypt_field, decrypt_field
+from infrastructure.crypto.encryption import decrypt_field, encrypt_field
 from infrastructure.db_query_logger import get_logging_cursor
-from domain.entities.transaction import Transaction, ENCRYPTED_PLACEHOLDER
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         conn = sqlite3.connect(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
-        cursor.execute('''
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS transactions (
                 id TEXT PRIMARY KEY,
                 date TEXT NOT NULL,
@@ -75,31 +75,31 @@ class SQLiteTransactionDataSource(TransactionRepository):
                 fetcher_id TEXT,
                 encryption_version INTEGER NOT NULL DEFAULT 0
             )
-        ''')
+        """)
 
         # Create index on date for faster date range queries
-        cursor.execute('''
+        cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_date ON transactions(date)
-        ''')
+        """)
 
         # Create index on source for faster source filtering
-        cursor.execute('''
+        cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_source ON transactions(source)
-        ''')
+        """)
 
         # Create index on mail_id for efficient deduplication
-        cursor.execute('''
+        cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_mail_id ON transactions(mail_id)
-        ''')
+        """)
 
         # Add encryption_version column if missing (for existing databases)
         cursor.execute("PRAGMA table_info(transactions)")
         columns = [row[1] for row in cursor.fetchall()]
-        if 'encryption_version' not in columns:
-            cursor.execute('''
+        if "encryption_version" not in columns:
+            cursor.execute("""
                 ALTER TABLE transactions
                 ADD COLUMN encryption_version INTEGER NOT NULL DEFAULT 0
-            ''')
+            """)
 
         conn.commit()
         conn.close()
@@ -117,7 +117,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         if encryption_version == 0:
             return (
                 unicodedata.normalize("NFKC", row[3]),
-                row[5] if row[5] else '',
+                row[5] if row[5] else "",
             )
 
         if not self._encryption_key:
@@ -127,9 +127,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
             description = unicodedata.normalize(
                 "NFKC", decrypt_field(str(row[3]), self._encryption_key)
             )
-            comment = (
-                decrypt_field(str(row[5]), self._encryption_key) if row[5] else ''
-            )
+            comment = decrypt_field(str(row[5]), self._encryption_key) if row[5] else ""
             return (description, comment)
         except (InvalidTag, ValueError, binascii.Error) as e:
             logger.warning("Failed to decrypt field: %s", e)
@@ -142,14 +140,16 @@ class SQLiteTransactionDataSource(TransactionRepository):
         """
         try:
             # Remove Z suffix if present and parse
-            date_str_clean = date_str.rstrip('Z')
+            date_str_clean = date_str.rstrip("Z")
             dt = datetime.fromisoformat(date_str_clean)
             # Ensure it's timezone-aware (UTC)
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=timezone.utc)
             return dt
         except ValueError as e:
-            raise ValueError(f"Unable to parse date '{date_str}': expected ISO 8601 format 'YYYY-MM-DDTHH:MM:SSZ'. Error: {e}")
+            raise ValueError(
+                f"Unable to parse date '{date_str}': expected ISO 8601 format 'YYYY-MM-DDTHH:MM:SSZ'. Error: {e}"
+            )
 
     def _format_date(self, dt: datetime) -> str:
         """Format datetime object for storage in database as ISO 8601 UTC."""
@@ -157,7 +157,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         if dt.tzinfo is not None:
             dt = dt.astimezone(timezone.utc)
         # Return ISO 8601 format with Z suffix (YYYY-MM-DDTHH:MM:SSZ)
-        return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+        return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     def _row_to_transaction(self, row: tuple) -> Transaction:
         """
@@ -180,10 +180,12 @@ class SQLiteTransactionDataSource(TransactionRepository):
                 groups = []
 
         # Handle currency field (default to JPY for backward-compatibility)
-        currency = row[9] if len(row) > 9 and row[9] else 'JPY'
+        currency = row[9] if len(row) > 9 and row[9] else "JPY"
 
         # Parse created_at field (fallback to updated_at for backward-compatibility)
-        created_at = self._parse_date(row[10]) if len(row) > 10 and row[10] else self._parse_date(row[7])
+        created_at = (
+            self._parse_date(row[10]) if len(row) > 10 and row[10] else self._parse_date(row[7])
+        )
 
         # Handle fetcher_id field (nullable, for backward-compatibility)
         fetcher_id = row[11] if len(row) > 11 else None
@@ -226,12 +228,15 @@ class SQLiteTransactionDataSource(TransactionRepository):
         conn = sqlite3.connect(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
-        cursor.execute('''
+        cursor.execute(
+            """
             SELECT id, date, amount, description, source, comment, groups, updated_at, mail_id, currency, created_at, fetcher_id, encryption_version
             FROM transactions
             WHERE user_id = ?
             ORDER BY date DESC
-        ''', (self.user_id,))
+        """,
+            (self.user_id,),
+        )
 
         transactions = [self._row_to_transaction(row) for row in cursor.fetchall()]
 
@@ -258,31 +263,34 @@ class SQLiteTransactionDataSource(TransactionRepository):
         try:
             if self._encryption_key:
                 enc_desc = self._encrypt_value(transaction.description)
-                enc_comment = self._encrypt_value(transaction.comment or '')
+                enc_comment = self._encrypt_value(transaction.comment or "")
                 enc_version = 1
             else:
                 enc_desc = transaction.description
                 enc_comment = transaction.comment
                 enc_version = 0
-            cursor.execute('''
+            cursor.execute(
+                """
                 INSERT INTO transactions (id, date, amount, description, source, comment, groups, user_id, updated_at, mail_id, currency, created_at, fetcher_id, encryption_version)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                transaction.id,
-                self._format_date(transaction.date),
-                transaction.amount,
-                enc_desc,
-                transaction.source,
-                enc_comment,
-                json.dumps(transaction.groups),
-                self.user_id,
-                self._format_date(transaction.date),
-                transaction.mail_id,
-                transaction.currency,
-                self._format_date(transaction.created_at or datetime.now(timezone.utc)),
-                transaction.fetcher_id,
-                enc_version
-            ))
+            """,
+                (
+                    transaction.id,
+                    self._format_date(transaction.date),
+                    transaction.amount,
+                    enc_desc,
+                    transaction.source,
+                    enc_comment,
+                    json.dumps(transaction.groups),
+                    self.user_id,
+                    self._format_date(transaction.date),
+                    transaction.mail_id,
+                    transaction.currency,
+                    self._format_date(transaction.created_at or datetime.now(timezone.utc)),
+                    transaction.fetcher_id,
+                    enc_version,
+                ),
+            )
             conn.commit()
         except sqlite3.IntegrityError:
             # Duplicate ID, skip silently
@@ -319,30 +327,35 @@ class SQLiteTransactionDataSource(TransactionRepository):
             for tx in new_transactions:
                 if self._encryption_key:
                     enc_desc = self._encrypt_value(tx.description)
-                    enc_comment = self._encrypt_value(tx.comment or '')
+                    enc_comment = self._encrypt_value(tx.comment or "")
                 else:
                     enc_desc = tx.description
                     enc_comment = tx.comment
-                rows.append((
-                    tx.id,
-                    self._format_date(tx.date),
-                    tx.amount,
-                    enc_desc,
-                    tx.source,
-                    enc_comment,
-                    json.dumps(tx.groups),
-                    self.user_id,
-                    self._format_date(tx.date),
-                    tx.mail_id,
-                    tx.currency,
-                    self._format_date(tx.created_at or datetime.now(timezone.utc)),
-                    tx.fetcher_id,
-                    enc_version
-                ))
-            cursor.executemany('''
+                rows.append(
+                    (
+                        tx.id,
+                        self._format_date(tx.date),
+                        tx.amount,
+                        enc_desc,
+                        tx.source,
+                        enc_comment,
+                        json.dumps(tx.groups),
+                        self.user_id,
+                        self._format_date(tx.date),
+                        tx.mail_id,
+                        tx.currency,
+                        self._format_date(tx.created_at or datetime.now(timezone.utc)),
+                        tx.fetcher_id,
+                        enc_version,
+                    )
+                )
+            cursor.executemany(
+                """
                 INSERT OR IGNORE INTO transactions (id, date, amount, description, source, comment, groups, user_id, updated_at, mail_id, currency, created_at, fetcher_id, encryption_version)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', rows)
+            """,
+                rows,
+            )
             conn.commit()
             added_count = cursor.rowcount
         finally:
@@ -363,7 +376,9 @@ class SQLiteTransactionDataSource(TransactionRepository):
         conn = sqlite3.connect(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
-        cursor.execute('SELECT 1 FROM transactions WHERE id = ? AND user_id = ? LIMIT 1', (tx_id, self.user_id))
+        cursor.execute(
+            "SELECT 1 FROM transactions WHERE id = ? AND user_id = ? LIMIT 1", (tx_id, self.user_id)
+        )
         exists = cursor.fetchone() is not None
 
         conn.close()
@@ -379,7 +394,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         conn = sqlite3.connect(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
-        cursor.execute('SELECT id FROM transactions WHERE user_id = ?', (self.user_id,))
+        cursor.execute("SELECT id FROM transactions WHERE user_id = ?", (self.user_id,))
         ids = {row[0] for row in cursor.fetchall()}
 
         conn.close()
@@ -399,17 +414,23 @@ class SQLiteTransactionDataSource(TransactionRepository):
         cursor = get_logging_cursor(conn)
 
         if source:
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT DISTINCT mail_id
                 FROM transactions
                 WHERE user_id = ? AND source = ? AND mail_id IS NOT NULL
-            ''', (self.user_id, source))
+            """,
+                (self.user_id, source),
+            )
         else:
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT DISTINCT mail_id
                 FROM transactions
                 WHERE user_id = ? AND mail_id IS NOT NULL
-            ''', (self.user_id,))
+            """,
+                (self.user_id,),
+            )
 
         mail_ids = {row[0] for row in cursor.fetchall()}
 
@@ -429,12 +450,15 @@ class SQLiteTransactionDataSource(TransactionRepository):
         conn = sqlite3.connect(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
-        cursor.execute('''
+        cursor.execute(
+            """
             SELECT id, date, amount, description, source, comment, groups, updated_at, mail_id, currency, created_at, fetcher_id, encryption_version
             FROM transactions
             WHERE source = ? AND user_id = ?
             ORDER BY date DESC
-        ''', (source, self.user_id))
+        """,
+            (source, self.user_id),
+        )
 
         transactions = [self._row_to_transaction(row) for row in cursor.fetchall()]
 
@@ -451,20 +475,30 @@ class SQLiteTransactionDataSource(TransactionRepository):
         conn = sqlite3.connect(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
-        cursor.execute('''
+        cursor.execute(
+            """
             SELECT DISTINCT source
             FROM transactions
             WHERE user_id = ?
             ORDER BY source ASC
-        ''', (self.user_id,))
+        """,
+            (self.user_id,),
+        )
 
         sources = [row[0] for row in cursor.fetchall()]
 
         conn.close()
         return sources
 
-    def update_transaction(self, tx_id: str, date: datetime, amount: int,
-                          description: str, comment: str, currency: str = "JPY") -> bool:
+    def update_transaction(
+        self,
+        tx_id: str,
+        date: datetime,
+        amount: int,
+        description: str,
+        comment: str,
+        currency: str = "JPY",
+    ) -> bool:
         """
         Update all fields of a transaction.
 
@@ -496,18 +530,24 @@ class SQLiteTransactionDataSource(TransactionRepository):
                 enc_desc = description
                 enc_comment = comment
                 enc_version = 0
-            cursor.execute('''
+            cursor.execute(
+                """
                 UPDATE transactions
                 SET date = ?, amount = ?, description = ?, comment = ?, currency = ?, updated_at = ?, encryption_version = ?
                 WHERE id = ? AND user_id = ?
-            ''', (self._format_date(date),
-                  amount,
-                  enc_desc,
-                  enc_comment,
-                  currency,
-                  self._format_date(current_time),
-                  enc_version,
-                  tx_id, self.user_id))
+            """,
+                (
+                    self._format_date(date),
+                    amount,
+                    enc_desc,
+                    enc_comment,
+                    currency,
+                    self._format_date(current_time),
+                    enc_version,
+                    tx_id,
+                    self.user_id,
+                ),
+            )
             conn.commit()
             updated = cursor.rowcount > 0
         finally:
@@ -525,7 +565,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         conn = sqlite3.connect(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
-        cursor.execute('SELECT COUNT(*) FROM transactions WHERE user_id = ?', (self.user_id,))
+        cursor.execute("SELECT COUNT(*) FROM transactions WHERE user_id = ?", (self.user_id,))
         count = cursor.fetchone()[0]
 
         conn.close()
@@ -541,13 +581,16 @@ class SQLiteTransactionDataSource(TransactionRepository):
         conn = sqlite3.connect(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
-        cursor.execute('''
+        cursor.execute(
+            """
             SELECT date
             FROM transactions
             WHERE user_id = ?
             ORDER BY date DESC
             LIMIT 1
-        ''', (self.user_id,))
+        """,
+            (self.user_id,),
+        )
 
         row = cursor.fetchone()
         conn.close()
@@ -556,8 +599,9 @@ class SQLiteTransactionDataSource(TransactionRepository):
             return self._parse_date(row[0])
         return None
 
-    def get_transactions_by_date_range(self, from_date: Optional[datetime] = None,
-                                       to_date: Optional[datetime] = None) -> List[Transaction]:
+    def get_transactions_by_date_range(
+        self, from_date: Optional[datetime] = None, to_date: Optional[datetime] = None
+    ) -> List[Transaction]:
         """
         Get transactions within a date range (efficient for large datasets).
 
@@ -571,18 +615,18 @@ class SQLiteTransactionDataSource(TransactionRepository):
         conn = sqlite3.connect(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
-        query = 'SELECT id, date, amount, description, source, comment, groups, updated_at, mail_id, currency, created_at, fetcher_id, encryption_version FROM transactions WHERE user_id = ?'
+        query = "SELECT id, date, amount, description, source, comment, groups, updated_at, mail_id, currency, created_at, fetcher_id, encryption_version FROM transactions WHERE user_id = ?"
         params = [self.user_id]
 
         if from_date or to_date:
             if from_date:
-                query += ' AND date >= ?'
+                query += " AND date >= ?"
                 params.append(self._format_date(from_date))
             if to_date:
-                query += ' AND date <= ?'
+                query += " AND date <= ?"
                 params.append(self._format_date(to_date))
 
-        query += ' ORDER BY date DESC'
+        query += " ORDER BY date DESC"
 
         cursor.execute(query, params)
 
@@ -610,10 +654,13 @@ class SQLiteTransactionDataSource(TransactionRepository):
 
         try:
             # Get current groups
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT groups FROM transactions
                 WHERE id = ? AND user_id = ?
-            ''', (tx_id, self.user_id))
+            """,
+                (tx_id, self.user_id),
+            )
 
             row = cursor.fetchone()
             if not row:
@@ -635,11 +682,14 @@ class SQLiteTransactionDataSource(TransactionRepository):
 
             # Update transaction with new groups and updated_at
             current_time = datetime.now(timezone.utc)
-            cursor.execute('''
+            cursor.execute(
+                """
                 UPDATE transactions
                 SET groups = ?, updated_at = ?
                 WHERE id = ? AND user_id = ?
-            ''', (json.dumps(groups), self._format_date(current_time), tx_id, self.user_id))
+            """,
+                (json.dumps(groups), self._format_date(current_time), tx_id, self.user_id),
+            )
 
             conn.commit()
             return cursor.rowcount > 0
@@ -666,10 +716,13 @@ class SQLiteTransactionDataSource(TransactionRepository):
 
         try:
             # Get current groups
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT groups FROM transactions
                 WHERE id = ? AND user_id = ?
-            ''', (tx_id, self.user_id))
+            """,
+                (tx_id, self.user_id),
+            )
 
             row = cursor.fetchone()
             if not row:
@@ -691,11 +744,14 @@ class SQLiteTransactionDataSource(TransactionRepository):
 
             # Update transaction with new groups and updated_at
             current_time = datetime.now(timezone.utc)
-            cursor.execute('''
+            cursor.execute(
+                """
                 UPDATE transactions
                 SET groups = ?, updated_at = ?
                 WHERE id = ? AND user_id = ?
-            ''', (json.dumps(groups), self._format_date(current_time), tx_id, self.user_id))
+            """,
+                (json.dumps(groups), self._format_date(current_time), tx_id, self.user_id),
+            )
 
             conn.commit()
             return cursor.rowcount > 0
@@ -729,10 +785,13 @@ class SQLiteTransactionDataSource(TransactionRepository):
 
             for tx_id in tx_ids:
                 # Get current groups
-                cursor.execute('''
+                cursor.execute(
+                    """
                     SELECT groups FROM transactions
                     WHERE id = ? AND user_id = ?
-                ''', (tx_id, self.user_id))
+                """,
+                    (tx_id, self.user_id),
+                )
 
                 row = cursor.fetchone()
                 if not row:
@@ -751,11 +810,14 @@ class SQLiteTransactionDataSource(TransactionRepository):
                     groups.append(group_id)
 
                     # Update transaction with new groups and updated_at
-                    cursor.execute('''
+                    cursor.execute(
+                        """
                         UPDATE transactions
                         SET groups = ?, updated_at = ?
                         WHERE id = ? AND user_id = ?
-                    ''', (json.dumps(groups), self._format_date(current_time), tx_id, self.user_id))
+                    """,
+                        (json.dumps(groups), self._format_date(current_time), tx_id, self.user_id),
+                    )
 
                     if cursor.rowcount > 0:
                         updated_count += 1
@@ -792,10 +854,13 @@ class SQLiteTransactionDataSource(TransactionRepository):
 
             for tx_id in tx_ids:
                 # Get current groups
-                cursor.execute('''
+                cursor.execute(
+                    """
                     SELECT groups FROM transactions
                     WHERE id = ? AND user_id = ?
-                ''', (tx_id, self.user_id))
+                """,
+                    (tx_id, self.user_id),
+                )
 
                 row = cursor.fetchone()
                 if not row:
@@ -814,11 +879,14 @@ class SQLiteTransactionDataSource(TransactionRepository):
                     groups.remove(group_id)
 
                     # Update transaction with new groups and updated_at
-                    cursor.execute('''
+                    cursor.execute(
+                        """
                         UPDATE transactions
                         SET groups = ?, updated_at = ?
                         WHERE id = ? AND user_id = ?
-                    ''', (json.dumps(groups), self._format_date(current_time), tx_id, self.user_id))
+                    """,
+                        (json.dumps(groups), self._format_date(current_time), tx_id, self.user_id),
+                    )
 
                     if cursor.rowcount > 0:
                         updated_count += 1
@@ -843,16 +911,20 @@ class SQLiteTransactionDataSource(TransactionRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT id, date, amount, description, source, comment, groups, updated_at, mail_id, currency, created_at, fetcher_id, encryption_version
                 FROM transactions
                 WHERE user_id = ? AND groups LIKE ?
                 ORDER BY date DESC
-            ''', (self.user_id, f'%"{group_id}"%'))
+            """,
+                (self.user_id, f'%"{group_id}"%'),
+            )
 
             # Filter for actual group membership (LIKE can have false positives)
             transactions = [
-                tx for tx in (self._row_to_transaction(row) for row in cursor.fetchall())
+                tx
+                for tx in (self._row_to_transaction(row) for row in cursor.fetchall())
                 if group_id in tx.groups
             ]
 
@@ -880,12 +952,15 @@ class SQLiteTransactionDataSource(TransactionRepository):
 
         try:
             while True:
-                cursor.execute('''
+                cursor.execute(
+                    """
                     SELECT id, description, comment
                     FROM transactions
                     WHERE user_id = ? AND encryption_version = 0
                     LIMIT ?
-                ''', (self.user_id, batch_size))
+                """,
+                    (self.user_id, batch_size),
+                )
 
                 rows = cursor.fetchall()
                 if not rows:
@@ -893,13 +968,16 @@ class SQLiteTransactionDataSource(TransactionRepository):
 
                 for row in rows:
                     tx_id, description, comment = row
-                    enc_desc = self._encrypt_value(description or '')
-                    enc_comment = self._encrypt_value(comment or '')
-                    cursor.execute('''
+                    enc_desc = self._encrypt_value(description or "")
+                    enc_comment = self._encrypt_value(comment or "")
+                    cursor.execute(
+                        """
                         UPDATE transactions
                         SET description = ?, comment = ?, encryption_version = 1
                         WHERE id = ? AND user_id = ? AND encryption_version = 0
-                    ''', (enc_desc, enc_comment, tx_id, self.user_id))
+                    """,
+                        (enc_desc, enc_comment, tx_id, self.user_id),
+                    )
                     migrated += cursor.rowcount
 
                 conn.commit()
@@ -927,12 +1005,15 @@ class SQLiteTransactionDataSource(TransactionRepository):
 
         try:
             while True:
-                cursor.execute('''
+                cursor.execute(
+                    """
                     SELECT id, description, comment
                     FROM transactions
                     WHERE user_id = ? AND encryption_version = 1
                     LIMIT ?
-                ''', (self.user_id, batch_size))
+                """,
+                    (self.user_id, batch_size),
+                )
 
                 rows = cursor.fetchall()
                 if not rows:
@@ -942,16 +1023,23 @@ class SQLiteTransactionDataSource(TransactionRepository):
                     tx_id, enc_desc, enc_comment = row
                     try:
                         plain_desc = decrypt_field(str(enc_desc), self._encryption_key)
-                        plain_comment = decrypt_field(str(enc_comment), self._encryption_key) if enc_comment else ''
+                        plain_comment = (
+                            decrypt_field(str(enc_comment), self._encryption_key)
+                            if enc_comment
+                            else ""
+                        )
                     except (InvalidTag, ValueError, binascii.Error) as e:
                         logger.warning("Failed to decrypt tx %s during migration: %s", tx_id, e)
                         continue
 
-                    cursor.execute('''
+                    cursor.execute(
+                        """
                         UPDATE transactions
                         SET description = ?, comment = ?, encryption_version = 0
                         WHERE id = ? AND user_id = ? AND encryption_version = 1
-                    ''', (plain_desc, plain_comment, tx_id, self.user_id))
+                    """,
+                        (plain_desc, plain_comment, tx_id, self.user_id),
+                    )
                     migrated += cursor.rowcount
 
                 conn.commit()
@@ -978,11 +1066,14 @@ class SQLiteTransactionDataSource(TransactionRepository):
 
         try:
             # Get all transactions that have this group
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT id, groups
                 FROM transactions
                 WHERE user_id = ? AND groups LIKE ?
-            ''', (self.user_id, f'%"{group_id}"%'))
+            """,
+                (self.user_id, f'%"{group_id}"%'),
+            )
 
             rows = cursor.fetchall()
             updated_count = 0
@@ -1004,11 +1095,14 @@ class SQLiteTransactionDataSource(TransactionRepository):
                     groups.remove(group_id)
 
                     # Update transaction with new groups and updated_at
-                    cursor.execute('''
+                    cursor.execute(
+                        """
                         UPDATE transactions
                         SET groups = ?, updated_at = ?
                         WHERE id = ? AND user_id = ?
-                    ''', (json.dumps(groups), self._format_date(current_time), tx_id, self.user_id))
+                    """,
+                        (json.dumps(groups), self._format_date(current_time), tx_id, self.user_id),
+                    )
 
                     if cursor.rowcount > 0:
                         updated_count += 1

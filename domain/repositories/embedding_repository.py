@@ -6,7 +6,8 @@ transaction embeddings for the similarity calculator.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple
+
 import numpy as np
 
 
@@ -15,8 +16,7 @@ class EmbeddingRepository(ABC):
 
     @abstractmethod
     def get_cached_embeddings(
-        self,
-        transactions: List[Tuple[str, str]]
+        self, transactions: List[Tuple[str, str]]
     ) -> Tuple[Dict[str, np.ndarray], List[Tuple[str, str]]]:
         """
         Load embeddings from cache for transactions whose descriptions haven't changed.
@@ -29,7 +29,6 @@ class EmbeddingRepository(ABC):
             - Dictionary mapping tx_id to cached embeddings (numpy arrays)
             - List of (tx_id, description) tuples that need encoding
         """
-        pass
 
     @abstractmethod
     def save_embeddings(self, embeddings: Dict[str, Tuple[np.ndarray, str]]) -> None:
@@ -39,7 +38,6 @@ class EmbeddingRepository(ABC):
         Args:
             embeddings: Dictionary mapping tx_id to (embedding, description) tuples
         """
-        pass
 
     @abstractmethod
     def invalidate_embedding(self, tx_id: str) -> bool:
@@ -52,7 +50,6 @@ class EmbeddingRepository(ABC):
         Returns:
             True if embedding was deleted, False if it didn't exist
         """
-        pass
 
     @abstractmethod
     def invalidate_all(self) -> int:
@@ -62,7 +59,6 @@ class EmbeddingRepository(ABC):
         Returns:
             Number of embeddings deleted
         """
-        pass
 
     @abstractmethod
     def get_cache_stats(self) -> Dict[str, int]:
@@ -75,7 +71,6 @@ class EmbeddingRepository(ABC):
             - total_transactions: Total number of transactions
             - cache_hit_rate: Percentage of transactions with cached embeddings
         """
-        pass
 
     @staticmethod
     def get_description_hash(description: str) -> str:
@@ -93,4 +88,5 @@ class EmbeddingRepository(ABC):
             consistent across all implementations
         """
         import hashlib
-        return hashlib.sha256(description.encode('utf-8')).hexdigest()
+
+        return hashlib.sha256(description.encode("utf-8")).hexdigest()

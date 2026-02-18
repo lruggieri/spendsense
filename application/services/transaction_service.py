@@ -6,18 +6,18 @@ Handles transaction CRUD operations and filtering.
 
 import logging
 from datetime import datetime, timezone
-from typing import List, Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from uuid6 import uuid7
 
 from application.services.base_service import BaseService
-from application.services.utils import parse_date
 from application.services.category_service import CategoryService
 from application.services.user_settings_service import UserSettingsService
-from domain.repositories.transaction_repository import TransactionRepository
-from domain.repositories.manual_assignment_repository import ManualAssignmentRepository
-from domain.entities.transaction import Transaction, CategorySource
+from application.services.utils import parse_date
 from domain.entities.category_tree import UNKNOWN_CATEGORY_ID
+from domain.entities.transaction import CategorySource, Transaction
+from domain.repositories.manual_assignment_repository import ManualAssignmentRepository
+from domain.repositories.transaction_repository import TransactionRepository
 from domain.services.amount_utils import to_minor_units
 
 logger = logging.getLogger(__name__)
@@ -31,12 +31,15 @@ class TransactionService(BaseService):
     and category assignment.
     """
 
-    def __init__(self, user_id: str,
-                 transaction_datasource: TransactionRepository,
-                 manual_assignment_datasource: ManualAssignmentRepository,
-                 category_service: CategoryService,
-                 user_settings_service: UserSettingsService,
-                 db_path: str = None):
+    def __init__(
+        self,
+        user_id: str,
+        transaction_datasource: TransactionRepository,
+        manual_assignment_datasource: ManualAssignmentRepository,
+        category_service: CategoryService,
+        user_settings_service: UserSettingsService,
+        db_path: str = None,
+    ):
         """
         Initialize TransactionService.
 
@@ -68,12 +71,15 @@ class TransactionService(BaseService):
         """
         return self._transaction_datasource.get_all_transactions()
 
-    def get_all_transactions_filtered(self, category_id: Optional[str] = None,
-                                      from_date: Optional[str] = None,
-                                      to_date: Optional[str] = None,
-                                      category_source: Optional[str] = None,
-                                      transaction_source: Optional[str] = None,
-                                      transactions: Optional[List[Transaction]] = None) -> List[Transaction]:
+    def get_all_transactions_filtered(
+        self,
+        category_id: Optional[str] = None,
+        from_date: Optional[str] = None,
+        to_date: Optional[str] = None,
+        category_source: Optional[str] = None,
+        transaction_source: Optional[str] = None,
+        transactions: Optional[List[Transaction]] = None,
+    ) -> List[Transaction]:
         """
         Get ALL transactions with optional filters.
         When filtering by category, includes transactions from child categories too.
@@ -90,7 +96,11 @@ class TransactionService(BaseService):
             List of all transactions matching filters, sorted by date DESC
         """
         # Start with provided transactions or load from DB
-        filtered_txs = list(transactions) if transactions is not None else self._transaction_datasource.get_all_transactions()
+        filtered_txs = (
+            list(transactions)
+            if transactions is not None
+            else self._transaction_datasource.get_all_transactions()
+        )
         categories = self._category_service.categories
 
         # Filter by category if specified (including all descendants)
@@ -99,8 +109,11 @@ class TransactionService(BaseService):
                 # Special case: "unknown" category includes transactions with no category
                 # or with a category that doesn't exist (excluding the "unknown" category itself)
                 valid_category_ids = set(categories.keys()) - {UNKNOWN_CATEGORY_ID}
-                filtered_txs = [tx for tx in filtered_txs
-                               if tx.category is None or tx.category not in valid_category_ids]
+                filtered_txs = [
+                    tx
+                    for tx in filtered_txs
+                    if tx.category is None or tx.category not in valid_category_ids
+                ]
             else:
                 category_ids = self._category_service.get_descendant_category_ids(category_id)
                 filtered_txs = [tx for tx in filtered_txs if tx.category in category_ids]
@@ -118,7 +131,7 @@ class TransactionService(BaseService):
             try:
                 to_dt = parse_date(to_date)
                 # If it's a simple date string (no 'T'), extend to end of day
-                if 'T' not in to_date:
+                if "T" not in to_date:
                     to_dt = to_dt.replace(hour=23, minute=59, second=59)
                 filtered_txs = [tx for tx in filtered_txs if tx.date <= to_dt]
             except ValueError:
@@ -126,8 +139,11 @@ class TransactionService(BaseService):
 
         # Filter by category source if specified
         if category_source:
-            filtered_txs = [tx for tx in filtered_txs
-                           if tx.category_source and tx.category_source.value == category_source]
+            filtered_txs = [
+                tx
+                for tx in filtered_txs
+                if tx.category_source and tx.category_source.value == category_source
+            ]
 
         # Filter by transaction source if specified
         if transaction_source:
@@ -170,9 +186,16 @@ class TransactionService(BaseService):
         """
         return self._transaction_datasource.get_transactions_by_group(group_id)
 
-    def add_new_transaction(self, date_str: str, amount: str,
-                           description: str, category: str = "", comment: str = "",
-                           currency: str = None, classifier=None) -> Tuple[bool, str]:
+    def add_new_transaction(
+        self,
+        date_str: str,
+        amount: str,
+        description: str,
+        category: str = "",
+        comment: str = "",
+        currency: str = None,
+        classifier=None,
+    ) -> Tuple[bool, str]:
         """
         Add a new transaction manually. Source is automatically set to 'Manual'.
         Transaction ID is auto-generated using UUID7.
@@ -240,11 +263,11 @@ class TransactionService(BaseService):
             amount=amount_int,
             description=description,
             category=final_category,
-            source='Manual',  # Hardcoded to 'Manual'
+            source="Manual",  # Hardcoded to 'Manual'
             currency=currency,
             category_source=final_category_source,
             comment=comment,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(timezone.utc),
         )
 
         # Add to datasource
@@ -274,9 +297,16 @@ class TransactionService(BaseService):
         """
         return self._transaction_datasource.add_transactions_batch(transactions)
 
-    def update_transaction(self, tx_id: str, date_str: str, amount: str,
-                          description: str, comment: str, currency: str = None,
-                          embedding_datasource=None) -> Tuple[bool, str]:
+    def update_transaction(
+        self,
+        tx_id: str,
+        date_str: str,
+        amount: str,
+        description: str,
+        comment: str,
+        currency: str = None,
+        embedding_datasource=None,
+    ) -> Tuple[bool, str]:
         """
         Update all fields of a transaction.
 
@@ -325,10 +355,12 @@ class TransactionService(BaseService):
 
         # Check if description changed (need to invalidate embedding cache)
         old_description = existing_tx.description
-        description_changed = (old_description != description)
+        description_changed = old_description != description
 
         # Update transaction in datasource
-        if self._transaction_datasource.update_transaction(tx_id, date, amount_int, description, comment, currency):
+        if self._transaction_datasource.update_transaction(
+            tx_id, date, amount_int, description, comment, currency
+        ):
             # Invalidate embedding cache if description changed
             if description_changed and embedding_datasource:
                 logger.debug(f"Description changed for tx {tx_id}, invalidating embedding cache")
@@ -361,7 +393,7 @@ class TransactionService(BaseService):
         to_remove = []
 
         for tid, cat in new_assignments.items():
-            if cat == '':
+            if cat == "":
                 # Empty string means remove the manual assignment
                 to_remove.append(tid)
             else:

@@ -11,19 +11,19 @@ Stores user sessions with:
 """
 
 import binascii
-import logging
-import sqlite3
 import json
+import logging
 import secrets
-from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict
+import sqlite3
+from datetime import datetime, timezone
+from typing import Dict, Optional
 
 from cryptography.exceptions import InvalidTag
 
-from infrastructure.crypto.encryption import encrypt_field, decrypt_field
-from infrastructure.db_query_logger import get_logging_cursor
 from domain.entities.session import Session
 from domain.repositories.session_repository import SessionRepository
+from infrastructure.crypto.encryption import decrypt_field, encrypt_field
+from infrastructure.db_query_logger import get_logging_cursor
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ class SQLiteSessionDataSource(SessionRepository):
         conn = sqlite3.connect(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
-        cursor.execute('''
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS sessions (
                 session_token TEXT PRIMARY KEY,
                 user_id TEXT NOT NULL,
@@ -55,26 +55,26 @@ class SQLiteSessionDataSource(SessionRepository):
                 created_at TEXT NOT NULL,
                 encryption_version INTEGER NOT NULL DEFAULT 0
             )
-        ''')
+        """)
 
         # Create index on user_id for faster user session lookups
-        cursor.execute('''
+        cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_session_user_id ON sessions(user_id)
-        ''')
+        """)
 
         # Create index on expiration for cleanup queries
-        cursor.execute('''
+        cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_session_expiration ON sessions(session_token_expiration)
-        ''')
+        """)
 
         # Add encryption_version column if missing (for existing databases)
         cursor.execute("PRAGMA table_info(sessions)")
         columns = [row[1] for row in cursor.fetchall()]
-        if 'encryption_version' not in columns:
-            cursor.execute('''
+        if "encryption_version" not in columns:
+            cursor.execute("""
                 ALTER TABLE sessions
                 ADD COLUMN encryption_version INTEGER NOT NULL DEFAULT 0
-            ''')
+            """)
 
         conn.commit()
         conn.close()
@@ -84,21 +84,26 @@ class SQLiteSessionDataSource(SessionRepository):
         if dt.tzinfo is not None:
             dt = dt.astimezone(timezone.utc)
         # Return ISO 8601 format with Z suffix
-        return dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+        return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     def _parse_datetime(self, dt_str: str) -> datetime:
         """
         Parse datetime string from storage (assumed to be UTC).
         Expects ISO 8601 format: YYYY-MM-DDTHH:MM:SSZ
         """
-        dt_str_clean = dt_str.rstrip('Z')
+        dt_str_clean = dt_str.rstrip("Z")
         dt = datetime.fromisoformat(dt_str_clean)
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         return dt
 
-    def create_session(self, user_id: str, google_token: Dict, expiration: datetime,
-                       encryption_key: Optional[str] = None) -> str:
+    def create_session(
+        self,
+        user_id: str,
+        google_token: Dict,
+        expiration: datetime,
+        encryption_key: Optional[str] = None,
+    ) -> str:
         """
         Create a new session for a user.
 
@@ -126,24 +131,29 @@ class SQLiteSessionDataSource(SessionRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute('''
+            cursor.execute(
+                """
                 INSERT INTO sessions (session_token, user_id, session_token_expiration, google_token, created_at, encryption_version)
                 VALUES (?, ?, ?, ?, ?, ?)
-            ''', (
-                session_token,
-                user_id,
-                self._format_datetime(expiration),
-                token_value,
-                self._format_datetime(datetime.now(timezone.utc)),
-                enc_version,
-            ))
+            """,
+                (
+                    session_token,
+                    user_id,
+                    self._format_datetime(expiration),
+                    token_value,
+                    self._format_datetime(datetime.now(timezone.utc)),
+                    enc_version,
+                ),
+            )
             conn.commit()
         finally:
             conn.close()
 
         return session_token
 
-    def get_session(self, session_token: str, encryption_key: Optional[str] = None) -> Optional[Session]:
+    def get_session(
+        self, session_token: str, encryption_key: Optional[str] = None
+    ) -> Optional[Session]:
         """
         Get session data by token.
 
@@ -157,11 +167,14 @@ class SQLiteSessionDataSource(SessionRepository):
         conn = sqlite3.connect(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
-        cursor.execute('''
+        cursor.execute(
+            """
             SELECT user_id, session_token_expiration, google_token, created_at, encryption_version
             FROM sessions
             WHERE session_token = ?
-        ''', (session_token,))
+        """,
+            (session_token,),
+        )
 
         row = cursor.fetchone()
         conn.close()
@@ -186,10 +199,10 @@ class SQLiteSessionDataSource(SessionRepository):
                 google_token = json.loads(token_json)
             except (InvalidTag, ValueError, binascii.Error) as e:
                 logger.warning("Failed to decrypt google_token: %s", e)
-                google_token = {'user_name': user_id, 'user_picture': ''}
+                google_token = {"user_name": user_id, "user_picture": ""}
         elif enc_version > 0:
             # Encrypted but no key — return fallback with user_id as name
-            google_token = {'user_name': user_id, 'user_picture': ''}
+            google_token = {"user_name": user_id, "user_picture": ""}
         else:
             google_token = json.loads(row[2])
 
@@ -198,7 +211,7 @@ class SQLiteSessionDataSource(SessionRepository):
             user_id=user_id,
             expiration=expiration,
             google_token=google_token,
-            created_at=self._parse_datetime(row[3])
+            created_at=self._parse_datetime(row[3]),
         )
 
     def delete_session(self, session_token: str) -> bool:
@@ -215,7 +228,7 @@ class SQLiteSessionDataSource(SessionRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute('DELETE FROM sessions WHERE session_token = ?', (session_token,))
+            cursor.execute("DELETE FROM sessions WHERE session_token = ?", (session_token,))
             conn.commit()
             deleted = cursor.rowcount > 0
         finally:
@@ -237,7 +250,7 @@ class SQLiteSessionDataSource(SessionRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute('DELETE FROM sessions WHERE user_id = ?', (user_id,))
+            cursor.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
             conn.commit()
             deleted = cursor.rowcount
         finally:
@@ -257,8 +270,8 @@ class SQLiteSessionDataSource(SessionRepository):
 
         try:
             cursor.execute(
-                'DELETE FROM sessions WHERE session_token_expiration < ?',
-                (self._format_datetime(datetime.now(timezone.utc)),)
+                "DELETE FROM sessions WHERE session_token_expiration < ?",
+                (self._format_datetime(datetime.now(timezone.utc)),),
             )
             conn.commit()
             deleted = cursor.rowcount
@@ -282,11 +295,14 @@ class SQLiteSessionDataSource(SessionRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute('''
+            cursor.execute(
+                """
                 UPDATE sessions
                 SET session_token_expiration = ?
                 WHERE session_token = ?
-            ''', (self._format_datetime(new_expiration), session_token))
+            """,
+                (self._format_datetime(new_expiration), session_token),
+            )
             conn.commit()
             updated = cursor.rowcount > 0
         finally:
@@ -294,8 +310,9 @@ class SQLiteSessionDataSource(SessionRepository):
 
         return updated
 
-    def update_google_token(self, session_token: str, google_token: Dict,
-                            encryption_key: Optional[str] = None) -> bool:
+    def update_google_token(
+        self, session_token: str, google_token: Dict, encryption_key: Optional[str] = None
+    ) -> bool:
         """
         Update the Google OAuth token for a session (e.g., after token refresh).
 
@@ -319,11 +336,14 @@ class SQLiteSessionDataSource(SessionRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute('''
+            cursor.execute(
+                """
                 UPDATE sessions
                 SET google_token = ?, encryption_version = ?
                 WHERE session_token = ?
-            ''', (token_value, enc_version, session_token))
+            """,
+                (token_value, enc_version, session_token),
+            )
             conn.commit()
             updated = cursor.rowcount > 0
         finally:
@@ -346,21 +366,27 @@ class SQLiteSessionDataSource(SessionRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT google_token, encryption_version
                 FROM sessions
                 WHERE session_token = ?
-            ''', (session_token,))
+            """,
+                (session_token,),
+            )
             row = cursor.fetchone()
             if not row or row[1] != 0:
                 return False
 
             encrypted_token = encrypt_field(row[0], encryption_key)
-            cursor.execute('''
+            cursor.execute(
+                """
                 UPDATE sessions
                 SET google_token = ?, encryption_version = 1
                 WHERE session_token = ?
-            ''', (encrypted_token, session_token))
+            """,
+                (encrypted_token, session_token),
+            )
             conn.commit()
             return cursor.rowcount > 0
         finally:
@@ -381,11 +407,14 @@ class SQLiteSessionDataSource(SessionRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT google_token, encryption_version
                 FROM sessions
                 WHERE session_token = ?
-            ''', (session_token,))
+            """,
+                (session_token,),
+            )
             row = cursor.fetchone()
             if not row or row[1] != 1:
                 return False
@@ -396,11 +425,14 @@ class SQLiteSessionDataSource(SessionRepository):
                 logger.warning("Failed to decrypt google_token for migration: %s", e)
                 return False
 
-            cursor.execute('''
+            cursor.execute(
+                """
                 UPDATE sessions
                 SET google_token = ?, encryption_version = 0
                 WHERE session_token = ?
-            ''', (plaintext_json, session_token))
+            """,
+                (plaintext_json, session_token),
+            )
             conn.commit()
             return cursor.rowcount > 0
         finally:

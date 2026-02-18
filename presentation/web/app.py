@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from urllib.parse import unquote
 
-from flask import Flask, request, render_template, g, redirect, url_for
+from flask import Flask, g, render_template, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config import get_flask_secret_key, get_log_level
@@ -23,6 +23,7 @@ from config import get_flask_secret_key, get_log_level
 # Load environment variables from .env file if present (for local development)
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
     print("[CONFIG] Loaded .env file")
 except ImportError:
@@ -32,17 +33,17 @@ except ImportError:
 log_level_str = get_log_level()
 logging.basicConfig(
     level=getattr(logging, log_level_str),
-    format='[%(asctime)s] %(levelname)s [%(name)s] %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    format="[%(asctime)s] %(levelname)s [%(name)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
 
 # Suppress OAuth library debug logs — they dump tokens, secrets, and auth codes
-logging.getLogger('requests_oauthlib').setLevel(logging.WARNING)
-logging.getLogger('oauthlib').setLevel(logging.WARNING)
+logging.getLogger("requests_oauthlib").setLevel(logging.WARNING)
+logging.getLogger("oauthlib").setLevel(logging.WARNING)
 
 # Allow OAuth over HTTP for local development
-os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
 
 
 def create_app():
@@ -61,25 +62,31 @@ def create_app():
 
     # Initialize extensions
     from presentation.web.extensions import init_extensions
+
     init_extensions(app)
 
     # Register template filters
     from presentation.web.filters import register_filters
+
     register_filters(app)
 
     # Register context processors
     from presentation.web.context_processors import register_context_processors
+
     register_context_processors(app)
 
     # Register blueprints
     from presentation.web.blueprints import register_blueprints
+
     register_blueprints(app)
 
     # Encryption key extraction middleware
     ENCRYPTION_PUBLIC_PREFIXES = (
-        '/static/', '/service-worker.js',
-        '/api/webauthn/',
-        '/favicon.ico', '/manifest.json',
+        "/static/",
+        "/service-worker.js",
+        "/api/webauthn/",
+        "/favicon.ico",
+        "/manifest.json",
     )
 
     @app.before_request
@@ -92,9 +99,9 @@ def create_app():
             return
 
         # Read from header first (fetch requests), then cookie (page navigations)
-        key = request.headers.get('X-Encryption-Key')
+        key = request.headers.get("X-Encryption-Key")
         if not key:
-            key = request.cookies.get('encryption_key')
+            key = request.cookies.get("encryption_key")
             # Cookie value may be URL-encoded by client-side JS (encodeURIComponent)
             # which turns base64 padding '=' into '%3D'. Decode to get raw base64.
             if key:
@@ -108,20 +115,22 @@ def create_app():
         """Track request start time."""
         request._start_time = time.time()
         logger.debug("")
-        logger.debug("="*80)
+        logger.debug("=" * 80)
         logger.debug(f"REQUEST START: {request.method} {request.path}")
-        logger.debug("="*80)
+        logger.debug("=" * 80)
 
     @app.after_request
     def after_request_timing(response):
         """Log request completion time."""
-        start_time = getattr(request, '_start_time', None)
+        start_time = getattr(request, "_start_time", None)
         if start_time:
             duration = (time.time() - start_time) * 1000
-            logger.debug("="*80)
-            logger.debug(f"REQUEST END: {request.method} {request.path} - Status: {response.status_code}")
+            logger.debug("=" * 80)
+            logger.debug(
+                f"REQUEST END: {request.method} {request.path} - Status: {response.status_code}"
+            )
             logger.debug(f"REQUEST TIME: {duration:.2f}ms")
-            logger.debug("="*80)
+            logger.debug("=" * 80)
             logger.debug("")
         return response
 
@@ -130,10 +139,15 @@ def create_app():
     def handle_404(error):
         """Handle 404 Not Found errors."""
         logger.warning(f"404 Not Found: {request.method} {request.path}")
-        return render_template('error.html',
-                             error_code=404,
-                             error_message="Page Not Found",
-                             error_details="The page you're looking for doesn't exist. It may have been moved or deleted."), 404
+        return (
+            render_template(
+                "error.html",
+                error_code=404,
+                error_message="Page Not Found",
+                error_details="The page you're looking for doesn't exist. It may have been moved or deleted.",
+            ),
+            404,
+        )
 
     @app.errorhandler(500)
     def handle_500(error):
@@ -146,10 +160,15 @@ def create_app():
         logger.error(traceback.format_exc())
         logger.error("=" * 80)
 
-        return render_template('error.html',
-                             error_code=500,
-                             error_message="Something Went Wrong",
-                             error_details="We encountered an unexpected error. Our team has been notified and will look into it."), 500
+        return (
+            render_template(
+                "error.html",
+                error_code=500,
+                error_message="Something Went Wrong",
+                error_details="We encountered an unexpected error. Our team has been notified and will look into it.",
+            ),
+            500,
+        )
 
     @app.errorhandler(Exception)
     def handle_exception(error):
@@ -163,10 +182,15 @@ def create_app():
         logger.error(traceback.format_exc())
         logger.error("=" * 80)
 
-        return render_template('error.html',
-                             error_code=500,
-                             error_message="Something Went Wrong",
-                             error_details="We encountered an unexpected error. Our team has been notified and will look into it."), 500
+        return (
+            render_template(
+                "error.html",
+                error_code=500,
+                error_message="Something Went Wrong",
+                error_details="We encountered an unexpected error. Our team has been notified and will look into it.",
+            ),
+            500,
+        )
 
     return app
 
@@ -174,12 +198,12 @@ def create_app():
 # Create the application instance
 app = create_app()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Enable debug mode by default for local development
     # Set FLASK_DEBUG=0 to disable and see custom error pages
-    debug_mode = os.environ.get('FLASK_DEBUG', '1') == '1'
+    debug_mode = os.environ.get("FLASK_DEBUG", "1") == "1"
 
-    flask_port = os.environ.get('FLASK_PORT', 5000)
-    flask_host = os.environ.get('FLASK_HOST', '127.0.0.1')
+    flask_port = os.environ.get("FLASK_PORT", 5000)
+    flask_host = os.environ.get("FLASK_HOST", "127.0.0.1")
 
     app.run(debug=debug_mode, port=flask_port, host=flask_host)

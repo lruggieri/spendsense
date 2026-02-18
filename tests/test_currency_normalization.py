@@ -135,5 +135,5 @@ def run_all_tests():
     print("=" * 80)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run_all_tests()

@@ -4,26 +4,29 @@ Generate PWA icons for the SpendSense app.
 Creates icons in multiple sizes with a simple design.
 """
 
-from PIL import Image, ImageDraw, ImageFont
 import os
+
+from PIL import Image, ImageDraw, ImageFont
 
 # Icon sizes required for PWA
 SIZES = [72, 96, 128, 144, 152, 192, 384, 512]
 
 # Colors matching the app theme
-BACKGROUND_COLOR = '#0f3460'  # Theme color from manifest
-TEXT_COLOR = '#ffffff'
-ACCENT_COLOR = '#16c79a'
+BACKGROUND_COLOR = "#0f3460"  # Theme color from manifest
+TEXT_COLOR = "#ffffff"
+ACCENT_COLOR = "#16c79a"
+
 
 def hex_to_rgb(hex_color):
     """Convert hex color to RGB tuple"""
-    hex_color = hex_color.lstrip('#')
-    return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+    hex_color = hex_color.lstrip("#")
+    return tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
+
 
 def create_icon(size):
     """Create a single icon with the given size"""
     # Create image with background
-    img = Image.new('RGB', (size, size), hex_to_rgb(BACKGROUND_COLOR))
+    img = Image.new("RGB", (size, size), hex_to_rgb(BACKGROUND_COLOR))
     draw = ImageDraw.Draw(img)
 
     # Draw a simple design - currency symbol or initials
@@ -39,9 +42,9 @@ def create_icon(size):
         try:
             # Try different font paths for different systems
             font_paths = [
-                '/System/Library/Fonts/Helvetica.ttc',  # macOS
-                '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',  # Linux
-                'C:\\Windows\\Fonts\\arial.ttf',  # Windows
+                "/System/Library/Fonts/Helvetica.ttc",  # macOS
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",  # Linux
+                "C:\\Windows\\Fonts\\arial.ttf",  # Windows
             ]
             font = None
             for font_path in font_paths:
@@ -57,7 +60,7 @@ def create_icon(size):
         text = "$"
 
         # Get text bounding box for centering
-        if hasattr(font, 'getbbox'):
+        if hasattr(font, "getbbox"):
             bbox = draw.textbbox((0, 0), text, font=font)
             text_width = bbox[2] - bbox[0]
             text_height = bbox[3] - bbox[1]
@@ -75,22 +78,24 @@ def create_icon(size):
 
     return img
 
+
 def main():
     """Generate all icon sizes"""
     # Create icons directory
-    icons_dir = os.path.join('static', 'icons')
+    icons_dir = os.path.join("static", "icons")
     os.makedirs(icons_dir, exist_ok=True)
 
     print("Generating PWA icons...")
     for size in SIZES:
         icon = create_icon(size)
-        filename = f'icon-{size}x{size}.png'
+        filename = f"icon-{size}x{size}.png"
         filepath = os.path.join(icons_dir, filename)
-        icon.save(filepath, 'PNG', optimize=True)
+        icon.save(filepath, "PNG", optimize=True)
         print(f"  ✓ Created {filename} ({size}x{size})")
 
     print(f"\nAll icons generated successfully in {icons_dir}/")
     print("Icons are optimized and ready for PWA installation.")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

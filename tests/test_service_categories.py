@@ -2,14 +2,18 @@
 Tests for category management in CategoryService.
 """
 
-import unittest
-import tempfile
 import os
 import sqlite3
+import tempfile
+import unittest
 
 from application.services.category_service import CategoryService
-from infrastructure.persistence.sqlite.repositories.manual_assignment_repository import SQLiteManualAssignmentDataSource
-from infrastructure.persistence.sqlite.repositories.category_repository import SQLiteCategoryDataSource
+from infrastructure.persistence.sqlite.repositories.category_repository import (
+    SQLiteCategoryDataSource,
+)
+from infrastructure.persistence.sqlite.repositories.manual_assignment_repository import (
+    SQLiteManualAssignmentDataSource,
+)
 
 
 class TestServiceCategoryManagement(unittest.TestCase):
@@ -17,7 +21,7 @@ class TestServiceCategoryManagement(unittest.TestCase):
 
     def setUp(self):
         """Create a temporary database and initialize service."""
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.db_path = self.temp_db.name
         self.temp_db.close()
 
@@ -72,7 +76,9 @@ class TestServiceCategoryManagement(unittest.TestCase):
 
     def test_create_category_success(self):
         """Test successful category creation through service."""
-        success, error, category_id = self.service.create_category("Groceries", "Food and groceries", "")
+        success, error, category_id = self.service.create_category(
+            "Groceries", "Food and groceries", ""
+        )
 
         self.assertTrue(success)
         self.assertEqual(error, "")
@@ -109,7 +115,9 @@ class TestServiceCategoryManagement(unittest.TestCase):
 
     def test_create_category_nonexistent_parent(self):
         """Test that non-existent parent is rejected."""
-        success, error, category_id = self.service.create_category("Groceries", "Food", "nonexistent")
+        success, error, category_id = self.service.create_category(
+            "Groceries", "Food", "nonexistent"
+        )
 
         self.assertFalse(success)
         self.assertIn("does not exist", error.lower())
@@ -118,7 +126,9 @@ class TestServiceCategoryManagement(unittest.TestCase):
     def test_create_category_with_parent(self):
         """Test creating a category with a valid parent."""
         # Create parent first
-        success1, error1, parent_id = self.service.create_category("Shopping", "Shopping expenses", "")
+        success1, error1, parent_id = self.service.create_category(
+            "Shopping", "Shopping expenses", ""
+        )
         self.assertTrue(success1)
 
         # Create child
@@ -243,7 +253,9 @@ class TestServiceCategoryManagement(unittest.TestCase):
     def test_delete_category_with_children(self):
         """Test that categories with children cannot be deleted."""
         success1, error1, shopping_id = self.service.create_category("Shopping", "Shopping", "")
-        success2, error2, groceries_id = self.service.create_category("Groceries", "Food", shopping_id)
+        success2, error2, groceries_id = self.service.create_category(
+            "Groceries", "Food", shopping_id
+        )
         self.assertTrue(success1 and success2)
 
         success, error = self.service.delete_category(shopping_id)
@@ -259,10 +271,13 @@ class TestServiceCategoryManagement(unittest.TestCase):
         # Manually add a regex pattern
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO regexps (id, raw, name, internal_category, user_id)
             VALUES (?, ?, ?, ?, ?)
-        """, ("regex1", ".*market.*", "Market purchases", groceries_id, self.user_id))
+        """,
+            ("regex1", ".*market.*", "Market purchases", groceries_id, self.user_id),
+        )
         conn.commit()
         conn.close()
 
@@ -288,7 +303,9 @@ class TestServiceCategoryManagement(unittest.TestCase):
         """Test that categories with descendant transactions cannot be deleted."""
         # Create parent -> child hierarchy
         success1, error1, shopping_id = self.service.create_category("Shopping", "Shopping", "")
-        success2, error2, groceries_id = self.service.create_category("Groceries", "Food", shopping_id)
+        success2, error2, groceries_id = self.service.create_category(
+            "Groceries", "Food", shopping_id
+        )
         self.assertTrue(success1 and success2)
 
         # Add transaction to child
@@ -347,5 +364,5 @@ class TestServiceCategoryManagement(unittest.TestCase):
         self.assertFalse(result)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

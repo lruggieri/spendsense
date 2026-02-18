@@ -9,7 +9,7 @@ import base64
 import os
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives.keywrap import aes_key_wrap, aes_key_unwrap
+from cryptography.hazmat.primitives.keywrap import aes_key_unwrap, aes_key_wrap
 
 
 def generate_dek() -> bytes:
@@ -31,8 +31,8 @@ def encrypt_field(plaintext: str, key_b64: str) -> str:
     key = base64.b64decode(key_b64)
     nonce = os.urandom(12)
     aesgcm = AESGCM(key)
-    ciphertext = aesgcm.encrypt(nonce, plaintext.encode('utf-8'), None)
-    return base64.b64encode(nonce + ciphertext).decode('ascii')
+    ciphertext = aesgcm.encrypt(nonce, plaintext.encode("utf-8"), None)
+    return base64.b64encode(nonce + ciphertext).decode("ascii")
 
 
 def decrypt_field(encrypted: str, key_b64: str) -> str:
@@ -52,7 +52,7 @@ def decrypt_field(encrypted: str, key_b64: str) -> str:
     ciphertext = raw[12:]
     aesgcm = AESGCM(key)
     plaintext_bytes = aesgcm.decrypt(nonce, ciphertext, None)
-    return plaintext_bytes.decode('utf-8')
+    return plaintext_bytes.decode("utf-8")
 
 
 def wrap_key(dek: bytes, kek: bytes) -> bytes:

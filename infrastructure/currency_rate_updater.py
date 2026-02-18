@@ -2,19 +2,20 @@
 Background scheduler to keep ECB exchange rates updated.
 """
 
-from apscheduler.schedulers.background import BackgroundScheduler
-from currency_converter import ECB_URL
-from domain.services.currency_converter import CurrencyConverterService
-from config import get_currency_data_file
-import urllib.request
-import ssl
-import certifi
+import fcntl
+import logging
 import os
 import os.path as op
+import ssl
+import urllib.request
 from datetime import date, datetime
-import logging
-import fcntl
-import time
+
+import certifi
+from apscheduler.schedulers.background import BackgroundScheduler
+from currency_converter import ECB_URL
+
+from config import get_currency_data_file
+from domain.services.currency_converter import CurrencyConverterService
 
 
 class CurrencyRateUpdater:
@@ -35,10 +36,10 @@ class CurrencyRateUpdater:
         # Then retry every 10 minutes until 16:50
         self.scheduler.add_job(
             self._check_and_update,
-            'cron',
+            "cron",
             hour=16,
             minute="10,20,30,40,50",  # 16:10, 16:20, 16:30, 16:40, 16:50
-            timezone="Europe/Brussels"
+            timezone="Europe/Brussels",
         )
 
         self.scheduler.start()
@@ -84,7 +85,7 @@ class CurrencyRateUpdater:
 
                 # Download to temporary file first with SSL context
                 with urllib.request.urlopen(ECB_URL, context=ssl_context) as response:
-                    with open(temp_file, 'wb') as out_file:
+                    with open(temp_file, "wb") as out_file:
                         out_file.write(response.read())
 
                 # Atomic rename (prevents partial reads)

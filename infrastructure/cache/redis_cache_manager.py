@@ -7,11 +7,11 @@ This solves the multi-device/multi-worker cache consistency issues that
 existed with in-memory dictionaries.
 """
 
-import pickle
-import redis
 import logging
+import pickle
 from typing import Optional
-import os
+
+import redis
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +30,13 @@ class RedisCacheManager:
     # Cache version - increment this when service structure changes to invalidate old caches
     CACHE_VERSION = 2  # v2: Added groups support
 
-    def __init__(self, redis_host: str = 'localhost', redis_port: int = 6379,
-                 redis_db: int = 0, default_ttl: int = 1800):
+    def __init__(
+        self,
+        redis_host: str = "localhost",
+        redis_port: int = 6379,
+        redis_db: int = 0,
+        default_ttl: int = 1800,
+    ):
         """
         Initialize Redis cache manager.
 
@@ -61,7 +66,7 @@ class RedisCacheManager:
                 db=self.redis_db,
                 decode_responses=False,  # We need binary mode for pickle
                 socket_connect_timeout=5,
-                socket_timeout=5
+                socket_timeout=5,
             )
             # Test connection
             self._redis_client.ping()
@@ -70,7 +75,9 @@ class RedisCacheManager:
         except (redis.ConnectionError, redis.TimeoutError) as e:
             self._redis_available = False
             logger.info(f"Failed to connect to Redis: {e}")
-            logger.info(f"Cache will be disabled. Service will create fresh instances for each request.")
+            logger.info(
+                f"Cache will be disabled. Service will create fresh instances for each request."
+            )
 
     def _get_cache_key(self, user_id: str) -> str:
         """
@@ -100,6 +107,7 @@ class RedisCacheManager:
 
         try:
             import time
+
             cache_key = self._get_cache_key(user_id)
 
             t0 = time.time()
@@ -145,6 +153,7 @@ class RedisCacheManager:
 
         try:
             import time
+
             cache_key = self._get_cache_key(user_id)
             ttl = ttl if ttl is not None else self.default_ttl
 
@@ -161,12 +170,16 @@ class RedisCacheManager:
                 # TTL of 0 or negative means never expire - use SET without expiration
                 self._redis_client.set(cache_key, serialized_data)
                 redis_set_time = (time.time() - t1) * 1000
-                logger.info(f"Cached service for user {user_id} in {redis_set_time:.2f}ms (TTL: NEVER EXPIRES)")
+                logger.info(
+                    f"Cached service for user {user_id} in {redis_set_time:.2f}ms (TTL: NEVER EXPIRES)"
+                )
             else:
                 # Positive TTL - use SETEX with expiration
                 self._redis_client.setex(cache_key, ttl, serialized_data)
                 redis_set_time = (time.time() - t1) * 1000
-                logger.info(f"Cached service for user {user_id} in {redis_set_time:.2f}ms (TTL: {ttl}s)")
+                logger.info(
+                    f"Cached service for user {user_id} in {redis_set_time:.2f}ms (TTL: {ttl}s)"
+                )
 
         except (redis.ConnectionError, redis.TimeoutError) as e:
             logger.info(f"Error writing to cache: {e}")
@@ -222,7 +235,7 @@ class RedisCacheManager:
             Dictionary with cache statistics
         """
         if not self._redis_available:
-            return {'available': False}
+            return {"available": False}
 
         try:
             pattern = "service_cache:*"
@@ -232,14 +245,10 @@ class RedisCacheManager:
             ttls = {}
             for key in keys:
                 ttl = self._redis_client.ttl(key)
-                user_id = key.decode('utf-8').replace('service_cache:', '')
+                user_id = key.decode("utf-8").replace("service_cache:", "")
                 ttls[user_id] = ttl
 
-            return {
-                'available': True,
-                'total_entries': len(keys),
-                'entries': ttls
-            }
+            return {"available": True, "total_entries": len(keys), "entries": ttls}
         except (redis.ConnectionError, redis.TimeoutError) as e:
             logger.info(f"Error getting stats: {e}")
-            return {'available': False, 'error': str(e)}
+            return {"available": False, "error": str(e)}

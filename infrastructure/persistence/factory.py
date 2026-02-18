@@ -6,16 +6,17 @@ enabling database-agnostic architecture.
 """
 
 from abc import ABC, abstractmethod
+
 from domain.repositories.category_repository import CategoryRepository
-from domain.repositories.transaction_repository import TransactionRepository
+from domain.repositories.embedding_repository import EmbeddingRepository
+from domain.repositories.encryption_repository import EncryptionRepository
+from domain.repositories.fetcher_repository import FetcherRepository
+from domain.repositories.group_repository import GroupRepository
 from domain.repositories.manual_assignment_repository import ManualAssignmentRepository
 from domain.repositories.regexp_repository import RegexpRepository
 from domain.repositories.session_repository import SessionRepository
+from domain.repositories.transaction_repository import TransactionRepository
 from domain.repositories.user_settings_repository import UserSettingsRepository
-from domain.repositories.fetcher_repository import FetcherRepository
-from domain.repositories.group_repository import GroupRepository
-from domain.repositories.embedding_repository import EmbeddingRepository
-from domain.repositories.encryption_repository import EncryptionRepository
 
 
 class DataSourceFactory(ABC):
@@ -29,7 +30,6 @@ class DataSourceFactory(ABC):
         Returns:
             CategoryRepository implementation
         """
-        pass
 
     @abstractmethod
     def get_transaction_datasource(self) -> TransactionRepository:
@@ -39,7 +39,6 @@ class DataSourceFactory(ABC):
         Returns:
             TransactionRepository implementation
         """
-        pass
 
     @abstractmethod
     def get_manual_assignment_datasource(self) -> ManualAssignmentRepository:
@@ -49,7 +48,6 @@ class DataSourceFactory(ABC):
         Returns:
             ManualAssignmentRepository implementation
         """
-        pass
 
     @abstractmethod
     def get_regexp_datasource(self) -> RegexpRepository:
@@ -59,7 +57,6 @@ class DataSourceFactory(ABC):
         Returns:
             RegexpRepository implementation
         """
-        pass
 
     @abstractmethod
     def get_session_datasource(self) -> SessionRepository:
@@ -69,7 +66,6 @@ class DataSourceFactory(ABC):
         Returns:
             SessionRepository implementation
         """
-        pass
 
     @abstractmethod
     def get_user_settings_datasource(self) -> UserSettingsRepository:
@@ -79,7 +75,6 @@ class DataSourceFactory(ABC):
         Returns:
             UserSettingsRepository implementation
         """
-        pass
 
     @abstractmethod
     def get_fetcher_datasource(self) -> FetcherRepository:
@@ -89,7 +84,6 @@ class DataSourceFactory(ABC):
         Returns:
             FetcherRepository implementation
         """
-        pass
 
     @abstractmethod
     def get_group_datasource(self) -> GroupRepository:
@@ -99,7 +93,6 @@ class DataSourceFactory(ABC):
         Returns:
             GroupRepository implementation
         """
-        pass
 
     @abstractmethod
     def get_embedding_datasource(self) -> EmbeddingRepository:
@@ -109,7 +102,6 @@ class DataSourceFactory(ABC):
         Returns:
             EmbeddingRepository implementation
         """
-        pass
 
     @abstractmethod
     def get_encryption_datasource(self) -> EncryptionRepository:
@@ -119,4 +111,3 @@ class DataSourceFactory(ABC):
         Returns:
             EncryptionRepository implementation
         """
-        pass

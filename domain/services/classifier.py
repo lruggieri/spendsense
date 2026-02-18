@@ -1,11 +1,12 @@
-import re
 import logging
-from dataclasses import dataclass
+import re
 from collections import Counter
+from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
+
+from domain.entities.transaction import CategorySource
 from domain.repositories.manual_assignment_repository import ManualAssignmentRepository
 from domain.services.similarity_calculator import SimilarityCalculator
-from domain.entities.transaction import CategorySource
 
 logger = logging.getLogger(__name__)
 
@@ -39,11 +40,15 @@ class Classifier:
 
         # Pre-compute embeddings for all manual descriptions
         if self.similarity_calculator and self.manual_descriptions:
-            logger.info(f"Pre-computing embeddings for {len(self.manual_descriptions)} reference transactions...")
+            logger.info(
+                f"Pre-computing embeddings for {len(self.manual_descriptions)} reference transactions..."
+            )
             self.similarity_calculator.precompute_reference_embeddings(self.manual_descriptions)
             logger.info("Reference embeddings cached.")
 
-    def classify(self, tx_id: str, description: str) -> Tuple[Optional[str], Optional[CategorySource]]:
+    def classify(
+        self, tx_id: str, description: str
+    ) -> Tuple[Optional[str], Optional[CategorySource]]:
         """
         Classify a transaction by its ID and description.
 
@@ -76,7 +81,9 @@ class Classifier:
 
         return (None, None)
 
-    def classify_batch(self, transactions: list[tuple[str, str]]) -> Dict[str, Tuple[Optional[str], Optional[CategorySource]]]:
+    def classify_batch(
+        self, transactions: list[tuple[str, str]]
+    ) -> Dict[str, Tuple[Optional[str], Optional[CategorySource]]]:
         """
         Classify multiple transactions in batch for better performance.
 
@@ -130,7 +137,9 @@ class Classifier:
             # Extract IDs and descriptions separately
             batch_ids = [tx_id for tx_id, _ in similarity_batch]
             batch_descriptions = [desc for _, desc in similarity_batch]
-            similarity_results = self._classify_batch_by_similarity(batch_descriptions, tx_ids=batch_ids)
+            similarity_results = self._classify_batch_by_similarity(
+                batch_descriptions, tx_ids=batch_ids
+            )
             similarity_time = (time.time() - similarity_start) * 1000
             logger.debug(f"Similarity calculation took {similarity_time:.2f}ms")
 
@@ -158,8 +167,7 @@ class Classifier:
         """
         # Calculate similarities with all manually assigned transactions
         similarities = self.similarity_calculator.calculate_similarities(
-            description,
-            self.manual_descriptions
+            description, self.manual_descriptions
         )
 
         # Filter by threshold and collect categories
@@ -167,7 +175,7 @@ class Classifier:
         for tx_id, score in similarities:
             if score >= self.similarity_threshold:
                 category = self.manual_assignments.get(tx_id)
-                #print(f"Similarity match: {description} ~ {self.manual_descriptions[tx_id]} (score: {score}, category: {category})")
+                # print(f"Similarity match: {description} ~ {self.manual_descriptions[tx_id]} (score: {score}, category: {category})")
                 if category:
                     categories.append(category)
 
@@ -180,7 +188,9 @@ class Classifier:
         most_common = category_counts.most_common(1)
         return most_common[0][0] if most_common else None
 
-    def _classify_batch_by_similarity(self, descriptions: list[str], tx_ids: list[str] = None) -> list[str | None]:
+    def _classify_batch_by_similarity(
+        self, descriptions: list[str], tx_ids: list[str] = None
+    ) -> list[str | None]:
         """
         Classify multiple descriptions by similarity in batch.
 
@@ -197,9 +207,7 @@ class Classifier:
         # Calculate similarities for all descriptions at once
         # Pass tx_ids for persistent caching if available
         all_similarities = self.similarity_calculator.calculate_similarities_batch(
-            descriptions,
-            self.manual_descriptions,
-            text_ids=tx_ids
+            descriptions, self.manual_descriptions, text_ids=tx_ids
         )
 
         # Process each description's similarities

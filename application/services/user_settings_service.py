@@ -6,38 +6,56 @@ Handles user settings CRUD and currency management.
 
 import logging
 from datetime import datetime
-from typing import Tuple, List, Optional, Dict
+from typing import Dict, List, Tuple
 
 from application.services.base_service import BaseService
-from domain.repositories.user_settings_repository import UserSettingsRepository
-from domain.entities.user_settings import UserSettings
 from config import get_supported_currency_codes
+from domain.entities.user_settings import UserSettings
+from domain.repositories.user_settings_repository import UserSettingsRepository
 
 logger = logging.getLogger(__name__)
 
 
 # Settings schema - metadata for validation and UI generation
 SETTINGS_SCHEMA: Dict[str, Dict] = {
-    'language': {
-        'db_column': 'display_language',  # DB mapping
-        'type': 'select',
-        'default': 'en',
-        'valid_values': {
-            'en', 'es', 'fr', 'de', 'it', 'pt', 'ja', 'zh', 'ko',
-            'ru', 'ar', 'hi', 'nl', 'sv', 'no', 'da', 'fi', 'pl',
-            'tr', 'th', 'vi'
+    "language": {
+        "db_column": "display_language",  # DB mapping
+        "type": "select",
+        "default": "en",
+        "valid_values": {
+            "en",
+            "es",
+            "fr",
+            "de",
+            "it",
+            "pt",
+            "ja",
+            "zh",
+            "ko",
+            "ru",
+            "ar",
+            "hi",
+            "nl",
+            "sv",
+            "no",
+            "da",
+            "fi",
+            "pl",
+            "tr",
+            "th",
+            "vi",
         },
-        'label': 'Display Language',
-        'help_text': 'Language for UI labels and messages (feature not yet active)'
+        "label": "Display Language",
+        "help_text": "Language for UI labels and messages (feature not yet active)",
     },
-    'currency': {
-        'db_column': 'default_currency',  # DB mapping
-        'type': 'select',
-        'default': 'USD',
-        'valid_values': set(get_supported_currency_codes()),
-        'label': 'Default Currency',
-        'help_text': 'Default currency for new transactions and display'
-    }
+    "currency": {
+        "db_column": "default_currency",  # DB mapping
+        "type": "select",
+        "default": "USD",
+        "valid_values": set(get_supported_currency_codes()),
+        "label": "Default Currency",
+        "help_text": "Default currency for new transactions and display",
+    },
 }
 
 
@@ -49,7 +67,9 @@ class UserSettingsService(BaseService):
     and currency conversion.
     """
 
-    def __init__(self, user_id: str, user_settings_datasource: UserSettingsRepository, db_path: str = None):
+    def __init__(
+        self, user_id: str, user_settings_datasource: UserSettingsRepository, db_path: str = None
+    ):
         """
         Initialize UserSettingsService.
 
@@ -82,8 +102,8 @@ class UserSettingsService(BaseService):
 
         schema = SETTINGS_SCHEMA[field_name]
 
-        if schema['type'] == 'select':
-            if value not in schema['valid_values']:
+        if schema["type"] == "select":
+            if value not in schema["valid_values"]:
                 return False, f"Invalid value for {field_name}: {value}"
 
         # Future: Add validation for other types (text, number, boolean, etc.)
@@ -99,7 +119,9 @@ class UserSettingsService(BaseService):
         """
         return self._settings_datasource.get_settings()
 
-    def update_user_settings(self, language: str = None, currency: str = None, browser_settings: dict = None) -> Tuple[bool, str]:
+    def update_user_settings(
+        self, language: str = None, currency: str = None, browser_settings: dict = None
+    ) -> Tuple[bool, str]:
         """
         Update user settings.
 
@@ -120,12 +142,12 @@ class UserSettingsService(BaseService):
 
         # Validate settings before saving
         if language is not None:
-            is_valid, error = self._validate_setting('language', final_language)
+            is_valid, error = self._validate_setting("language", final_language)
             if not is_valid:
                 return False, error
 
         if currency is not None:
-            is_valid, error = self._validate_setting('currency', final_currency)
+            is_valid, error = self._validate_setting("currency", final_currency)
             if not is_valid:
                 return False, error
 
@@ -134,9 +156,11 @@ class UserSettingsService(BaseService):
             user_id=self.user_id,
             language=final_language,
             currency=final_currency,
-            browser_settings=browser_settings if browser_settings is not None else current.browser_settings,
+            browser_settings=(
+                browser_settings if browser_settings is not None else current.browser_settings
+            ),
             created_at=current.created_at,
-            updated_at=current.updated_at
+            updated_at=current.updated_at,
         )
 
         # Save through datasource
@@ -150,6 +174,7 @@ class UserSettingsService(BaseService):
             List of dictionaries with 'code', 'symbol', and 'name' keys
         """
         from config import SUPPORTED_CURRENCIES
+
         return SUPPORTED_CURRENCIES
 
     def get_currency_symbol(self, currency_code: str) -> str:
@@ -163,6 +188,7 @@ class UserSettingsService(BaseService):
             Currency symbol (e.g., '¥', '$'), or the code itself if not found
         """
         from config import get_currency_symbol
+
         return get_currency_symbol(currency_code)
 
     def validate_currency(self, currency_code: str) -> bool:
@@ -176,6 +202,7 @@ class UserSettingsService(BaseService):
             True if currency is supported, False otherwise
         """
         from config import get_supported_currency_codes
+
         return currency_code in get_supported_currency_codes()
 
     def get_currency_converter(self):
@@ -186,9 +213,12 @@ class UserSettingsService(BaseService):
             CurrencyConverterService instance for currency conversion
         """
         from domain.services.currency_converter import CurrencyConverterService
+
         return CurrencyConverterService.get_instance()
 
-    def convert_to_user_currency(self, amount: float, from_currency: str, tx_date: datetime) -> float:
+    def convert_to_user_currency(
+        self, amount: float, from_currency: str, tx_date: datetime
+    ) -> float:
         """
         Convert transaction amount to user's default currency.
 
@@ -201,7 +231,7 @@ class UserSettingsService(BaseService):
             Amount converted to user's default currency
         """
         user_settings = self.get_user_settings()
-        to_currency = user_settings.currency if user_settings else 'JPY'
+        to_currency = user_settings.currency if user_settings else "JPY"
         converter = self.get_currency_converter()
         return converter.convert(amount, from_currency, to_currency, tx_date)
 
@@ -213,4 +243,4 @@ class UserSettingsService(BaseService):
             ISO 4217 currency code (defaults to 'JPY')
         """
         settings = self.get_user_settings()
-        return settings.currency if settings else 'JPY'
+        return settings.currency if settings else "JPY"

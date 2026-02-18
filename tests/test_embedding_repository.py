@@ -1,4 +1,5 @@
 """Tests for the SQLite embedding repository."""
+
 import os
 import sqlite3
 import tempfile
@@ -6,14 +7,16 @@ import unittest
 
 import numpy as np
 
-from infrastructure.persistence.sqlite.repositories.embedding_repository import SQLiteEmbeddingDataSource
+from infrastructure.persistence.sqlite.repositories.embedding_repository import (
+    SQLiteEmbeddingDataSource,
+)
 
 
 class TestSQLiteEmbeddingRepository(unittest.TestCase):
     """Tests for SQLiteEmbeddingDataSource embedding cache operations."""
 
     def setUp(self):
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix='.db')
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
         self.db_path = self.temp_db.name
         self.temp_db.close()
 
@@ -52,10 +55,12 @@ class TestSQLiteEmbeddingRepository(unittest.TestCase):
         emb2 = self._make_embedding()
 
         # Save embeddings: dict of tx_id -> (embedding, description)
-        self.ds.save_embeddings({
-            "tx1": (emb1, "Coffee at Starbucks"),
-            "tx2": (emb2, "Lunch at Subway"),
-        })
+        self.ds.save_embeddings(
+            {
+                "tx1": (emb1, "Coffee at Starbucks"),
+                "tx2": (emb2, "Lunch at Subway"),
+            }
+        )
 
         # Retrieve cached embeddings
         transactions = [("tx1", "Coffee at Starbucks"), ("tx2", "Lunch at Subway")]
@@ -123,18 +128,20 @@ class TestSQLiteEmbeddingRepository(unittest.TestCase):
         """invalidate_all should remove all embeddings for the user."""
         emb1 = self._make_embedding()
         emb2 = self._make_embedding()
-        self.ds.save_embeddings({
-            "tx1": (emb1, "Desc 1"),
-            "tx2": (emb2, "Desc 2"),
-        })
+        self.ds.save_embeddings(
+            {
+                "tx1": (emb1, "Desc 1"),
+                "tx2": (emb2, "Desc 2"),
+            }
+        )
 
         deleted = self.ds.invalidate_all()
         self.assertEqual(deleted, 2)
 
         # Verify all are gone
-        cached, needs_encoding = self.ds.get_cached_embeddings([
-            ("tx1", "Desc 1"), ("tx2", "Desc 2")
-        ])
+        cached, needs_encoding = self.ds.get_cached_embeddings(
+            [("tx1", "Desc 1"), ("tx2", "Desc 2")]
+        )
         self.assertEqual(len(cached), 0)
         self.assertEqual(len(needs_encoding), 2)
 
@@ -149,10 +156,10 @@ class TestSQLiteEmbeddingRepository(unittest.TestCase):
         self.ds.save_embeddings({"tx1": (emb, "Desc 1")})
 
         stats = self.ds.get_cache_stats()
-        self.assertEqual(stats['total_cached'], 1)
+        self.assertEqual(stats["total_cached"], 1)
         # We have 3 transactions in the DB
-        self.assertEqual(stats['total_transactions'], 3)
-        self.assertAlmostEqual(stats['cache_hit_rate'], 1 / 3 * 100, places=1)
+        self.assertEqual(stats["total_transactions"], 3)
+        self.assertAlmostEqual(stats["cache_hit_rate"], 1 / 3 * 100, places=1)
 
     def test_save_embeddings_upsert(self):
         """save_embeddings should overwrite existing embeddings (INSERT OR REPLACE)."""
@@ -177,5 +184,5 @@ class TestSQLiteEmbeddingRepository(unittest.TestCase):
         self.assertNotEqual(hash1, hash3)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

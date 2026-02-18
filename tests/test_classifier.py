@@ -9,11 +9,14 @@ Tests cover:
 - CategorySource tracking
 - Priority order enforcement
 """
+
 import re
-import pytest
 from unittest.mock import Mock
-from domain.services.classifier import Classifier
+
+import pytest
+
 from domain.entities.transaction import CategorySource
+from domain.services.classifier import Classifier
 
 
 class TestClassifierRegexOnly:
@@ -67,10 +70,7 @@ class TestClassifierRegexOnly:
             ("tx_4", "Unknown merchant"),
         ]
 
-        results = {
-            tx_id: classifier.classify(tx_id, desc)
-            for tx_id, desc in transactions
-        }
+        results = {tx_id: classifier.classify(tx_id, desc) for tx_id, desc in transactions}
 
         assert results["tx_1"] == ("food", CategorySource.REGEXP)
         assert results["tx_2"] == ("transport", CategorySource.REGEXP)
@@ -104,11 +104,13 @@ class TestClassifierManualAssignments:
     def test_manual_assignment_priority(self, classifier):
         """Test manual assignment takes priority over regex."""
         # Set descriptions (required for similarity)
-        classifier.set_manual_descriptions({
-            "tx_manual_1": "LAWSON grocery shopping",
-            "tx_manual_2": "Electric bill payment",
-            "tx_manual_3": "Starbucks coffee",
-        })
+        classifier.set_manual_descriptions(
+            {
+                "tx_manual_1": "LAWSON grocery shopping",
+                "tx_manual_2": "Electric bill payment",
+                "tx_manual_3": "Starbucks coffee",
+            }
+        )
 
         # tx_manual_1 has "LAWSON" which matches food regex,
         # but manual assignment should win
@@ -190,19 +192,21 @@ class TestClassifierSimilarity:
             regexps,
             manual_assignment_source=mock_datasource,
             similarity_calculator=mock_similarity_calculator,
-            similarity_threshold=0.7
+            similarity_threshold=0.7,
         )
 
     def test_similarity_classification(self, classifier):
         """Test similarity-based classification."""
         # Set reference descriptions
-        classifier.set_manual_descriptions({
-            "ref_1": "Starbucks coffee",
-            "ref_2": "Coffee shop purchase",
-            "ref_3": "Supermarket groceries",
-            "ref_4": "Train ticket",
-            "ref_5": "Bus fare",
-        })
+        classifier.set_manual_descriptions(
+            {
+                "ref_1": "Starbucks coffee",
+                "ref_2": "Coffee shop purchase",
+                "ref_3": "Supermarket groceries",
+                "ref_4": "Train ticket",
+                "ref_5": "Bus fare",
+            }
+        )
 
         # This should match "Starbucks coffee" and "Coffee shop purchase"
         category, source = classifier.classify("new_tx", "Starbucks coffee")
@@ -211,13 +215,15 @@ class TestClassifierSimilarity:
 
     def test_similarity_majority_vote(self, classifier):
         """Test majority voting in similarity classification."""
-        classifier.set_manual_descriptions({
-            "ref_1": "Starbucks",
-            "ref_2": "Starbucks",
-            "ref_3": "Supermarket",
-            "ref_4": "Train",
-            "ref_5": "Train",
-        })
+        classifier.set_manual_descriptions(
+            {
+                "ref_1": "Starbucks",
+                "ref_2": "Starbucks",
+                "ref_3": "Supermarket",
+                "ref_4": "Train",
+                "ref_5": "Train",
+            }
+        )
 
         # Should match multiple, majority wins
         category, source = classifier.classify("new_tx", "Train")
@@ -226,10 +232,12 @@ class TestClassifierSimilarity:
 
     def test_similarity_below_threshold(self, classifier):
         """Test similarity below threshold returns None."""
-        classifier.set_manual_descriptions({
-            "ref_1": "Completely different text",
-            "ref_2": "Nothing similar here",
-        })
+        classifier.set_manual_descriptions(
+            {
+                "ref_1": "Completely different text",
+                "ref_2": "Nothing similar here",
+            }
+        )
 
         # No similar transactions above threshold (0.7)
         category, source = classifier.classify("new_tx", "Unrelated description")
@@ -238,10 +246,12 @@ class TestClassifierSimilarity:
 
     def test_similarity_priority_below_regex(self, classifier):
         """Test that regex takes priority over similarity."""
-        classifier.set_manual_descriptions({
-            "ref_1": "LAWSON store",
-            "ref_2": "LAWSON purchase",
-        })
+        classifier.set_manual_descriptions(
+            {
+                "ref_1": "LAWSON store",
+                "ref_2": "LAWSON purchase",
+            }
+        )
 
         # "LAWSON" matches regex for "food_regex", should use regex not similarity
         category, source = classifier.classify("new_tx", "LAWSON store")
@@ -288,7 +298,9 @@ class TestClassifierBatchProcessing:
                         score = 0.9  # Substring match
                     elif common_words:
                         # Word overlap - score based on overlap ratio
-                        score = 0.7 + (0.2 * len(common_words) / max(len(text_words), len(ref_words)))
+                        score = 0.7 + (
+                            0.2 * len(common_words) / max(len(text_words), len(ref_words))
+                        )
                     else:
                         score = 0.0  # No match
 
@@ -311,22 +323,24 @@ class TestClassifierBatchProcessing:
             regexps,
             manual_assignment_source=mock_datasource,
             similarity_calculator=mock_similarity_calculator,
-            similarity_threshold=0.7
+            similarity_threshold=0.7,
         )
-        classifier.set_manual_descriptions({
-            "manual_1": "Starbucks coffee",
-            "manual_2": "Supermarket",
-        })
+        classifier.set_manual_descriptions(
+            {
+                "manual_1": "Starbucks coffee",
+                "manual_2": "Supermarket",
+            }
+        )
         return classifier
 
     def test_batch_classify_mixed(self, classifier):
         """Test batch classification with mixed sources."""
         transactions = [
-            ("manual_1", "Starbucks coffee"),      # Manual
-            ("tx_2", "LAWSON store"),              # Regex
-            ("tx_3", "TRAIN ticket"),              # Regex
-            ("tx_4", "coffee shop"),               # Similarity
-            ("tx_5", "Random merchant"),           # None
+            ("manual_1", "Starbucks coffee"),  # Manual
+            ("tx_2", "LAWSON store"),  # Regex
+            ("tx_3", "TRAIN ticket"),  # Regex
+            ("tx_4", "coffee shop"),  # Similarity
+            ("tx_5", "Random merchant"),  # None
         ]
 
         results = classifier.classify_batch(transactions)
@@ -394,7 +408,7 @@ class TestClassifierPriorityOrder:
             regexps,
             manual_assignment_source=mock_datasource,
             similarity_calculator=mock_similarity_calculator,
-            similarity_threshold=0.7
+            similarity_threshold=0.7,
         )
         classifier.set_manual_descriptions({"manual_tx": "MATCH in description"})
 
@@ -409,7 +423,7 @@ class TestClassifierPriorityOrder:
             [],
             manual_assignment_source=mock_datasource,
             similarity_calculator=mock_similarity_calculator,
-            similarity_threshold=0.7
+            similarity_threshold=0.7,
         )
         classifier.set_manual_descriptions({"manual_tx": "Similar description"})
 
@@ -427,7 +441,7 @@ class TestClassifierPriorityOrder:
             regexps,
             manual_assignment_source=mock_datasource,
             similarity_calculator=mock_similarity_calculator,
-            similarity_threshold=0.7
+            similarity_threshold=0.7,
         )
         classifier.set_manual_descriptions({"manual_tx": "REGEX pattern"})
 

@@ -5,17 +5,17 @@ Orchestrates the full classification pipeline including manual assignments,
 regex patterns, and similarity-based classification.
 """
 
-import re
 import logging
-from typing import Dict, List, Tuple, Optional
+import re
+from typing import Dict, List, Optional, Tuple
 
 from application.services.base_service import BaseService
+from domain.entities.transaction import ENCRYPTED_PLACEHOLDER, CategorySource, Transaction
+from domain.repositories.embedding_repository import EmbeddingRepository
 from domain.repositories.manual_assignment_repository import ManualAssignmentRepository
 from domain.repositories.regexp_repository import RegexpRepository
-from domain.repositories.embedding_repository import EmbeddingRepository
 from domain.services.classifier import Classifier
 from domain.services.embedding_similarity_calculator import EmbeddingSimilarityCalculator
-from domain.entities.transaction import Transaction, CategorySource, ENCRYPTED_PLACEHOLDER
 
 logger = logging.getLogger(__name__)
 
@@ -31,13 +31,16 @@ class ClassificationService(BaseService):
     3. Similarity-based (fallback)
     """
 
-    def __init__(self, user_id: str,
-                 manual_assignment_datasource: ManualAssignmentRepository,
-                 regexp_datasource: RegexpRepository,
-                 embedding_datasource: EmbeddingRepository,
-                 db_path: str = None,
-                 similarity_calculator: Optional[EmbeddingSimilarityCalculator] = None,
-                 skip_similarity: bool = False):
+    def __init__(
+        self,
+        user_id: str,
+        manual_assignment_datasource: ManualAssignmentRepository,
+        regexp_datasource: RegexpRepository,
+        embedding_datasource: EmbeddingRepository,
+        db_path: str = None,
+        similarity_calculator: Optional[EmbeddingSimilarityCalculator] = None,
+        skip_similarity: bool = False,
+    ):
         """
         Initialize ClassificationService.
 
@@ -90,10 +93,13 @@ class ClassificationService(BaseService):
 
         # Create classifier
         self._classifier = Classifier(
-            [(regexp.internal_category, re.compile(regexp.raw, re.IGNORECASE)) for regexp in regexps_raw],
+            [
+                (regexp.internal_category, re.compile(regexp.raw, re.IGNORECASE))
+                for regexp in regexps_raw
+            ],
             manual_assignment_source=self._manual_datasource,
             similarity_calculator=similarity_calc,
-            similarity_threshold=0.7
+            similarity_threshold=0.7,
         )
 
     @property
@@ -122,7 +128,9 @@ class ClassificationService(BaseService):
         classifier = self._get_classifier()
         return classifier.classify(tx_id, description)
 
-    def classify_batch(self, transactions: List[Tuple[str, str]]) -> Dict[str, Tuple[str, CategorySource]]:
+    def classify_batch(
+        self, transactions: List[Tuple[str, str]]
+    ) -> Dict[str, Tuple[str, CategorySource]]:
         """
         Classify multiple transactions in a batch.
 
@@ -166,10 +174,9 @@ class ClassificationService(BaseService):
             tx_descriptions = {tx_id: tx.description for tx_id, tx in classifiable.items()}
             classifier.set_manual_descriptions(tx_descriptions)
 
-            results = classifier.classify_batch([
-                (tx_id, classifiable[tx_id].description)
-                for tx_id in classifiable.keys()
-            ])
+            results = classifier.classify_batch(
+                [(tx_id, classifiable[tx_id].description) for tx_id in classifiable.keys()]
+            )
 
             for tx_id, (category, source) in results.items():
                 transactions[tx_id].category = category
@@ -241,9 +248,9 @@ class ClassificationService(BaseService):
         if self._embedding_datasource:
             self._embedding_datasource.invalidate_embedding(tx_id)
 
-    def investigate_similarity(self, tx_id: str, description: str,
-                               transactions: Dict[str, Transaction],
-                               categories: Dict) -> dict:
+    def investigate_similarity(
+        self, tx_id: str, description: str, transactions: Dict[str, Transaction], categories: Dict
+    ) -> dict:
         """
         Investigate similarity-based categorization for a transaction.
 
@@ -261,11 +268,10 @@ class ClassificationService(BaseService):
         classifier = self._get_classifier()
 
         if not classifier.similarity_calculator or not classifier.manual_descriptions:
-            return {'success': False, 'error': 'Similarity calculator not available'}
+            return {"success": False, "error": "Similarity calculator not available"}
 
         similarities = classifier.similarity_calculator.calculate_similarities(
-            description,
-            classifier.manual_descriptions
+            description, classifier.manual_descriptions
         )
 
         threshold = classifier.similarity_threshold
@@ -277,23 +283,29 @@ class ClassificationService(BaseService):
                 ref_category = classifier.manual_assignments.get(ref_tx_id)
 
                 if ref_tx and ref_category:
-                    category_name = categories.get(ref_category).name if ref_category in categories else 'Unknown'
+                    category_name = (
+                        categories.get(ref_category).name
+                        if ref_category in categories
+                        else "Unknown"
+                    )
 
-                    similar_transactions.append({
-                        'tx_id': ref_tx_id,
-                        'description': ref_tx.description,
-                        'date': ref_tx.date.strftime('%Y-%m-%d %H:%M:%S'),
-                        'amount': str(ref_tx.amount),
-                        'category_id': ref_category,
-                        'category_name': category_name,
-                        'similarity_score': round(score, 3)
-                    })
+                    similar_transactions.append(
+                        {
+                            "tx_id": ref_tx_id,
+                            "description": ref_tx.description,
+                            "date": ref_tx.date.strftime("%Y-%m-%d %H:%M:%S"),
+                            "amount": str(ref_tx.amount),
+                            "category_id": ref_category,
+                            "category_name": category_name,
+                            "similarity_score": round(score, 3),
+                        }
+                    )
 
         # Sort by similarity score descending
-        similar_transactions.sort(key=lambda x: x['similarity_score'], reverse=True)
+        similar_transactions.sort(key=lambda x: x["similarity_score"], reverse=True)
 
         return {
-            'success': True,
-            'similar_transactions': similar_transactions,
-            'threshold': threshold
+            "success": True,
+            "similar_transactions": similar_transactions,
+            "threshold": threshold,
         }

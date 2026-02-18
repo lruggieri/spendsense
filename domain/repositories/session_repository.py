@@ -6,7 +6,8 @@ This module provides an abstract interface for session storage, allowing easy mi
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Optional, Dict
+from typing import Dict, Optional
+
 from domain.entities.session import Session
 
 
@@ -26,7 +27,6 @@ class SessionRepository(ABC):
         Returns:
             Session token string
         """
-        pass
 
     @abstractmethod
     def get_session(self, session_token: str) -> Optional[Session]:
@@ -39,7 +39,6 @@ class SessionRepository(ABC):
         Returns:
             Session object or None if not found/expired
         """
-        pass
 
     @abstractmethod
     def delete_session(self, session_token: str) -> bool:
@@ -52,7 +51,6 @@ class SessionRepository(ABC):
         Returns:
             True if session was deleted, False otherwise
         """
-        pass
 
     @abstractmethod
     def delete_user_sessions(self, user_id: str) -> int:
@@ -65,7 +63,6 @@ class SessionRepository(ABC):
         Returns:
             Number of sessions deleted
         """
-        pass
 
     @abstractmethod
     def cleanup_expired_sessions(self) -> int:
@@ -75,7 +72,6 @@ class SessionRepository(ABC):
         Returns:
             Number of sessions deleted
         """
-        pass
 
     @abstractmethod
     def update_session_expiration(self, session_token: str, new_expiration: datetime) -> bool:
@@ -89,7 +85,6 @@ class SessionRepository(ABC):
         Returns:
             True if updated, False otherwise
         """
-        pass
 
     @abstractmethod
     def update_google_token(self, session_token: str, google_token: Dict) -> bool:
@@ -103,7 +98,6 @@ class SessionRepository(ABC):
         Returns:
             True if updated, False otherwise
         """
-        pass
 
     @abstractmethod
     def encrypt_google_token(self, session_token: str, encryption_key: str) -> bool:
@@ -117,7 +111,6 @@ class SessionRepository(ABC):
         Returns:
             True if encrypted, False otherwise
         """
-        pass
 
     @abstractmethod
     def decrypt_google_token(self, session_token: str, encryption_key: str) -> bool:
@@ -131,4 +124,3 @@ class SessionRepository(ABC):
         Returns:
             True if decrypted, False otherwise
         """
-        pass

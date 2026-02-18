@@ -5,13 +5,14 @@ Handles category CRUD operations and hierarchy management.
 """
 
 import logging
-from typing import List, Dict, Optional, Tuple
+from typing import Dict, List, Tuple
+
 from uuid6 import uuid7
 
 from application.services.base_service import BaseService
-from domain.repositories.category_repository import CategoryRepository
 from domain.entities.category import Category
-from domain.entities.category_tree import UNKNOWN_CATEGORY_ID, ALL_CATEGORY_ID
+from domain.entities.category_tree import ALL_CATEGORY_ID, UNKNOWN_CATEGORY_ID
+from domain.repositories.category_repository import CategoryRepository
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,9 @@ class CategoryService(BaseService):
         self._categories = {cat.id: cat for cat in category_list}
 
         # Add the "unknown" category for uncategorized transactions
-        unknown_category = Category(UNKNOWN_CATEGORY_ID, "Unknown", "Uncategorized transactions", "")
+        unknown_category = Category(
+            UNKNOWN_CATEGORY_ID, "Unknown", "Uncategorized transactions", ""
+        )
         self._categories[UNKNOWN_CATEGORY_ID] = unknown_category
 
     @property
@@ -81,7 +84,8 @@ class CategoryService(BaseService):
 
         # First, add all root categories (those without parent or with empty parent)
         root_categories = [
-            cat_id for cat_id, cat in self._categories.items()
+            cat_id
+            for cat_id, cat in self._categories.items()
             if not cat.parent_id or cat.parent_id not in self._categories
         ]
 
@@ -103,8 +107,9 @@ class CategoryService(BaseService):
         result = [category_id]
 
         # Find all direct children
-        children = [cat_id for cat_id, cat in self._categories.items()
-                   if cat.parent_id == category_id]
+        children = [
+            cat_id for cat_id, cat in self._categories.items() if cat.parent_id == category_id
+        ]
 
         # Recursively get descendants of each child
         for child_id in children:
@@ -120,10 +125,17 @@ class CategoryService(BaseService):
             Number of categories
         """
         # Exclude system categories (unknown, all)
-        return len([c for c in self._categories.values()
-                   if c.id not in (UNKNOWN_CATEGORY_ID, ALL_CATEGORY_ID)])
+        return len(
+            [
+                c
+                for c in self._categories.values()
+                if c.id not in (UNKNOWN_CATEGORY_ID, ALL_CATEGORY_ID)
+            ]
+        )
 
-    def create_category(self, name: str, description: str = "", parent_id: str = "") -> Tuple[bool, str, str]:
+    def create_category(
+        self, name: str, description: str = "", parent_id: str = ""
+    ) -> Tuple[bool, str, str]:
         """
         Create a new category with auto-generated ID.
 
@@ -157,7 +169,7 @@ class CategoryService(BaseService):
             id=category_id,
             name=name,
             description=description.strip(),
-            parent_id=parent_id if parent_id else ""
+            parent_id=parent_id if parent_id else "",
         )
 
         if self.datasource.create_category(new_category):
@@ -167,7 +179,9 @@ class CategoryService(BaseService):
         else:
             return (False, "Failed to create category in database", "")
 
-    def update_category(self, category_id: str, name: str = None, description: str = None, parent_id: str = None) -> Tuple[bool, str]:
+    def update_category(
+        self, category_id: str, name: str = None, description: str = None, parent_id: str = None
+    ) -> Tuple[bool, str]:
         """
         Update an existing category.
 
@@ -207,7 +221,12 @@ class CategoryService(BaseService):
                 return (False, "Cannot create cycle in category hierarchy")
 
         # Update category
-        if self.datasource.update_category(category_id, name.strip() if name else None, description.strip() if description else None, parent_id):
+        if self.datasource.update_category(
+            category_id,
+            name.strip() if name else None,
+            description.strip() if description else None,
+            parent_id,
+        ):
             # Refresh categories cache
             self._load_categories()
             return (True, "")
@@ -233,21 +252,33 @@ class CategoryService(BaseService):
 
         # Check if category has children
         if self.datasource.has_children(category_id):
-            return (False, "Cannot delete category with children. Please delete or move child categories first.")
+            return (
+                False,
+                "Cannot delete category with children. Please delete or move child categories first.",
+            )
 
         # Check if category has regex patterns
         regexp_count = self.datasource.get_regexp_count(category_id)
         if regexp_count > 0:
-            return (False, f"Cannot delete category with {regexp_count} regex pattern(s) assigned to it")
+            return (
+                False,
+                f"Cannot delete category with {regexp_count} regex pattern(s) assigned to it",
+            )
 
         # Check if category has transactions
         transaction_count = self.datasource.get_transaction_count(category_id)
         if transaction_count > 0:
-            return (False, f"Cannot delete category with {transaction_count} manually assigned transaction(s)")
+            return (
+                False,
+                f"Cannot delete category with {transaction_count} manually assigned transaction(s)",
+            )
 
         # Check if any descendant has transactions
         if self._has_descendant_transactions(category_id):
-            return (False, "Cannot delete category: one or more child categories have assigned transactions")
+            return (
+                False,
+                "Cannot delete category: one or more child categories have assigned transactions",
+            )
 
         # Delete category
         if self.datasource.delete_category(category_id):

@@ -16,7 +16,7 @@ Example flows:
 """
 
 import logging
-from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Union
 
 from config import get_currency_minor_units
@@ -57,10 +57,10 @@ def to_minor_units(amount_str: str, currency: str) -> int:
         decimal_amount = Decimal(amount_str)
 
         # Calculate multiplier (10^minor_units)
-        multiplier = Decimal(10 ** minor_units)
+        multiplier = Decimal(10**minor_units)
 
         # Multiply and round to nearest integer
-        result = (decimal_amount * multiplier).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+        result = (decimal_amount * multiplier).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
 
         return int(result)
 
@@ -90,7 +90,7 @@ def to_major_units(amount_minor: int, currency: str) -> Decimal:
     minor_units = get_currency_minor_units(currency)
 
     # Calculate divisor (10^minor_units)
-    divisor = Decimal(10 ** minor_units)
+    divisor = Decimal(10**minor_units)
 
     # Divide to get major units
     return Decimal(amount_minor) / divisor
@@ -117,7 +117,9 @@ def to_major_units_float(amount_minor: int, currency: str) -> float:
     return float(to_major_units(amount_minor, currency))
 
 
-def format_amount(amount_minor: int, currency: str, include_decimals: bool = True, thousands_sep: bool = False) -> str:
+def format_amount(
+    amount_minor: int, currency: str, include_decimals: bool = True, thousands_sep: bool = False
+) -> str:
     """
     Format amount for display.
 
@@ -159,7 +161,9 @@ def format_amount(amount_minor: int, currency: str, include_decimals: bool = Tru
     return f"{major:.{minor_units}f}"
 
 
-def format_major_amount(amount_major: Union[float, Decimal], currency: str, thousands_sep: bool = False) -> str:
+def format_major_amount(
+    amount_major: Union[float, Decimal], currency: str, thousands_sep: bool = False
+) -> str:
     """
     Format an amount that's already in major units (e.g., from currency conversions).
 

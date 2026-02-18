@@ -1,4 +1,5 @@
 """Tests for service factory functions in presentation.web.utils."""
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,9 +11,9 @@ from application.services import (
     FetcherService,
     GroupService,
     PatternService,
-    TransactionService as SlimTransactionService,
-    UserSettingsService,
 )
+from application.services import TransactionService as SlimTransactionService
+from application.services import UserSettingsService
 from presentation.web.utils import (
     _get_datasource_factory,
     _get_user_id,
@@ -25,10 +26,10 @@ from presentation.web.utils import (
     get_user_settings_service,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _mock_factory():
     """Return a MagicMock that behaves like SQLiteDataSourceFactory."""
@@ -49,11 +50,11 @@ def _patch_factory_and_db(app_context):
     """Patch SQLiteDataSourceFactory and get_database_path for every test."""
     mock_factory = _mock_factory()
     with patch(
-        'presentation.web.utils.SQLiteDataSourceFactory',
+        "presentation.web.utils.SQLiteDataSourceFactory",
         return_value=mock_factory,
     ), patch(
-        'presentation.web.utils.get_database_path',
-        return_value=':memory:',
+        "presentation.web.utils.get_database_path",
+        return_value=":memory:",
     ):
         yield mock_factory
 
@@ -61,6 +62,7 @@ def _patch_factory_and_db(app_context):
 # ---------------------------------------------------------------------------
 # _get_user_id
 # ---------------------------------------------------------------------------
+
 
 class TestGetUserId:
     def test_returns_request_user_id(self, app_context):
@@ -76,6 +78,7 @@ class TestGetUserId:
 # CategoryService factory
 # ---------------------------------------------------------------------------
 
+
 class TestGetCategoryService:
     def test_creates_instance(self):
         result = get_category_service()
@@ -85,6 +88,7 @@ class TestGetCategoryService:
 # ---------------------------------------------------------------------------
 # PatternService factory
 # ---------------------------------------------------------------------------
+
 
 class TestGetPatternService:
     def test_creates_instance(self):
@@ -107,6 +111,7 @@ class TestGetPatternService:
 # UserSettingsService factory
 # ---------------------------------------------------------------------------
 
+
 class TestGetUserSettingsService:
     def test_creates_instance(self):
         result = get_user_settings_service()
@@ -116,6 +121,7 @@ class TestGetUserSettingsService:
 # ---------------------------------------------------------------------------
 # TransactionService factory
 # ---------------------------------------------------------------------------
+
 
 class TestGetTransactionService:
     def test_creates_instance(self):
@@ -144,8 +150,9 @@ class TestGetTransactionService:
 # ClassificationService factory
 # ---------------------------------------------------------------------------
 
+
 class TestGetClassificationService:
-    @patch('presentation.web.utils.get_sentence_model', return_value=MagicMock())
+    @patch("presentation.web.utils.get_sentence_model", return_value=MagicMock())
     def test_creates_instance(self, _mock_model):
         result = get_classification_service()
         assert isinstance(result, ClassificationService)
@@ -160,6 +167,7 @@ class TestGetClassificationService:
 # ---------------------------------------------------------------------------
 # FetcherService factory
 # ---------------------------------------------------------------------------
+
 
 class TestGetFetcherService:
     def test_creates_instance(self):
@@ -177,6 +185,7 @@ class TestGetFetcherService:
 # GroupService factory
 # ---------------------------------------------------------------------------
 
+
 class TestGetGroupService:
     def test_creates_instance(self):
         result = get_group_service()
@@ -193,37 +202,34 @@ class TestGetGroupService:
 # Encryption key passthrough
 # ---------------------------------------------------------------------------
 
+
 class TestEncryptionKeyPassthrough:
     def test_encryption_key_passed_to_factory(self, app_context):
         """Verify g.encryption_key is passed through to SQLiteDataSourceFactory."""
         g.encryption_key = "test_base64_key=="
 
-        with patch(
-            'presentation.web.utils.SQLiteDataSourceFactory'
-        ) as MockFactory, patch(
-            'presentation.web.utils.get_database_path',
-            return_value=':memory:',
+        with patch("presentation.web.utils.SQLiteDataSourceFactory") as MockFactory, patch(
+            "presentation.web.utils.get_database_path",
+            return_value=":memory:",
         ):
             MockFactory.return_value = _mock_factory()
             _get_datasource_factory()
             MockFactory.assert_called_once_with(
-                ':memory:', 'test_user@example.com', encryption_key='test_base64_key=='
+                ":memory:", "test_user@example.com", encryption_key="test_base64_key=="
             )
 
     def test_no_encryption_key_passes_none(self, app_context):
         """Verify None is passed when g.encryption_key is not set."""
         # Ensure no encryption_key on g
-        if hasattr(g, 'encryption_key'):
-            delattr(g, 'encryption_key')
+        if hasattr(g, "encryption_key"):
+            delattr(g, "encryption_key")
 
-        with patch(
-            'presentation.web.utils.SQLiteDataSourceFactory'
-        ) as MockFactory, patch(
-            'presentation.web.utils.get_database_path',
-            return_value=':memory:',
+        with patch("presentation.web.utils.SQLiteDataSourceFactory") as MockFactory, patch(
+            "presentation.web.utils.get_database_path",
+            return_value=":memory:",
         ):
             MockFactory.return_value = _mock_factory()
             _get_datasource_factory()
             MockFactory.assert_called_once_with(
-                ':memory:', 'test_user@example.com', encryption_key=None
+                ":memory:", "test_user@example.com", encryption_key=None
             )

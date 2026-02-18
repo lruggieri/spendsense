@@ -7,6 +7,7 @@ transaction groups.
 
 from abc import ABC, abstractmethod
 from typing import List, Optional
+
 from domain.entities.group import Group
 
 
@@ -21,7 +22,6 @@ class GroupRepository(ABC):
         Returns:
             List[Group]: List of all groups for the user
         """
-        pass
 
     @abstractmethod
     def get_group(self, group_id: str) -> Optional[Group]:
@@ -34,7 +34,6 @@ class GroupRepository(ABC):
         Returns:
             Group object if found, None otherwise
         """
-        pass
 
     @abstractmethod
     def create_group(self, group: Group) -> None:
@@ -47,7 +46,6 @@ class GroupRepository(ABC):
         Note:
             If a group with the same ID already exists, behavior is implementation-specific
         """
-        pass
 
     @abstractmethod
     def delete_group(self, group_id: str) -> bool:
@@ -63,7 +61,6 @@ class GroupRepository(ABC):
         Note:
             Deleting a group should also remove it from all transactions
         """
-        pass
 
     @abstractmethod
     def update_group(self, group_id: str, **fields) -> bool:
@@ -81,4 +78,3 @@ class GroupRepository(ABC):
             This method uses **fields for flexibility to support future fields
             without changing the interface
         """
-        pass

@@ -2,11 +2,12 @@
 
 import base64
 import unittest
+
 from infrastructure.email.gmail_utils import (
+    _transform_charset,
     decode_gmail_ui_message_id,
-    normalize_gmail_message_id,
     get_body_from_message,
-    _transform_charset
+    normalize_gmail_message_id,
 )
 
 
@@ -103,15 +104,8 @@ class TestGetBodyFromMessage(unittest.TestCase):
 
     def _create_test_message(self, body_text: str, mime_type: str = "text/html") -> dict:
         """Helper to create a test Gmail message with given body text."""
-        encoded_body = base64.urlsafe_b64encode(body_text.encode('utf-8')).decode('utf-8')
-        return {
-            "payload": {
-                "mimeType": mime_type,
-                "body": {
-                    "data": encoded_body
-                }
-            }
-        }
+        encoded_body = base64.urlsafe_b64encode(body_text.encode("utf-8")).decode("utf-8")
+        return {"payload": {"mimeType": mime_type, "body": {"data": encoded_body}}}
 
     def test_decode_named_html_entities(self):
         """Test that named HTML entities are decoded correctly."""
@@ -121,14 +115,14 @@ class TestGetBodyFromMessage(unittest.TestCase):
         result = get_body_from_message(message)
 
         # Should decode all named entities
-        self.assertIn('&', result)
-        self.assertIn('<tag>', result)
+        self.assertIn("&", result)
+        self.assertIn("<tag>", result)
         self.assertIn('"quoted"', result)
         # Should not contain the entity codes
-        self.assertNotIn('&amp;', result)
-        self.assertNotIn('&lt;', result)
-        self.assertNotIn('&gt;', result)
-        self.assertNotIn('&quot;', result)
+        self.assertNotIn("&amp;", result)
+        self.assertNotIn("&lt;", result)
+        self.assertNotIn("&gt;", result)
+        self.assertNotIn("&quot;", result)
 
     def test_decode_numeric_html_entities(self):
         """Test that numeric HTML entities are decoded correctly."""
@@ -141,10 +135,10 @@ class TestGetBodyFromMessage(unittest.TestCase):
 
         # Should decode numeric entities
         self.assertIn('"quoted"', result)
-        self.assertIn('& value', result)
+        self.assertIn("& value", result)
         # Should not contain the entity codes
-        self.assertNotIn('&#34;', result)
-        self.assertNotIn('&#38;', result)
+        self.assertNotIn("&#34;", result)
+        self.assertNotIn("&#38;", result)
 
     def test_decode_hex_html_entities(self):
         """Test that hexadecimal HTML entities are decoded correctly."""
@@ -157,10 +151,10 @@ class TestGetBodyFromMessage(unittest.TestCase):
 
         # Should decode hex entities
         self.assertIn('"quoted"', result)
-        self.assertIn('& value', result)
+        self.assertIn("& value", result)
         # Should not contain the entity codes
-        self.assertNotIn('&#x22;', result)
-        self.assertNotIn('&#x26;', result)
+        self.assertNotIn("&#x22;", result)
+        self.assertNotIn("&#x26;", result)
 
     def test_issue_44_arabic_restaurant_example(self):
         """Test the specific example from issue #44."""
@@ -173,7 +167,7 @@ class TestGetBodyFromMessage(unittest.TestCase):
         # Should decode to a single ampersand
         self.assertEqual(result, "Arabic Restaurant&Cafe Abu Essam")
         # Should NOT contain the HTML entity
-        self.assertNotIn('&amp;', result)
+        self.assertNotIn("&amp;", result)
 
     def test_no_double_escaping_plain_text(self):
         """Test that plain text with special chars is not double-escaped."""
@@ -194,32 +188,25 @@ class TestGetBodyFromMessage(unittest.TestCase):
         result = get_body_from_message(message)
 
         # Should decode all entities correctly
-        self.assertIn('$50', result)
-        self.assertIn('€45', result)
-        self.assertIn('&', result)
+        self.assertIn("$50", result)
+        self.assertIn("€45", result)
+        self.assertIn("&", result)
         # Should not contain entity codes
-        self.assertNotIn('&#36;', result)
-        self.assertNotIn('&amp;', result)
-        self.assertNotIn('&#8364;', result)
+        self.assertNotIn("&#36;", result)
+        self.assertNotIn("&amp;", result)
+        self.assertNotIn("&#8364;", result)
 
     def test_multipart_message_with_html_entities(self):
         """Test multipart message with HTML entities in text/plain part."""
         # Create a multipart message with HTML entities in plain text
         # Some senders encode entities even in text/plain parts
         plain_text = "Restaurant&amp;Cafe"
-        encoded_body = base64.urlsafe_b64encode(plain_text.encode('utf-8')).decode('utf-8')
+        encoded_body = base64.urlsafe_b64encode(plain_text.encode("utf-8")).decode("utf-8")
 
         message = {
             "payload": {
                 "mimeType": "multipart/alternative",
-                "parts": [
-                    {
-                        "mimeType": "text/plain",
-                        "body": {
-                            "data": encoded_body
-                        }
-                    }
-                ]
+                "parts": [{"mimeType": "text/plain", "body": {"data": encoded_body}}],
             }
         }
 
@@ -227,8 +214,8 @@ class TestGetBodyFromMessage(unittest.TestCase):
 
         # HTML entities should be decoded even in text/plain
         self.assertEqual(result, "Restaurant&Cafe")
-        self.assertNotIn('&amp;', result)
+        self.assertNotIn("&amp;", result)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -1,4 +1,5 @@
 """Tests for the FetcherService application service."""
+
 import unittest
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
@@ -24,8 +25,9 @@ class TestFetcherService(unittest.TestCase):
             db_path="/tmp/test.db",
         )
 
-    def _make_fetcher(self, fetcher_id="f1", name="Test Fetcher",
-                      enabled=True, group_id=None, version=1):
+    def _make_fetcher(
+        self, fetcher_id="f1", name="Test Fetcher", enabled=True, group_id=None, version=1
+    ):
         """Helper to create a Fetcher entity."""
         now = datetime.now(timezone.utc)
         return Fetcher(
@@ -67,7 +69,8 @@ class TestFetcherService(unittest.TestCase):
     def test_count_fetchers(self):
         """count_fetchers should return the number of enabled fetchers for list."""
         self.mock_ds.get_enabled_fetchers_for_list.return_value = [
-            self._make_fetcher("f1"), self._make_fetcher("f2")
+            self._make_fetcher("f1"),
+            self._make_fetcher("f2"),
         ]
         self.assertEqual(self.service.count_fetchers(), 2)
 
@@ -80,7 +83,7 @@ class TestFetcherService(unittest.TestCase):
         self.assertEqual(result, expected)
         self.mock_ds.get_fetcher_by_id.assert_called_once_with("f1")
 
-    @patch('application.services.fetcher_service.uuid7')
+    @patch("application.services.fetcher_service.uuid7")
     def test_create_fetcher_success(self, mock_uuid7):
         """create_fetcher should create a fetcher successfully with valid input."""
         mock_uuid7.return_value = "generated-uuid"
@@ -168,7 +171,7 @@ class TestFetcherService(unittest.TestCase):
         self.assertFalse(success)
         self.assertIn("currency", error.lower())
 
-    @patch('application.services.fetcher_service.uuid7')
+    @patch("application.services.fetcher_service.uuid7")
     def test_update_fetcher_success(self, mock_uuid7):
         """update_fetcher should create a new version with updated fields."""
         mock_uuid7.return_value = "new-uuid"
@@ -284,7 +287,7 @@ class TestFetcherService(unittest.TestCase):
         self.assertEqual(result, expected)
         self.mock_ds.get_enabled_fetchers_for_list.assert_called_once()
 
-    @patch('application.services.fetcher_service.uuid7')
+    @patch("application.services.fetcher_service.uuid7")
     def test_create_fetcher_uses_default_currency(self, mock_uuid7):
         """create_fetcher should use user's default currency when none provided."""
         mock_uuid7.return_value = "gen-uuid"
@@ -306,5 +309,5 @@ class TestFetcherService(unittest.TestCase):
         self.assertEqual(created.default_currency, "JPY")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

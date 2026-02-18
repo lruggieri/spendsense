@@ -6,6 +6,7 @@ This module provides an abstract interface for fetcher configuration storage, al
 
 from abc import ABC, abstractmethod
 from typing import List, Optional
+
 from domain.entities.fetcher import Fetcher
 
 
@@ -20,7 +21,6 @@ class FetcherRepository(ABC):
         Returns:
             List of Fetcher entities (all versions)
         """
-        pass
 
     @abstractmethod
     def get_enabled_fetchers_for_list(self) -> List[Fetcher]:
@@ -31,7 +31,6 @@ class FetcherRepository(ABC):
         Returns:
             List of enabled Fetcher entities (one per group)
         """
-        pass
 
     @abstractmethod
     def get_fetcher_by_id(self, fetcher_id: str) -> Optional[Fetcher]:
@@ -44,7 +43,6 @@ class FetcherRepository(ABC):
         Returns:
             Fetcher entity or None if not found
         """
-        pass
 
     @abstractmethod
     def get_enabled_fetchers(self) -> List[Fetcher]:
@@ -54,7 +52,6 @@ class FetcherRepository(ABC):
         Returns:
             List of enabled Fetcher entities
         """
-        pass
 
     @abstractmethod
     def get_fetcher_versions(self, group_id: str) -> List[Fetcher]:
@@ -67,7 +64,6 @@ class FetcherRepository(ABC):
         Returns:
             List of Fetcher entities ordered by version descending
         """
-        pass
 
     @abstractmethod
     def get_enabled_version(self, group_id: str) -> Optional[Fetcher]:
@@ -80,7 +76,6 @@ class FetcherRepository(ABC):
         Returns:
             The enabled Fetcher version or None if no enabled version
         """
-        pass
 
     @abstractmethod
     def create_fetcher(self, fetcher: Fetcher) -> bool:
@@ -95,7 +90,6 @@ class FetcherRepository(ABC):
         Returns:
             True if successful, False otherwise
         """
-        pass
 
     @abstractmethod
     def update_fetcher(self, fetcher: Fetcher) -> bool:
@@ -110,7 +104,6 @@ class FetcherRepository(ABC):
         Returns:
             True if successful, False otherwise
         """
-        pass
 
     @abstractmethod
     def create_new_version(self, old_fetcher_id: str, new_fetcher: Fetcher) -> Optional[Fetcher]:
@@ -126,7 +119,6 @@ class FetcherRepository(ABC):
         Returns:
             The newly created Fetcher entity or None if failed
         """
-        pass
 
     @abstractmethod
     def toggle_fetcher_enabled(self, fetcher_id: str) -> Optional[bool]:
@@ -141,7 +133,6 @@ class FetcherRepository(ABC):
         Returns:
             New enabled status (True/False) or None if failed
         """
-        pass
 
     @abstractmethod
     def delete_fetcher(self, fetcher_id: str) -> bool:
@@ -154,4 +145,3 @@ class FetcherRepository(ABC):
         Returns:
             True if successful, False otherwise
         """
-        pass

@@ -20,6 +20,7 @@ class Regexp:
         internal_category: Category ID to assign when pattern matches
         order_index: Pattern priority (lower value = higher priority)
     """
+
     id: str
     raw: str
     name: str

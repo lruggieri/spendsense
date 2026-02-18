@@ -21,6 +21,7 @@ class Session:
         google_token: Google OAuth token bundle (Dict with access_token, refresh_token, etc.)
         created_at: Session creation timestamp (UTC)
     """
+
     session_token: str
     user_id: str
     expiration: datetime

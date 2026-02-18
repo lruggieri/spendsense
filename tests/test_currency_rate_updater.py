@@ -2,13 +2,15 @@
 Unit tests for CurrencyRateUpdater.
 """
 
-import pytest
 import os
 import tempfile
 import time
 from datetime import date, datetime, timedelta
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
+
 from infrastructure.currency_rate_updater import CurrencyRateUpdater
-from unittest.mock import Mock, patch, MagicMock
 
 
 class TestCurrencyRateUpdater:
@@ -21,25 +23,26 @@ class TestCurrencyRateUpdater:
         self.test_data_file = os.path.join(self.temp_dir, "test_ecb_rates.zip")
 
         # Mock the environment variable to use test path
-        self.original_env = os.environ.get('CURRENCY_DATA_FILE')
-        os.environ['CURRENCY_DATA_FILE'] = self.test_data_file
+        self.original_env = os.environ.get("CURRENCY_DATA_FILE")
+        os.environ["CURRENCY_DATA_FILE"] = self.test_data_file
 
     def teardown_method(self):
         """Clean up test fixtures."""
         # Restore original environment
         if self.original_env is not None:
-            os.environ['CURRENCY_DATA_FILE'] = self.original_env
+            os.environ["CURRENCY_DATA_FILE"] = self.original_env
         else:
-            os.environ.pop('CURRENCY_DATA_FILE', None)
+            os.environ.pop("CURRENCY_DATA_FILE", None)
 
         # Clean up temp directory
         import shutil
+
         if os.path.exists(self.temp_dir):
             shutil.rmtree(self.temp_dir)
 
     def test_scheduler_starts_and_stops(self):
         """Test that scheduler can start and stop."""
-        with patch.object(CurrencyRateUpdater, '_check_and_update'):
+        with patch.object(CurrencyRateUpdater, "_check_and_update"):
             updater = CurrencyRateUpdater()
             updater.start()
             assert updater.scheduler.running
@@ -56,7 +59,7 @@ class TestCurrencyRateUpdater:
         updater = CurrencyRateUpdater()
 
         # Create a file with today's modification time
-        with open(self.test_data_file, 'w') as f:
+        with open(self.test_data_file, "w") as f:
             f.write("test")
 
         assert updater._is_file_current()
@@ -66,7 +69,7 @@ class TestCurrencyRateUpdater:
         updater = CurrencyRateUpdater()
 
         # Create a file
-        with open(self.test_data_file, 'w') as f:
+        with open(self.test_data_file, "w") as f:
             f.write("test")
 
         # Set file modification time to yesterday
@@ -77,7 +80,7 @@ class TestCurrencyRateUpdater:
 
     def test_get_data_file_returns_path(self):
         """Test get_data_file returns the data file path."""
-        with patch.object(CurrencyRateUpdater, '_check_and_update'):
+        with patch.object(CurrencyRateUpdater, "_check_and_update"):
             updater = CurrencyRateUpdater()
             path = updater.get_data_file()
             assert path == self.test_data_file
@@ -86,7 +89,7 @@ class TestCurrencyRateUpdater:
         """Test get_data_file triggers download if file missing."""
         updater = CurrencyRateUpdater()
 
-        with patch.object(updater, '_check_and_update') as mock_update:
+        with patch.object(updater, "_check_and_update") as mock_update:
             updater.get_data_file()
             mock_update.assert_called_once()
 
@@ -95,10 +98,10 @@ class TestCurrencyRateUpdater:
         updater = CurrencyRateUpdater()
 
         # Create a current file
-        with open(self.test_data_file, 'w') as f:
+        with open(self.test_data_file, "w") as f:
             f.write("test")
 
-        with patch('urllib.request.urlopen') as mock_open:
+        with patch("urllib.request.urlopen") as mock_open:
             updater._check_and_update()
             # Should not attempt download
             mock_open.assert_not_called()
@@ -113,8 +116,8 @@ class TestCurrencyRateUpdater:
         mock_response.__enter__.return_value = mock_response
         mock_response.__exit__.return_value = None
 
-        with patch('urllib.request.urlopen', return_value=mock_response) as mock_open:
-            with patch('domain.services.currency_converter.CurrencyConverterService.reload_data'):
+        with patch("urllib.request.urlopen", return_value=mock_response) as mock_open:
+            with patch("domain.services.currency_converter.CurrencyConverterService.reload_data"):
                 # Ensure file doesn't exist
                 if os.path.exists(self.test_data_file):
                     os.remove(self.test_data_file)
@@ -127,7 +130,7 @@ class TestCurrencyRateUpdater:
         """Test _check_and_update cleans up temp file on download error."""
         updater = CurrencyRateUpdater()
 
-        with patch('urllib.request.urlopen', side_effect=Exception("Download failed")):
+        with patch("urllib.request.urlopen", side_effect=Exception("Download failed")):
             # Ensure file doesn't exist
             if os.path.exists(self.test_data_file):
                 os.remove(self.test_data_file)
@@ -148,9 +151,9 @@ class TestCurrencyRateUpdater:
         mock_response.__enter__.return_value = mock_response
         mock_response.__exit__.return_value = None
 
-        with patch('urllib.request.urlopen', return_value=mock_response):
-            with patch('domain.services.currency_converter.CurrencyConverterService.reload_data'):
-                with patch('os.replace') as mock_replace:
+        with patch("urllib.request.urlopen", return_value=mock_response):
+            with patch("domain.services.currency_converter.CurrencyConverterService.reload_data"):
+                with patch("os.replace") as mock_replace:
                     # Ensure file doesn't exist
                     if os.path.exists(self.test_data_file):
                         os.remove(self.test_data_file)
@@ -161,6 +164,6 @@ class TestCurrencyRateUpdater:
                     mock_replace.assert_called_once()
                     call_args = mock_replace.call_args[0]
                     # Temp file should follow pattern: {data_file}.tmp.{pid}
-                    assert '.tmp.' in call_args[0]
+                    assert ".tmp." in call_args[0]
                     assert call_args[0].startswith(self.test_data_file)
                     assert call_args[1] == self.test_data_file

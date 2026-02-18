@@ -5,8 +5,9 @@ This module provides an abstract interface for user settings storage, allowing e
 """
 
 from abc import ABC, abstractmethod
-from typing import Tuple, List
 from datetime import datetime
+from typing import List, Tuple
+
 from domain.entities.user_settings import UserSettings
 
 
@@ -23,7 +24,6 @@ class UserSettingsRepository(ABC):
         Returns:
             UserSettings entity with current or default values
         """
-        pass
 
     @abstractmethod
     def update_settings(self, settings: UserSettings) -> Tuple[bool, str]:
@@ -36,7 +36,6 @@ class UserSettingsRepository(ABC):
         Returns:
             Tuple of (success: bool, error_message: str)
         """
-        pass
 
     @abstractmethod
     def get_llm_call_timestamps(self) -> List[datetime]:
@@ -46,7 +45,6 @@ class UserSettingsRepository(ABC):
         Returns:
             List of datetime objects representing when LLM calls were made
         """
-        pass
 
     @abstractmethod
     def update_llm_call_timestamps(self, timestamps: List[datetime]) -> bool:
@@ -59,4 +57,3 @@ class UserSettingsRepository(ABC):
         Returns:
             True if update was successful, False otherwise
         """
-        pass

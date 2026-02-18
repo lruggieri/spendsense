@@ -4,9 +4,10 @@ SQLite datasource for groups.
 
 import sqlite3
 from typing import List, Optional
+
+from domain.entities.group import Group
 from domain.repositories.group_repository import GroupRepository
 from infrastructure.db_query_logger import get_logging_cursor
-from domain.entities.group import Group
 
 
 class SQLiteGroupDataSource(GroupRepository):
@@ -34,12 +35,15 @@ class SQLiteGroupDataSource(GroupRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, name
                 FROM groups
                 WHERE user_id = ?
                 ORDER BY name
-            """, (self.user_id,))
+            """,
+                (self.user_id,),
+            )
 
             groups = []
             for row in cursor.fetchall():
@@ -65,11 +69,14 @@ class SQLiteGroupDataSource(GroupRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, name
                 FROM groups
                 WHERE id = ? AND user_id = ?
-            """, (group_id, self.user_id))
+            """,
+                (group_id, self.user_id),
+            )
 
             row = cursor.fetchone()
             if row:
@@ -91,10 +98,13 @@ class SQLiteGroupDataSource(GroupRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO groups (id, name, user_id)
                 VALUES (?, ?, ?)
-            """, (group.id, group.name, self.user_id))
+            """,
+                (group.id, group.name, self.user_id),
+            )
             conn.commit()
 
         finally:
@@ -119,10 +129,13 @@ class SQLiteGroupDataSource(GroupRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 DELETE FROM groups
                 WHERE id = ? AND user_id = ?
-            """, (group_id, self.user_id))
+            """,
+                (group_id, self.user_id),
+            )
             conn.commit()
 
             return cursor.rowcount > 0
@@ -151,9 +164,9 @@ class SQLiteGroupDataSource(GroupRepository):
         set_clauses = []
         params = []
 
-        if 'name' in fields:
+        if "name" in fields:
             set_clauses.append("name = ?")
-            params.append(fields['name'])
+            params.append(fields["name"])
 
         if not set_clauses:
             # No valid fields provided

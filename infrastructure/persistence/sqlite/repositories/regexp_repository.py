@@ -2,12 +2,13 @@
 SQLite datasource for regex patterns.
 """
 
-import sqlite3
 import logging
-from typing import List, Tuple, Optional
-from infrastructure.db_query_logger import get_logging_cursor
+import sqlite3
+from typing import List, Optional, Tuple
+
 from domain.entities.regexp import Regexp
 from domain.repositories.regexp_repository import RegexpRepository
+from infrastructure.db_query_logger import get_logging_cursor
 
 logger = logging.getLogger(__name__)
 
@@ -37,21 +38,27 @@ class SQLiteRegexpDataSource(RegexpRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, raw, name, visual_description, internal_category, order_index
                 FROM regexps
                 WHERE user_id = ?
                 ORDER BY order_index ASC
-            """, (self.user_id,))
+            """,
+                (self.user_id,),
+            )
 
-            return [Regexp(
-                id=row[0],
-                raw=row[1],
-                name=row[2],
-                visual_description=row[3],
-                internal_category=row[4],
-                order_index=row[5]
-            ) for row in cursor.fetchall()]
+            return [
+                Regexp(
+                    id=row[0],
+                    raw=row[1],
+                    name=row[2],
+                    visual_description=row[3],
+                    internal_category=row[4],
+                    order_index=row[5],
+                )
+                for row in cursor.fetchall()
+            ]
 
         finally:
             conn.close()
@@ -70,11 +77,14 @@ class SQLiteRegexpDataSource(RegexpRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, raw, name, visual_description, internal_category, order_index
                 FROM regexps
                 WHERE id = ? AND user_id = ?
-            """, (regexp_id, self.user_id))
+            """,
+                (regexp_id, self.user_id),
+            )
 
             row = cursor.fetchone()
             if row:
@@ -84,7 +94,7 @@ class SQLiteRegexpDataSource(RegexpRepository):
                     name=row[2],
                     visual_description=row[3],
                     internal_category=row[4],
-                    order_index=row[5]
+                    order_index=row[5],
                 )
             return None
 
@@ -105,21 +115,27 @@ class SQLiteRegexpDataSource(RegexpRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, raw, name, visual_description, internal_category, order_index
                 FROM regexps
                 WHERE internal_category = ? AND user_id = ?
                 ORDER BY order_index ASC
-            """, (category_id, self.user_id))
+            """,
+                (category_id, self.user_id),
+            )
 
-            return [Regexp(
-                id=row[0],
-                raw=row[1],
-                name=row[2],
-                visual_description=row[3],
-                internal_category=row[4],
-                order_index=row[5]
-            ) for row in cursor.fetchall()]
+            return [
+                Regexp(
+                    id=row[0],
+                    raw=row[1],
+                    name=row[2],
+                    visual_description=row[3],
+                    internal_category=row[4],
+                    order_index=row[5],
+                )
+                for row in cursor.fetchall()
+            ]
 
         finally:
             conn.close()
@@ -138,27 +154,40 @@ class SQLiteRegexpDataSource(RegexpRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT id, raw, name, visual_description, internal_category, order_index
                 FROM regexps
                 WHERE user_id = ?
                 ORDER BY order_index ASC
-            """, (self.user_id,))
+            """,
+                (self.user_id,),
+            )
 
-            return [Regexp(
-                id=row[0],
-                raw=row[1],
-                name=row[2],
-                visual_description=row[3],
-                internal_category=row[4],
-                order_index=row[5]
-            ) for row in cursor.fetchall()]
+            return [
+                Regexp(
+                    id=row[0],
+                    raw=row[1],
+                    name=row[2],
+                    visual_description=row[3],
+                    internal_category=row[4],
+                    order_index=row[5],
+                )
+                for row in cursor.fetchall()
+            ]
 
         finally:
             conn.close()
 
-    def create_regexp(self, regexp_id: str, raw: str, name: str,
-                      visual_description: str, category: str, order_index: int) -> bool:
+    def create_regexp(
+        self,
+        regexp_id: str,
+        raw: str,
+        name: str,
+        visual_description: str,
+        category: str,
+        order_index: int,
+    ) -> bool:
         """
         Create a new regexp pattern.
 
@@ -177,10 +206,13 @@ class SQLiteRegexpDataSource(RegexpRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO regexps (id, raw, name, visual_description, internal_category, user_id, order_index)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (regexp_id, raw, name, visual_description, category, self.user_id, order_index))
+            """,
+                (regexp_id, raw, name, visual_description, category, self.user_id, order_index),
+            )
 
             conn.commit()
             return True
@@ -193,8 +225,14 @@ class SQLiteRegexpDataSource(RegexpRepository):
         finally:
             conn.close()
 
-    def update_regexp(self, regexp_id: str, raw: str = None, name: str = None,
-                      visual_description: str = None, category: str = None) -> bool:
+    def update_regexp(
+        self,
+        regexp_id: str,
+        raw: str = None,
+        name: str = None,
+        visual_description: str = None,
+        category: str = None,
+    ) -> bool:
         """
         Update an existing regexp pattern.
 
@@ -274,10 +312,13 @@ class SQLiteRegexpDataSource(RegexpRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 DELETE FROM regexps
                 WHERE id = ? AND user_id = ?
-            """, (regexp_id, self.user_id))
+            """,
+                (regexp_id, self.user_id),
+            )
 
             conn.commit()
             return cursor.rowcount > 0
@@ -305,11 +346,14 @@ class SQLiteRegexpDataSource(RegexpRepository):
 
         try:
             # Use executemany for batch updates
-            cursor.executemany("""
+            cursor.executemany(
+                """
                 UPDATE regexps
                 SET order_index = ?
                 WHERE id = ? AND user_id = ?
-            """, [(order_idx, pattern_id, self.user_id) for pattern_id, order_idx in order_updates])
+            """,
+                [(order_idx, pattern_id, self.user_id) for pattern_id, order_idx in order_updates],
+            )
 
             conn.commit()
             return True
@@ -333,11 +377,14 @@ class SQLiteRegexpDataSource(RegexpRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT MAX(order_index)
                 FROM regexps
                 WHERE user_id = ?
-            """, (self.user_id,))
+            """,
+                (self.user_id,),
+            )
 
             result = cursor.fetchone()
             return result[0] if result[0] is not None else 0

@@ -17,13 +17,19 @@ import torch
 from sentence_transformers import SentenceTransformer
 
 from config import (
-    get_credentials_loader, get_database_path, get_allowed_emails,
-    get_redis_host, get_redis_port, get_redis_db, get_cache_ttl
+    get_allowed_emails,
+    get_cache_ttl,
+    get_credentials_loader,
+    get_database_path,
+    get_redis_db,
+    get_redis_host,
+    get_redis_port,
 )
-from infrastructure.persistence.sqlite.repositories.session_repository import SQLiteSessionDataSource
-from infrastructure.currency_rate_updater import CurrencyRateUpdater
 from infrastructure.cache.redis_cache_manager import RedisCacheManager
-
+from infrastructure.currency_rate_updater import CurrencyRateUpdater
+from infrastructure.persistence.sqlite.repositories.session_repository import (
+    SQLiteSessionDataSource,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +57,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/userinfo.profile",
-    "openid"
+    "openid",
 ]
 
 
@@ -73,18 +79,20 @@ def init_extensions(app):
 
     # Check device availability
     if torch.cuda.is_available():
-        device = 'cuda'
+        device = "cuda"
         logger.info(f"GPU detected: {torch.cuda.get_device_name(0)} - will use GPU for encoding")
     elif torch.backends.mps.is_available():
-        device = 'mps'  # Apple Silicon GPU
+        device = "mps"  # Apple Silicon GPU
         logger.info("Apple Silicon GPU detected - will use MPS for encoding")
     else:
-        device = 'cpu'
+        device = "cpu"
         logger.info("No GPU detected - will use CPU for encoding (slower)")
 
-    _global_sentence_model = SentenceTransformer('all-MiniLM-L6-v2', device=device)
+    _global_sentence_model = SentenceTransformer("all-MiniLM-L6-v2", device=device)
     model_load_time = (time.time() - model_load_start) * 1000
-    logger.info(f"Model loaded in {model_load_time:.2f}ms on device '{device}' and ready for reuse across all users!")
+    logger.info(
+        f"Model loaded in {model_load_time:.2f}ms on device '{device}' and ready for reuse across all users!"
+    )
 
     # Initialize currency rate updater
     logger.info("Initializing currency rate updater...")
@@ -100,7 +108,7 @@ def init_extensions(app):
         redis_host=get_redis_host(),
         redis_port=get_redis_port(),
         redis_db=get_redis_db(),
-        default_ttl=get_cache_ttl()
+        default_ttl=get_cache_ttl(),
     )
 
     # Initialize session datasource
