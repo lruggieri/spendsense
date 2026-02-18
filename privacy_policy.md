@@ -133,7 +133,7 @@ This application:
 
 If you have questions about this Privacy Policy or how your data is handled, please contact:
 
-**Email:** luc4.ruggieri@gmail.com
+**Email:** 35179996+lruggieri@users.noreply.github.com
 **Website:** https://github.com/lruggieri/spendsense
 
 ## Open Source
