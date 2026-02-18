@@ -6,7 +6,7 @@ Contains helper functions used across multiple blueprints.
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import parse_qs
 
 from flask import g, request
@@ -44,7 +44,7 @@ class EncryptionKeyRequired(Exception):
     """Raised when an operation requires the encryption key but it's not available."""
 
 
-def invalidate_service_cache(user_id: str = None):
+def invalidate_service_cache(user_id: Optional[str] = None):
     """
     Invalidate service cache in Redis for a specific user or all users.
     Cache invalidation is now shared across all Flask workers/processes.
@@ -418,7 +418,7 @@ def tree_to_dict(node: CategoryNode, parent_id: Optional[str] = None) -> dict:
     Returns:
         Dictionary with id, name, total, children keys
     """
-    result = {
+    result: Dict[str, Any] = {
         "id": node.category.id,
         "name": node.category.name,
         "total": round(node.total_expense, 2),

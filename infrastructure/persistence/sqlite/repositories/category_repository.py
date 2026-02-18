@@ -3,7 +3,7 @@ SQLite datasource for categories.
 """
 
 import sqlite3
-from typing import Dict, List
+from typing import Optional, Dict, List
 
 from domain.entities.category import Category
 from domain.repositories.category_repository import CategoryRepository
@@ -144,7 +144,7 @@ class SQLiteCategoryDataSource(CategoryRepository):
             conn.close()
 
     def update_category(
-        self, category_id: str, name: str = None, description: str = None, parent_id: str = None
+        self, category_id: str, name: Optional[str] = None, description: Optional[str] = None, parent_id: Optional[str] = None
     ) -> bool:
         """
         Update an existing category.
@@ -184,7 +184,7 @@ class SQLiteCategoryDataSource(CategoryRepository):
             params.extend([category_id, self.user_id])
             query = f"UPDATE categories SET {', '.join(updates)} WHERE id = ? AND user_id = ?"
 
-            cursor.execute(query, params)
+            cursor.execute(query, tuple(params))
             conn.commit()
             return cursor.rowcount > 0
         finally:

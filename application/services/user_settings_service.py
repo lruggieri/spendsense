@@ -6,7 +6,7 @@ Handles user settings CRUD and currency management.
 
 import logging
 from datetime import datetime
-from typing import Dict, List, Tuple
+from typing import Any, Optional, Dict, List, Tuple
 
 from application.services.base_service import BaseService
 from config import get_supported_currency_codes
@@ -68,7 +68,7 @@ class UserSettingsService(BaseService):
     """
 
     def __init__(
-        self, user_id: str, user_settings_datasource: UserSettingsRepository, db_path: str = None
+        self, user_id: str, user_settings_datasource: UserSettingsRepository, db_path: Optional[str] = None
     ):
         """
         Initialize UserSettingsService.
@@ -86,7 +86,7 @@ class UserSettingsService(BaseService):
         """Get the user settings datasource (for external components like rate limiter)."""
         return self._settings_datasource
 
-    def _validate_setting(self, field_name: str, value: any) -> Tuple[bool, str]:
+    def _validate_setting(self, field_name: str, value: Any) -> Tuple[bool, str]:
         """
         Validate a setting value using SETTINGS_SCHEMA.
 
@@ -120,7 +120,7 @@ class UserSettingsService(BaseService):
         return self._settings_datasource.get_settings()
 
     def update_user_settings(
-        self, language: str = None, currency: str = None, browser_settings: dict = None
+        self, language: Optional[str] = None, currency: Optional[str] = None, browser_settings: Optional[dict] = None
     ) -> Tuple[bool, str]:
         """
         Update user settings.

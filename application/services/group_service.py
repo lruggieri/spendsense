@@ -29,7 +29,7 @@ class GroupService(BaseService):
         user_id: str,
         group_datasource: GroupRepository,
         transaction_service: TransactionService,
-        db_path: str = None,
+        db_path: Optional[str] = None,
     ):
         """
         Initialize GroupService.
@@ -91,7 +91,7 @@ class GroupService(BaseService):
             logger.error(f"Error creating group: {e}")
             return (False, f"Failed to create group: {str(e)}", "")
 
-    def update_group(self, group_id: str, name: str = None) -> Tuple[bool, str]:
+    def update_group(self, group_id: str, name: Optional[str] = None) -> Tuple[bool, str]:
         """
         Update a group.
 

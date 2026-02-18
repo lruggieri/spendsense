@@ -7,6 +7,7 @@ Guides users through setting up fetchers, categories, and patterns.
 
 import logging
 from datetime import datetime, timezone
+from typing import Any, Dict, List, cast
 
 from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
@@ -211,9 +212,9 @@ def step(step_num: int):
     for step_def in ONBOARDING_STEPS:
         step_data = step_def.copy()
         step_data["count"] = counts[step_def["key"]]
-        step_data["is_complete"] = step_data["count"] > 0
+        step_data["is_complete"] = cast(int, step_data["count"]) > 0
         step_data["is_current"] = step_def["number"] == step_num
-        step_data["is_past"] = step_def["number"] < step_num
+        step_data["is_past"] = cast(int, step_def["number"]) < step_num
         steps_data.append(step_data)
 
     current_step = steps_data[step_num - 1]
@@ -235,7 +236,7 @@ def step(step_num: int):
         "current_step": current_step,
         "step_num": step_num,
         "total_steps": len(ONBOARDING_STEPS),
-        "can_continue": current_step["count"] > 0 or is_optional,
+        "can_continue": cast(int, current_step["count"]) > 0 or is_optional,
         "hide_header": True,  # Hide main navigation during onboarding
     }
 

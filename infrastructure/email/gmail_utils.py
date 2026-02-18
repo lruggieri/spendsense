@@ -90,7 +90,7 @@ def _transform_charset(token: str, charset_in: str, charset_out: str) -> str:
         in_str_idx.append(idx)
 
     # Transform indices from input base to output base
-    out_str_idx = []
+    out_str_idx: list[int] = []
     for i in reversed(range(len(in_str_idx))):
         offset = 0
 

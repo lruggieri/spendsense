@@ -30,7 +30,7 @@ class FetcherService(BaseService):
         user_id: str,
         fetcher_datasource: FetcherRepository,
         user_settings_service: UserSettingsService,
-        db_path: str = None,
+        db_path: Optional[str] = None,
     ):
         """
         Initialize FetcherService.
@@ -124,8 +124,8 @@ class FetcherService(BaseService):
         subject_filter: str,
         amount_pattern: str,
         merchant_pattern: str,
-        currency_pattern: str = None,
-        default_currency: str = None,
+        currency_pattern: Optional[str] = None,
+        default_currency: Optional[str] = None,
         negate_amount: bool = False,
     ) -> Tuple[bool, str, str]:
         """
@@ -196,14 +196,14 @@ class FetcherService(BaseService):
     def update_fetcher(
         self,
         fetcher_id: str,
-        name: str = None,
-        from_emails: List[str] = None,
-        subject_filter: str = None,
-        amount_pattern: str = None,
-        merchant_pattern: str = None,
-        currency_pattern: str = None,
-        default_currency: str = None,
-        negate_amount: bool = None,
+        name: Optional[str] = None,
+        from_emails: Optional[List[str]] = None,
+        subject_filter: Optional[str] = None,
+        amount_pattern: Optional[str] = None,
+        merchant_pattern: Optional[str] = None,
+        currency_pattern: Optional[str] = None,
+        default_currency: Optional[str] = None,
+        negate_amount: Optional[bool] = None,
     ) -> Tuple[bool, str, str]:
         """
         Update a fetcher by creating a new version (immutability semantics).

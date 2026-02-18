@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 class SimilarityCalculator(ABC):
@@ -32,7 +32,7 @@ class SimilarityCalculator(ABC):
         """
 
     def calculate_similarities_batch(
-        self, texts: List[str], reference_texts: Dict[str, str]
+        self, texts: List[str], reference_texts: Dict[str, str], text_ids: Optional[List[str]] = None
     ) -> List[List[Tuple[str, float]]]:
         """
         Calculate similarities for multiple texts at once (batch processing).

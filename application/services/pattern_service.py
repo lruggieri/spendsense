@@ -7,7 +7,7 @@ Handles pattern CRUD operations, rule validation, and regex generation.
 import json
 import logging
 import re
-from typing import Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple
 
 from uuid6 import uuid7
 
@@ -31,7 +31,7 @@ class PatternService(BaseService):
         user_id: str,
         regexp_datasource: RegexpRepository,
         category_service: CategoryService,
-        db_path: str = None,
+        db_path: Optional[str] = None,
     ):
         """
         Initialize PatternService.

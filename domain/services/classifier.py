@@ -75,9 +75,9 @@ class Classifier:
 
         # Final fallback: similarity-based classification
         if self.similarity_calculator and self.manual_descriptions:
-            category = self._classify_by_similarity(description)
-            if category:
-                return (category, CategorySource.SIMILARITY)
+            sim_category = self._classify_by_similarity(description)
+            if sim_category:
+                return (sim_category, CategorySource.SIMILARITY)
 
         return (None, None)
 
@@ -100,7 +100,7 @@ class Classifier:
         """
         import time
 
-        results = {}
+        results: Dict[str, Tuple[Optional[str], Optional[CategorySource]]] = {}
         similarity_batch = []  # Transactions that need similarity-based classification
 
         manual_count = 0
@@ -143,9 +143,9 @@ class Classifier:
             similarity_time = (time.time() - similarity_start) * 1000
             logger.debug(f"Similarity calculation took {similarity_time:.2f}ms")
 
-            for (tx_id, _), category in zip(similarity_batch, similarity_results):
-                if category:
-                    results[tx_id] = (category, CategorySource.SIMILARITY)
+            for (tx_id, _), sim_cat in zip(similarity_batch, similarity_results):
+                if sim_cat:
+                    results[tx_id] = (sim_cat, CategorySource.SIMILARITY)
                 else:
                     results[tx_id] = (None, None)
         else:
@@ -166,6 +166,7 @@ class Classifier:
             Category ID based on majority vote of similar transactions, or None
         """
         # Calculate similarities with all manually assigned transactions
+        assert self.similarity_calculator is not None
         similarities = self.similarity_calculator.calculate_similarities(
             description, self.manual_descriptions
         )
@@ -189,7 +190,7 @@ class Classifier:
         return most_common[0][0] if most_common else None
 
     def _classify_batch_by_similarity(
-        self, descriptions: list[str], tx_ids: list[str] = None
+        self, descriptions: list[str], tx_ids: Optional[list[str]] = None
     ) -> list[str | None]:
         """
         Classify multiple descriptions by similarity in batch.
@@ -206,12 +207,13 @@ class Classifier:
 
         # Calculate similarities for all descriptions at once
         # Pass tx_ids for persistent caching if available
+        assert self.similarity_calculator is not None
         all_similarities = self.similarity_calculator.calculate_similarities_batch(
             descriptions, self.manual_descriptions, text_ids=tx_ids
         )
 
         # Process each description's similarities
-        results = []
+        results: list[str | None] = []
         for similarities in all_similarities:
             # Filter by threshold and collect categories
             categories = []

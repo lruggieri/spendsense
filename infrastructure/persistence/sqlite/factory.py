@@ -4,7 +4,7 @@ SQLite implementation of the DataSource Factory.
 This module provides a concrete factory for creating SQLite datasource instances with caching.
 """
 
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from domain.repositories.category_repository import CategoryRepository
 from domain.repositories.embedding_repository import EmbeddingRepository
@@ -60,7 +60,7 @@ class SQLiteDataSourceFactory(DataSourceFactory):
         self.db_path = db_path
         self.user_id = user_id
         self.encryption_key = encryption_key
-        self._cache = {}
+        self._cache: Dict[str, Any] = {}
 
     def get_category_datasource(self) -> CategoryRepository:
         """Get cached or create new SQLite category datasource."""
