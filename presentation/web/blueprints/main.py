@@ -58,8 +58,6 @@ def robots_txt():
     """Serve robots.txt for search engine and AI crawler guidance."""
     content = (
         "User-agent: *\n"
-        "Allow: /\n"
-        "Allow: /privacy-policy\n"
         "Disallow: /review\n"
         "Disallow: /charts\n"
         "Disallow: /trends\n"

@@ -75,11 +75,58 @@ def mock_services():
         p.stop()
 
 
+class TestLandingPage:
+    """Tests for the public landing page and related public routes."""
+
+    def test_index_unauthenticated_shows_landing(self, client):
+        """GET / without a session cookie should render the landing page."""
+        response = client.get("/")
+        assert response.status_code == 200
+        assert b"SpendSense" in response.data
+
+    def test_index_with_session_cookie_redirects_to_review(self, client):
+        """GET / with any session_token cookie should redirect to /review."""
+        client.set_cookie("session_token", "some_token")
+        response = client.get("/")
+        assert response.status_code == 302
+        assert "/review" in response.headers["Location"]
+
+    def test_robots_txt_content_type(self, client):
+        """GET /robots.txt should return text/plain."""
+        response = client.get("/robots.txt")
+        assert response.status_code == 200
+        assert response.content_type.startswith("text/plain")
+
+    def test_robots_txt_disallows_app_routes(self, client):
+        """GET /robots.txt should disallow authenticated app routes."""
+        response = client.get("/robots.txt")
+        assert b"Disallow: /review" in response.data
+        assert b"Disallow: /api/" in response.data
+
+    def test_robots_txt_includes_sitemap(self, client):
+        """GET /robots.txt should reference the sitemap."""
+        response = client.get("/robots.txt")
+        assert b"Sitemap:" in response.data
+        assert b"sitemap.xml" in response.data
+
+    def test_sitemap_xml_content_type(self, client):
+        """GET /sitemap.xml should return application/xml."""
+        response = client.get("/sitemap.xml")
+        assert response.status_code == 200
+        assert response.content_type.startswith("application/xml")
+
+    def test_sitemap_xml_includes_public_urls(self, client):
+        """GET /sitemap.xml should list / and /privacy-policy."""
+        response = client.get("/sitemap.xml")
+        assert b"<loc>" in response.data
+        assert b"/privacy-policy" in response.data
+
+
 class TestMainBlueprint:
     """Tests for the main blueprint routes."""
 
     def test_index_redirects_to_review(self, authenticated_client, mock_services):
-        """GET / should redirect (302) to the review page."""
+        """GET / should redirect (302) to the review page when authenticated."""
         response = authenticated_client.get("/")
         assert response.status_code == 302
         assert "/review" in response.headers["Location"]
