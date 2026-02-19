@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% set hide_header = true %}
+
+{% block title %}SpendSense – Automatic Expense Tracker & Categorizer{% endblock %}
+
+{% block extra_head %}
+<meta name="description" content="SpendSense automatically categorizes your financial transactions using AI. Import from Gmail, track spending patterns, and visualize your expenses with full privacy.">
+<meta name="robots" content="index, follow">
+
+<!-- Open Graph -->
+<meta property="og:title" content="SpendSense – Automatic Expense Tracker & Categorizer">
+<meta property="og:description" content="SpendSense automatically categorizes your financial transactions using AI. Import from Gmail, track spending patterns, and visualize your expenses with full privacy.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{{ request.url_root }}">
+
+<!-- Canonical -->
+<link rel="canonical" href="{{ request.url_root }}">
+
+<!-- JSON-LD Structured Data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "SpendSense",
+  "description": "SpendSense automatically categorizes your financial transactions using AI. Import from Gmail, track spending patterns, and visualize your expenses with full privacy.",
+  "applicationCategory": "FinanceApplication",
+  "operatingSystem": "Web",
+  "url": "{{ request.url_root }}"
+}
+</script>
+
+<style>
+    body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+    }
+
+    .landing-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: var(--spacing-xl) var(--spacing-md);
+    }
+
+    .hero-card {
+        background-color: var(--bg-primary);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-xl);
+        box-shadow: var(--shadow-xl);
+        text-align: center;
+        margin-bottom: var(--spacing-lg);
+    }
+
+    .logo {
+        width: 120px;
+        height: auto;
+        margin: 0 auto var(--spacing-md);
+        display: block;
+        object-fit: contain;
+    }
+
+    .hero-title {
+        color: var(--text-primary);
+        font-size: 2rem;
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .hero-tagline {
+        color: var(--text-secondary);
+        font-size: 1rem;
+        margin-bottom: var(--spacing-xl);
+    }
+
+    .google-login-btn {
+        background-color: white;
+        color: #444;
+        border: 1px solid var(--gray-300);
+        padding: var(--spacing-md) var(--spacing-xl);
+        font-size: 1rem;
+        font-weight: 500;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--spacing-sm);
+        text-decoration: none;
+        transition: all var(--transition-normal);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .google-login-btn:hover {
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-2px);
+        border-color: var(--gray-400);
+    }
+
+    .google-icon {
+        width: 20px;
+        height: 20px;
+    }
+
+    .features-card {
+        background-color: var(--bg-primary);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-xl);
+        box-shadow: var(--shadow-xl);
+        margin-bottom: var(--spacing-lg);
+    }
+
+    .features-title {
+        color: var(--text-primary);
+        font-size: 1.125rem;
+        font-weight: 600;
+        margin-bottom: var(--spacing-lg);
+        text-align: center;
+    }
+
+    .feature-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-md);
+    }
+
+    .feature-item {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--spacing-md);
+    }
+
+    .feature-icon {
+        font-size: 1.5rem;
+        flex-shrink: 0;
+        width: 2rem;
+        text-align: center;
+    }
+
+    .feature-text strong {
+        display: block;
+        color: var(--text-primary);
+        font-size: 0.9375rem;
+        margin-bottom: 2px;
+    }
+
+    .feature-text span {
+        color: var(--text-secondary);
+        font-size: 0.8125rem;
+        line-height: 1.5;
+    }
+
+    .landing-footer {
+        text-align: center;
+        color: rgba(255,255,255,0.8);
+        font-size: 0.8125rem;
+        padding-bottom: var(--spacing-lg);
+    }
+
+    .landing-footer a {
+        color: white;
+        text-decoration: underline;
+    }
+
+    @media (max-width: 640px) {
+        .hero-card, .features-card {
+            padding: var(--spacing-lg);
+        }
+
+        .hero-title {
+            font-size: 1.625rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="landing-container">
+    <div class="hero-card">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="SpendSense Logo" class="logo">
+        <h1 class="hero-title">SpendSense</h1>
+        <p class="hero-tagline">Automatic expense tracking with AI-powered categorization</p>
+
+        <a href="{{ url_for('auth.login_start') }}" class="google-login-btn">
+            <svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            Sign in with Google
+        </a>
+    </div>
+
+    <div class="features-card">
+        <h2 class="features-title">What SpendSense does</h2>
+        <ul class="feature-list">
+            <li class="feature-item">
+                <span class="feature-icon">🤖</span>
+                <div class="feature-text">
+                    <strong>Automatic categorization</strong>
+                    <span>Transactions are categorized automatically using a three-tier system: manual assignments, regex patterns, and AI similarity matching.</span>
+                </div>
+            </li>
+            <li class="feature-item">
+                <span class="feature-icon">📧</span>
+                <div class="feature-text">
+                    <strong>Gmail import</strong>
+                    <span>Import financial transaction emails from Gmail directly into your expense tracker without manual data entry.</span>
+                </div>
+            </li>
+            <li class="feature-item">
+                <span class="feature-icon">📊</span>
+                <div class="feature-text">
+                    <strong>Spending analytics</strong>
+                    <span>Visualize spending patterns with charts and trends. Filter by category, date range, and more.</span>
+                </div>
+            </li>
+            <li class="feature-item">
+                <span class="feature-icon">🔒</span>
+                <div class="feature-text">
+                    <strong>Privacy-first encryption</strong>
+                    <span>Transaction data is encrypted at rest. Your financial information stays private and secure.</span>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+    <footer class="landing-footer">
+        <a href="{{ url_for('main.privacy_policy') }}">Privacy Policy</a>
+    </footer>
+</div>
+{% endblock %}
