@@ -56,27 +56,33 @@ def index():
 @main_bp.route("/robots.txt")
 def robots_txt():
     """Serve robots.txt for search engine and AI crawler guidance."""
-    content = (
-        "User-agent: *\n"
+    disallow_app_routes = (
         "Disallow: /review\n"
         "Disallow: /charts\n"
         "Disallow: /trends\n"
         "Disallow: /api/\n"
         "Disallow: /auth/\n"
-        "\n"
-        "# AI crawlers\n"
+    )
+    content = (
+        "User-agent: *\n"
+        + disallow_app_routes
+        + "\n"
+        "# AI crawlers — explicitly allow public pages, disallow app routes\n"
         "User-agent: GPTBot\n"
         "Allow: /\n"
         "Allow: /privacy-policy\n"
-        "\n"
+        + disallow_app_routes
+        + "\n"
         "User-agent: Google-Extended\n"
         "Allow: /\n"
         "Allow: /privacy-policy\n"
-        "\n"
+        + disallow_app_routes
+        + "\n"
         "User-agent: PerplexityBot\n"
         "Allow: /\n"
         "Allow: /privacy-policy\n"
-        "\n"
+        + disallow_app_routes
+        + "\n"
         f"Sitemap: {request.host_url}sitemap.xml\n"
     )
     response = make_response(content)

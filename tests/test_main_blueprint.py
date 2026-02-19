@@ -98,10 +98,13 @@ class TestLandingPage:
         assert response.content_type.startswith("text/plain")
 
     def test_robots_txt_disallows_app_routes(self, client):
-        """GET /robots.txt should disallow authenticated app routes."""
+        """GET /robots.txt should disallow app routes for all crawlers including AI bots."""
         response = client.get("/robots.txt")
-        assert b"Disallow: /review" in response.data
-        assert b"Disallow: /api/" in response.data
+        data = response.data.decode()
+        # Each User-agent block (*, GPTBot, Google-Extended, PerplexityBot) must
+        # include the disallow rules — not just the general User-agent: * block.
+        assert data.count("Disallow: /review") == 4
+        assert data.count("Disallow: /api/") == 4
 
     def test_robots_txt_includes_sitemap(self, client):
         """GET /robots.txt should reference the sitemap."""
