@@ -1,10 +1,6 @@
-# Privacy Policy for Expense Tracker Classifier
-
-**Last Updated:** February 19, 2026
-
 ## Introduction
 
-This Privacy Policy describes how Expense Tracker Classifier ("we", "our", or "the application") collects, uses, and protects your personal information when you use our expense tracking and classification service.
+This Privacy Policy describes how SpendSense ("we", "our", or "the application") collects, uses, and protects your personal information when you use our expense tracking and classification service.
 
 ## Information We Collect
 
