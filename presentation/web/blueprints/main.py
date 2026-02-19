@@ -39,6 +39,12 @@ logger = logging.getLogger(__name__)
 main_bp = Blueprint("main", __name__)
 
 
+@main_bp.route("/privacy-policy")
+def privacy_policy():
+    """Public privacy policy page."""
+    return render_template("privacy_policy.html")
+
+
 @main_bp.route("/")
 @login_required
 def index():

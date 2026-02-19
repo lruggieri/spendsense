@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% set hide_header = true %}
+
+{% block title %}Privacy Policy - SpendSense{% endblock %}
+
+{% block extra_head %}
+<style>
+  .privacy-wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: var(--spacing-xl) var(--spacing-md);
+    color: var(--text-primary);
+  }
+  .privacy-wrap h1 { font-size: 1.75rem; margin-bottom: 0.25rem; }
+  .privacy-wrap .last-updated { color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 2rem; }
+  .privacy-wrap h2 { font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; }
+  .privacy-wrap h3 { font-size: 1rem; margin-top: 1.25rem; margin-bottom: 0.375rem; }
+  .privacy-wrap p, .privacy-wrap li { line-height: 1.65; }
+  .privacy-wrap ul, .privacy-wrap ol { padding-left: 1.5rem; margin: 0.5rem 0; }
+  .privacy-wrap li { margin-bottom: 0.25rem; }
+  .privacy-wrap code { background: var(--bg-secondary); padding: 0.1em 0.35em; border-radius: 3px; font-size: 0.875em; }
+  .privacy-wrap a { color: var(--primary); }
+  .privacy-wrap .contact-block { margin-top: 0.5rem; }
+  .privacy-wrap .contact-block p { margin: 0.2rem 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="privacy-wrap">
+  <h1>Privacy Policy for SpendSense</h1>
+  <p class="last-updated"><strong>Last Updated:</strong> February 19, 2026</p>
+
+  <h2>Introduction</h2>
+  <p>This Privacy Policy describes how SpendSense ("we", "our", or "the application") collects, uses, and protects your personal information when you use our expense tracking and classification service.</p>
+
+  <h2>Information We Collect</h2>
+
+  <h3>1. Google Account Information</h3>
+  <p>When you sign in using Google OAuth, we collect:</p>
+  <ul>
+    <li>Your email address</li>
+    <li>Your Google account ID</li>
+    <li>Access tokens for Gmail API (if you choose to fetch transactions from Gmail)</li>
+  </ul>
+
+  <h3>2. Gmail Data</h3>
+  <p>If you choose to use the Gmail transaction fetching feature, we access:</p>
+  <ul>
+    <li>Email messages from specific financial service providers (banks, payment services)</li>
+    <li>Email content to extract transaction information (date, amount, description)</li>
+    <li>This data is processed locally and stored in the application database</li>
+  </ul>
+
+  <h3>3. Transaction Data</h3>
+  <p>We store:</p>
+  <ul>
+    <li>Transaction details (date, amount, description, source)</li>
+    <li>Manual category assignments you create</li>
+    <li>Comments you add to transactions</li>
+    <li>Classification metadata (how each transaction was categorized)</li>
+  </ul>
+
+  <h3>4. Usage Data</h3>
+  <ul>
+    <li>Session information (stored in the application database)</li>
+    <li>OAuth tokens (encrypted and stored for API access)</li>
+  </ul>
+
+  <h2>How We Use Your Information</h2>
+  <p>We use the collected information to:</p>
+  <ol>
+    <li><strong>Authenticate your access</strong> — Verify your identity using Google OAuth</li>
+    <li><strong>Fetch transactions</strong> — Retrieve transaction emails from your Gmail account</li>
+    <li><strong>Categorize expenses</strong> — Automatically classify transactions using regex patterns and machine learning</li>
+    <li><strong>Generate regex patterns</strong> — Optionally use Google Gemini API to generate classification rules from email content</li>
+    <li><strong>Provide analysis</strong> — Generate expense reports, charts, and trends</li>
+    <li><strong>Maintain your preferences</strong> — Store manual category assignments and comments</li>
+  </ol>
+
+  <h2>Data Storage and Security</h2>
+
+  <h3>Local Storage</h3>
+  <ul>
+    <li>All data is stored locally in the application database</li>
+    <li>The application runs on a private server</li>
+    <li>No data is transmitted to external servers except as described in the Third-Party Services section below</li>
+  </ul>
+
+  <h3>Encryption at Rest</h3>
+  <p>Sensitive fields are encrypted in the database using <strong>AES-256-GCM</strong>:</p>
+  <ul>
+    <li>Transaction descriptions</li>
+    <li>Transaction comments</li>
+    <li>OAuth tokens</li>
+  </ul>
+  <p>Encryption details:</p>
+  <ul>
+    <li><strong>Envelope encryption</strong>: a per-installation Data Encryption Key (DEK) is wrapped with a Key Encryption Key (KEK) following RFC 3394 key-wrapping</li>
+    <li>A 12-byte random nonce is prepended to each encrypted value</li>
+    <li><code>transaction_amount</code> is stored in plaintext (required for aggregation queries)</li>
+    <li>An <code>encryption_version</code> column tracks whether each row uses plaintext (<code>0</code>) or AES-256-GCM (<code>1</code>)</li>
+    <li>If decryption is unavailable (e.g. missing key), affected fields display as <code>[Encrypted]</code> rather than causing errors</li>
+  </ul>
+
+  <h3>Security Measures</h3>
+  <ul>
+    <li>Google OAuth 2.0 for secure authentication</li>
+    <li>Session-based access control with 7-day session expiration</li>
+    <li>Session cookies set with <code>HttpOnly</code> and <code>SameSite=Lax</code> flags; <code>Secure</code> flag enabled in production</li>
+    <li>Access token refresh mechanism to minimize token exposure</li>
+    <li>Optional <code>ALLOWED_EMAILS</code> environment variable to restrict access to authorized accounts only</li>
+  </ul>
+
+  <h2>Third-Party Services</h2>
+
+  <h3>Google Services</h3>
+  <p>We use the following Google services:</p>
+  <ul>
+    <li><strong>Google OAuth 2.0</strong> — For user authentication</li>
+    <li><strong>Gmail API</strong> — To fetch transaction emails (only when you explicitly initiate a fetch)</li>
+    <li><strong>Google Gemini API</strong> (<code>gemini-flash-latest</code>) — Optionally used to generate regex classification patterns from email text; sends email body content to the Gemini API only when explicitly triggered</li>
+  </ul>
+  <p>Google's use of information received from Gmail APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+
+  <h3>European Central Bank (ECB)</h3>
+  <p>The application may download daily currency exchange rate tables from the European Central Bank's public data feed. <strong>No personal data is transmitted to the ECB</strong> — only publicly available rate tables are downloaded.</p>
+
+  <h3>Data Sharing</h3>
+  <p>We do <strong>NOT</strong>:</p>
+  <ul>
+    <li>Sell your data to third parties</li>
+    <li>Share your data with advertisers</li>
+    <li>Transfer personal data to external services beyond what is described above (Google OAuth, Gmail API, Gemini API when explicitly used)</li>
+    <li>Use your data for purposes other than providing the expense tracking service</li>
+  </ul>
+
+  <h2>Gmail API Scope and Usage</h2>
+
+  <h3>Limited Use Disclosure</h3>
+  <p>Our use of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+
+  <h3>Scopes Used</h3>
+  <p>The application requests the following Gmail API scope:</p>
+  <ul>
+    <li><code>https://www.googleapis.com/auth/gmail.readonly</code> — Read-only access to Gmail messages</li>
+  </ul>
+
+  <h3>How We Use Gmail Data</h3>
+  <p>Gmail data is used exclusively to:</p>
+  <ol>
+    <li>Search for transaction emails from specific financial service providers</li>
+    <li>Extract transaction information (date, amount, merchant name)</li>
+    <li>Store extracted transaction data in the application database</li>
+    <li>No Gmail content is shared with any third party</li>
+    <li>Gmail access occurs only when you explicitly trigger a transaction fetch</li>
+  </ol>
+
+  <h2>Your Rights and Choices</h2>
+  <p>You have the right to:</p>
+  <ol>
+    <li><strong>Access your data</strong> — Review all stored transactions and categories through the web interface</li>
+    <li><strong>Modify your data</strong> — Edit transaction categories, add comments, and create manual entries</li>
+    <li><strong>Revoke access</strong> — Disconnect the application from your Google account at any time via <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">Google Account Permissions</a></li>
+  </ol>
+
+  <h2>Data Retention</h2>
+  <ul>
+    <li>Transaction data is retained indefinitely unless you manually delete it</li>
+    <li>Session data expires after 7 days</li>
+    <li>You can delete all data by removing the application database file</li>
+  </ul>
+
+  <h2>Changes to This Privacy Policy</h2>
+  <p>We may update this Privacy Policy from time to time. Changes will be reflected by updating the "Last Updated" date at the top of this policy. Continued use of the application after changes constitutes acceptance of the updated policy.</p>
+
+  <h2>Compliance</h2>
+  <p>This application:</p>
+  <ul>
+    <li>Complies with Google OAuth 2.0 requirements</li>
+    <li>Follows Gmail API Terms of Service</li>
+    <li>Adheres to the Google API Services User Data Policy, including Limited Use requirements</li>
+  </ul>
+
+  <h2>Contact Information</h2>
+  <p>If you have questions about this Privacy Policy or how your data is handled, please contact:</p>
+  <div class="contact-block">
+    <p><strong>Email:</strong> <a href="mailto:luc4.ruggieri@gmail.com">luc4.ruggieri@gmail.com</a></p>
+    <p><strong>Website:</strong> <a href="https://github.com/lruggieri/spendsense" target="_blank" rel="noopener">https://github.com/lruggieri/spendsense</a></p>
+  </div>
+
+  <h2>Open Source</h2>
+  <p>This application is open source. You can review the code to understand exactly how your data is processed:<br>
+  <strong>Repository:</strong> <a href="https://github.com/lruggieri/spendsense" target="_blank" rel="noopener">https://github.com/lruggieri/spendsense</a></p>
+</div>
+{% endblock %}
