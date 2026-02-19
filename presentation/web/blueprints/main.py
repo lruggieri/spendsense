@@ -46,10 +46,72 @@ def privacy_policy():
 
 
 @main_bp.route("/")
-@login_required
 def index():
-    """Redirect to review page (new home)."""
-    return redirect(url_for("transactions.review"))
+    """Public landing page. Authenticated users are redirected to the app."""
+    if request.cookies.get("session_token"):
+        return redirect(url_for("transactions.review"))
+    return render_template("landing.html")
+
+
+@main_bp.route("/robots.txt")
+def robots_txt():
+    """Serve robots.txt for search engine and AI crawler guidance."""
+    disallow_app_routes = (
+        "Disallow: /review\n"
+        "Disallow: /charts\n"
+        "Disallow: /trends\n"
+        "Disallow: /api/\n"
+        "Disallow: /auth/\n"
+    )
+    content = (
+        "User-agent: *\n"
+        + disallow_app_routes
+        + "\n"
+        "# AI crawlers — explicitly allow public pages, disallow app routes\n"
+        "User-agent: GPTBot\n"
+        "Allow: /\n"
+        "Allow: /privacy-policy\n"
+        + disallow_app_routes
+        + "\n"
+        "User-agent: Google-Extended\n"
+        "Allow: /\n"
+        "Allow: /privacy-policy\n"
+        + disallow_app_routes
+        + "\n"
+        "User-agent: PerplexityBot\n"
+        "Allow: /\n"
+        "Allow: /privacy-policy\n"
+        + disallow_app_routes
+        + "\n"
+        f"Sitemap: {request.host_url}sitemap.xml\n"
+    )
+    response = make_response(content)
+    response.headers["Content-Type"] = "text/plain"
+    return response
+
+
+@main_bp.route("/sitemap.xml")
+def sitemap_xml():
+    """Serve XML sitemap for SEO."""
+    base = request.host_url.rstrip("/")
+    content = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        "  <url>\n"
+        f"    <loc>{base}/</loc>\n"
+        "    <changefreq>monthly</changefreq>\n"
+        "    <priority>1.0</priority>\n"
+        "  </url>\n"
+        "  <url>\n"
+        f"    <loc>{base}/privacy-policy</loc>\n"
+        "    <changefreq>yearly</changefreq>\n"
+        "    <priority>0.5</priority>\n"
+        "  </url>\n"
+        "</urlset>\n"
+    )
+    response = make_response(content)
+    response.headers["Content-Type"] = "application/xml"
+    return response
 
 
 @main_bp.route("/service-worker.js")
