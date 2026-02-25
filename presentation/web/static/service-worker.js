@@ -1,5 +1,5 @@
-const CACHE_NAME = 'spendsense-v60';
-const RUNTIME_CACHE = 'spendsense-runtime-v60';
+const CACHE_NAME = 'spendsense-v61';
+const RUNTIME_CACHE = 'spendsense-runtime-v61';
 
 // Assets to cache on install (static assets only, no dynamic data pages)
 const PRECACHE_ASSETS = [
@@ -21,6 +21,8 @@ const PRECACHE_ASSETS = [
   '/static/js/passkey-manager.js',
   '/static/js/timezone-utils.js',
   '/static/js/date-filter-handler.js',
+  '/static/js/email-token.js',
+  '/static/js/gmail-fetch.js',
   '/static/manifest.json',
   '/static/favicon.ico',
   '/static/logo.png'

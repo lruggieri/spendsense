@@ -4,6 +4,7 @@
 {% block page_title %}Fetching Gmail Transactions{% endblock %}
 
 {% block extra_head %}
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
     .progress-container {
         text-align: center;
@@ -76,6 +77,10 @@
     .log-entry.error {
         color: var(--danger);
         font-weight: 600;
+    }
+
+    .log-entry.warning {
+        color: var(--warning, #f57c00);
     }
 
     .log-time {
@@ -163,98 +168,32 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/email-token.js') }}"></script>
+<script src="{{ url_for('static', filename='js/gmail-fetch.js') }}"></script>
 <script>
-    const logContainer = document.getElementById('log-container');
-    const statusMessage = document.getElementById('status-message');
-    const spinner = document.getElementById('spinner');
-    const completeMessage = document.getElementById('complete-message');
-    const errorMessage = document.getElementById('error-message');
-    const errorText = document.getElementById('error-text');
-
-    function addLogEntry(message, type = 'progress') {
-        const entry = document.createElement('div');
-        entry.className = `log-entry ${type}`;
-
-        const now = new Date();
-        const timestamp = now.toLocaleTimeString();
-
-        entry.innerHTML = `<span class="log-time">${timestamp}</span>${escapeHtml(message)}`;
-        logContainer.appendChild(entry);
-
-        // Auto-scroll to bottom
-        logContainer.scrollTop = logContainer.scrollHeight;
-    }
-
-    function updateStatus(message) {
-        statusMessage.textContent = message;
-        addLogEntry(message, 'progress');
-    }
-
-    function showComplete(results) {
-        spinner.style.display = 'none';
-        statusMessage.style.display = 'none';
-        completeMessage.style.display = 'block';
-
-        // Display results summary if available
-        if (results && results.length > 0) {
-            const summaryDiv = document.getElementById('results-summary');
-            let summaryHTML = '<p><strong>Summary:</strong></p><ul>';
-
-            results.forEach(result => {
-                summaryHTML += `<li><strong>${escapeHtml(result.source)}:</strong> ${result.written} new transactions (${result.total} total messages, ${result.new} new)</li>`;
-            });
-
-            summaryHTML += '</ul>';
-            summaryDiv.innerHTML = summaryHTML;
-        } else {
-            document.getElementById('results-summary').innerHTML = '<p>All transactions have been fetched and categorized.</p>';
-        }
-
-        // Auto-redirect after 5 seconds
-        setTimeout(() => {
-            window.location.href = "{{ url_for('transactions.review', sort_by='date') }}";
-        }, 5000);
-    }
-
-    function showError(message) {
-        spinner.style.display = 'none';
-        statusMessage.style.display = 'none';
-        errorText.textContent = message;
-        errorMessage.style.display = 'block';
-        addLogEntry(`ERROR: ${message}`, 'error');
-    }
-
-    // Connect to Server-Sent Events stream
-    const eventSource = new EventSource("{{ url_for('gmail.fetch_gmail_execute_stream') }}");
-
-    eventSource.onmessage = function(event) {
-        try {
-            const data = JSON.parse(event.data);
-
-            if (data.status === 'progress') {
-                updateStatus(data.message);
-            } else if (data.status === 'complete') {
-                addLogEntry('✓ ' + data.message, 'success');
-                eventSource.close();
-                showComplete(data.results || []);
-            } else if (data.status === 'error') {
-                eventSource.close();
-                showError(data.message);
-            } else if (data.status === 'starting') {
-                updateStatus(data.message);
-            }
-        } catch (e) {
-            console.error('Error parsing SSE data:', e);
-        }
+    const elements = {
+        logContainer:    document.getElementById('log-container'),
+        statusMessage:   document.getElementById('status-message'),
+        spinner:         document.getElementById('spinner'),
+        completeMessage: document.getElementById('complete-message'),
+        errorMessage:    document.getElementById('error-message'),
+        errorText:       document.getElementById('error-text'),
+        resultsSummary:  document.getElementById('results-summary'),
     };
 
-    eventSource.onerror = function(error) {
-        console.error('SSE error:', error);
-        eventSource.close();
-        showError('Connection lost. Please try again.');
-    };
+    const reviewUrl = "{{ url_for('transactions.review', sort_by='date') }}";
+    const onProgress = window.gmailFetch.buildProgressCallback(elements, reviewUrl);
 
-    // Initial log entry
-    addLogEntry('Starting Gmail fetch process...', 'progress');
+    // Parse URL params set by the fetch_gmail.html form submit handler
+    const params = new URLSearchParams(window.location.search);
+    const afterDate = params.get('after_date') || '';
+    const selectedFetcherIds = params.getAll('fetchers');
+
+    onProgress({ phase: 'config', message: 'Starting Gmail fetch process...' });
+
+    window.gmailFetch.runImport(selectedFetcherIds, afterDate, onProgress)
+        .catch(function (err) {
+            onProgress({ phase: 'error', message: err.message || String(err) });
+        });
 </script>
 {% endblock %}

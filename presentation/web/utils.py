@@ -5,13 +5,10 @@ Contains helper functions used across multiple blueprints.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from urllib.parse import parse_qs
 
 from flask import g, request
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
 
 # Import focused services
 from application.services import (
@@ -32,16 +29,11 @@ from infrastructure.persistence.factory import DataSourceFactory
 from infrastructure.persistence.sqlite.factory import SQLiteDataSourceFactory
 from presentation.web.extensions import (
     get_cache_manager,
-    get_credentials_loader_instance,
     get_sentence_model,
     get_session_datasource,
 )
 
 logger = logging.getLogger(__name__)
-
-
-class EncryptionKeyRequired(Exception):
-    """Raised when an operation requires the encryption key but it's not available."""
 
 
 def invalidate_service_cache(user_id: Optional[str] = None):
@@ -91,82 +83,6 @@ def extract_date_part(date_string):
     if "T" in date_string:
         return date_string.split("T")[0]
     return date_string
-
-
-def refresh_google_token_if_needed(session_token, google_token, encryption_key=None):
-    """
-    Check if Google access token is expired and refresh it if needed.
-
-    Args:
-        session_token: User's session token
-        google_token: Dictionary containing Google OAuth tokens
-        encryption_key: Optional encryption key to encrypt the refreshed token
-
-    Returns:
-        Updated google_token dictionary with fresh access token
-    """
-    # If the token is a fallback (decryption failed or no key), it won't have OAuth fields
-    if "token" not in google_token:
-        raise EncryptionKeyRequired(
-            "Google token unavailable — encryption key may be missing or incorrect"
-        )
-
-    session_datasource = get_session_datasource()
-    credentials_loader = get_credentials_loader_instance()
-
-    # Check if access token is expired
-    access_token_expiry = google_token.get("access_token_expiry")
-    if not access_token_expiry:
-        # No expiry info, assume it needs refresh
-        needs_refresh = True
-    else:
-        expiry_dt = datetime.fromisoformat(access_token_expiry)
-        # Make timezone-aware if it isn't already (assume UTC)
-        if expiry_dt.tzinfo is None:
-            expiry_dt = expiry_dt.replace(tzinfo=timezone.utc)
-        # Refresh if expired or expiring in next 5 minutes
-        needs_refresh = expiry_dt <= datetime.now(timezone.utc) + timedelta(minutes=5)
-
-    if not needs_refresh:
-        return google_token  # Token still valid
-
-    # Load client credentials from config
-    client_config = credentials_loader.get_client_config()
-    client_id = client_config["client_id"]
-    client_secret = client_config["client_secret"]
-
-    # Create credentials object
-    creds = Credentials(
-        token=google_token["token"],
-        refresh_token=google_token["refresh_token"],
-        token_uri=google_token["token_uri"],
-        client_id=client_id,
-        client_secret=client_secret,
-        scopes=google_token["scopes"],
-    )
-
-    # Refresh the token
-    try:
-        creds.refresh(Request())
-
-        # Update the token dictionary with new access token
-        google_token["token"] = creds.token
-        google_token["access_token_expiry"] = creds.expiry.isoformat() if creds.expiry else None
-
-        # Update session in database with refreshed token (preserves session_token)
-        session_datasource.update_google_token(
-            session_token, google_token, encryption_key=encryption_key
-        )
-
-        logger.info(
-            f"Successfully refreshed access token (expires: {google_token['access_token_expiry']})"
-        )
-        return google_token
-
-    except Exception as e:
-        logger.warning(f"Token refresh failed: {str(e)}")
-        # Return original token, let the API call fail and handle it there
-        return google_token
 
 
 # =============================================================================

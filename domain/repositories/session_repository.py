@@ -15,13 +15,13 @@ class SessionRepository(ABC):
     """Abstract interface for session storage."""
 
     @abstractmethod
-    def create_session(self, user_id: str, google_token: Dict, expiration: datetime) -> str:
+    def create_session(self, user_id: str, user_profile: Dict, expiration: datetime) -> str:
         """
         Create a new session for a user.
 
         Args:
             user_id: User identifier (email or Google ID)
-            google_token: Google OAuth token dictionary
+            user_profile: User profile dict with user_name and user_picture
             expiration: Session expiration datetime
 
         Returns:
@@ -84,43 +84,4 @@ class SessionRepository(ABC):
 
         Returns:
             True if updated, False otherwise
-        """
-
-    @abstractmethod
-    def update_google_token(self, session_token: str, google_token: Dict) -> bool:
-        """
-        Update the Google OAuth token for a session (e.g., after token refresh).
-
-        Args:
-            session_token: Session token to update
-            google_token: New Google token dictionary
-
-        Returns:
-            True if updated, False otherwise
-        """
-
-    @abstractmethod
-    def encrypt_google_token(self, session_token: str, encryption_key: str) -> bool:
-        """
-        Encrypt the Google OAuth token for a session.
-
-        Args:
-            session_token: Session token whose Google token to encrypt
-            encryption_key: Encryption key to use
-
-        Returns:
-            True if encrypted, False otherwise
-        """
-
-    @abstractmethod
-    def decrypt_google_token(self, session_token: str, encryption_key: str) -> bool:
-        """
-        Decrypt the Google OAuth token for a session back to plaintext.
-
-        Args:
-            session_token: Session token whose Google token to decrypt
-            encryption_key: Encryption key to use
-
-        Returns:
-            True if decrypted, False otherwise
         """

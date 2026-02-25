@@ -29,9 +29,7 @@ def login_required(f):
             flash("Please sign in to access this page.", "error")
             return redirect(url_for("auth.login"))
 
-        # Validate session (pass encryption key so google_token can be decrypted)
-        encryption_key = getattr(g, "encryption_key", None)
-        session_data = session_datasource.get_session(session_token, encryption_key=encryption_key)
+        session_data = session_datasource.get_session(session_token)
         if not session_data:
             # Session invalid or expired
             flash("Your session has expired. Please sign in again.", "error")
@@ -43,10 +41,10 @@ def login_required(f):
         request.user_id = session_data.user_id
         request.session_data = session_data
 
-        # Extract user info from google_token for template use
-        google_token = session_data.google_token or {}
-        request.user_name = google_token.get("user_name", session_data.user_id)
-        request.user_picture = google_token.get("user_picture", "")
+        # Extract user info from user_profile for template use
+        user_profile = session_data.user_profile or {}
+        request.user_name = user_profile.get("user_name", session_data.user_id)
+        request.user_picture = user_profile.get("user_picture", "")
 
         # Enforce onboarding completion (skip for onboarding routes and API calls)
         # API calls are skipped because they return JSON - the UI enforcement is sufficient

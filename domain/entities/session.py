@@ -1,7 +1,7 @@
 """
 Session entity model.
 
-Represents a user authentication session with Google OAuth tokens.
+Represents a user authentication session.
 """
 
 from dataclasses import dataclass
@@ -18,12 +18,12 @@ class Session:
         session_token: Unique session identifier
         user_id: User identifier (email or Google ID)
         expiration: Session expiration datetime (UTC)
-        google_token: Google OAuth token bundle (Dict with access_token, refresh_token, etc.)
+        user_profile: User profile data (Dict with user_name, user_picture)
         created_at: Session creation timestamp (UTC)
     """
 
     session_token: str
     user_id: str
     expiration: datetime
-    google_token: Dict
+    user_profile: Dict
     created_at: datetime

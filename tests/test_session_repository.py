@@ -1,9 +1,6 @@
 """Tests for the SQLite session repository."""
 
-import base64
-import json
 import os
-import sqlite3
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -25,6 +22,7 @@ class TestSQLiteSessionRepository(unittest.TestCase):
         # so we just instantiate it.
         self.ds = SQLiteSessionDataSource(self.db_path)
         self.user_id = "test@example.com"
+        self.profile = {"user_name": "Test User", "user_picture": "https://pic.example.com/p.jpg"}
 
     def tearDown(self):
         if os.path.exists(self.db_path):
@@ -33,8 +31,7 @@ class TestSQLiteSessionRepository(unittest.TestCase):
     def test_create_session(self):
         """create_session should return a session token string."""
         expiration = datetime.now(timezone.utc) + timedelta(days=7)
-        google_token = {"access_token": "tok123", "refresh_token": "ref456"}
-        token = self.ds.create_session(self.user_id, google_token, expiration)
+        token = self.ds.create_session(self.user_id, self.profile, expiration)
 
         self.assertIsInstance(token, str)
         self.assertTrue(len(token) > 0)
@@ -42,20 +39,20 @@ class TestSQLiteSessionRepository(unittest.TestCase):
     def test_get_session_valid(self):
         """get_session should return a Session for a valid, non-expired token."""
         expiration = datetime.now(timezone.utc) + timedelta(days=7)
-        google_token = {"access_token": "tok123"}
-        token = self.ds.create_session(self.user_id, google_token, expiration)
+        token = self.ds.create_session(self.user_id, self.profile, expiration)
 
         session = self.ds.get_session(token)
         self.assertIsNotNone(session)
         self.assertEqual(session.user_id, self.user_id)
         self.assertEqual(session.session_token, token)
-        self.assertEqual(session.google_token, google_token)
+        self.assertEqual(session.user_profile, self.profile)
 
     def test_get_session_expired(self):
         """get_session should return None for an expired session and clean it up."""
+        import sqlite3
+
         expiration = datetime.now(timezone.utc) - timedelta(hours=1)
-        google_token = {"access_token": "expired_tok"}
-        token = self.ds.create_session(self.user_id, google_token, expiration)
+        token = self.ds.create_session(self.user_id, self.profile, expiration)
 
         session = self.ds.get_session(token)
         self.assertIsNone(session)
@@ -76,7 +73,7 @@ class TestSQLiteSessionRepository(unittest.TestCase):
     def test_delete_session(self):
         """delete_session should remove the session and return True."""
         expiration = datetime.now(timezone.utc) + timedelta(days=7)
-        token = self.ds.create_session(self.user_id, {"access_token": "t"}, expiration)
+        token = self.ds.create_session(self.user_id, self.profile, expiration)
 
         result = self.ds.delete_session(token)
         self.assertTrue(result)
@@ -92,10 +89,14 @@ class TestSQLiteSessionRepository(unittest.TestCase):
 
     def test_delete_user_sessions(self):
         """delete_user_sessions should remove all sessions for a user."""
+        import sqlite3
+
         expiration = datetime.now(timezone.utc) + timedelta(days=7)
-        self.ds.create_session(self.user_id, {"t": "1"}, expiration)
-        self.ds.create_session(self.user_id, {"t": "2"}, expiration)
-        self.ds.create_session("other@example.com", {"t": "3"}, expiration)
+        self.ds.create_session(self.user_id, {"user_name": "A", "user_picture": ""}, expiration)
+        self.ds.create_session(self.user_id, {"user_name": "B", "user_picture": ""}, expiration)
+        self.ds.create_session(
+            "other@example.com", {"user_name": "C", "user_picture": ""}, expiration
+        )
 
         deleted = self.ds.delete_user_sessions(self.user_id)
         self.assertEqual(deleted, 2)
@@ -110,12 +111,16 @@ class TestSQLiteSessionRepository(unittest.TestCase):
 
     def test_cleanup_expired_sessions(self):
         """cleanup_expired_sessions should remove all expired sessions."""
+        import sqlite3
+
         future = datetime.now(timezone.utc) + timedelta(days=7)
         past = datetime.now(timezone.utc) - timedelta(hours=1)
 
-        self.ds.create_session(self.user_id, {"t": "valid"}, future)
-        self.ds.create_session(self.user_id, {"t": "expired1"}, past)
-        self.ds.create_session("other@example.com", {"t": "expired2"}, past)
+        self.ds.create_session(self.user_id, {"user_name": "valid", "user_picture": ""}, future)
+        self.ds.create_session(self.user_id, {"user_name": "exp1", "user_picture": ""}, past)
+        self.ds.create_session(
+            "other@example.com", {"user_name": "exp2", "user_picture": ""}, past
+        )
 
         deleted = self.ds.cleanup_expired_sessions()
         self.assertEqual(deleted, 2)
@@ -128,27 +133,10 @@ class TestSQLiteSessionRepository(unittest.TestCase):
         conn.close()
         self.assertEqual(count, 1)
 
-    def test_update_google_token(self):
-        """update_google_token should update the token for an existing session."""
-        expiration = datetime.now(timezone.utc) + timedelta(days=7)
-        token = self.ds.create_session(self.user_id, {"access_token": "old"}, expiration)
-
-        new_google_token = {"access_token": "refreshed", "refresh_token": "new_ref"}
-        result = self.ds.update_google_token(token, new_google_token)
-        self.assertTrue(result)
-
-        session = self.ds.get_session(token)
-        self.assertEqual(session.google_token, new_google_token)
-
-    def test_update_google_token_not_found(self):
-        """update_google_token should return False for a non-existent session."""
-        result = self.ds.update_google_token("nonexistent", {"access_token": "new"})
-        self.assertFalse(result)
-
     def test_update_session_expiration(self):
         """update_session_expiration should extend the session lifetime."""
         expiration = datetime.now(timezone.utc) + timedelta(days=1)
-        token = self.ds.create_session(self.user_id, {"t": "1"}, expiration)
+        token = self.ds.create_session(self.user_id, self.profile, expiration)
 
         new_expiration = datetime.now(timezone.utc) + timedelta(days=30)
         result = self.ds.update_session_expiration(token, new_expiration)
@@ -165,138 +153,28 @@ class TestSQLiteSessionRepository(unittest.TestCase):
         result = self.ds.update_session_expiration("nonexistent", new_expiration)
         self.assertFalse(result)
 
+    def test_no_encryption_version_column(self):
+        """The sessions table should NOT have an encryption_version column."""
+        import sqlite3
 
-def _generate_test_key() -> str:
-    """Generate a base64-encoded 256-bit key for testing."""
-    return base64.b64encode(os.urandom(32)).decode("ascii")
-
-
-class TestEncryptedSessions(unittest.TestCase):
-    """Tests for google_token encryption in sessions."""
-
-    def setUp(self):
-        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
-        self.db_path = self.temp_db.name
-        self.temp_db.close()
-        self.ds = SQLiteSessionDataSource(self.db_path)
-        self.user_id = "test@example.com"
-        self.key = _generate_test_key()
-
-    def tearDown(self):
-        if os.path.exists(self.db_path):
-            os.remove(self.db_path)
-
-    def test_create_session_encrypted(self):
-        """Create session with encryption, retrieve with key — roundtrip."""
-        expiration = datetime.now(timezone.utc) + timedelta(days=7)
-        google_token = {"access_token": "tok123", "refresh_token": "ref456"}
-        token = self.ds.create_session(
-            self.user_id, google_token, expiration, encryption_key=self.key
-        )
-
-        session = self.ds.get_session(token, encryption_key=self.key)
-        self.assertIsNotNone(session)
-        self.assertEqual(session.google_token, google_token)
-
-    def test_get_session_encrypted_without_key(self):
-        """Get encrypted session without key — fallback to user_id/empty picture."""
-        expiration = datetime.now(timezone.utc) + timedelta(days=7)
-        google_token = {
-            "access_token": "tok123",
-            "user_name": "John Doe",
-            "user_picture": "http://pic",
-        }
-        token = self.ds.create_session(
-            self.user_id, google_token, expiration, encryption_key=self.key
-        )
-
-        session = self.ds.get_session(token)  # no key
-        self.assertIsNotNone(session)
-        self.assertEqual(session.google_token["user_name"], self.user_id)
-        self.assertEqual(session.google_token["user_picture"], "")
-
-    def test_update_google_token_encrypted(self):
-        """Update token with encryption — preserves encryption."""
-        expiration = datetime.now(timezone.utc) + timedelta(days=7)
-        token = self.ds.create_session(
-            self.user_id, {"access_token": "old"}, expiration, encryption_key=self.key
-        )
-
-        new_token = {"access_token": "refreshed", "refresh_token": "new_ref"}
-        result = self.ds.update_google_token(token, new_token, encryption_key=self.key)
-        self.assertTrue(result)
-
-        session = self.ds.get_session(token, encryption_key=self.key)
-        self.assertEqual(session.google_token, new_token)
-
-    def test_encrypt_google_token_migration(self):
-        """Encrypt existing plaintext session token."""
-        expiration = datetime.now(timezone.utc) + timedelta(days=7)
-        google_token = {"access_token": "tok", "user_name": "Test"}
-        token = self.ds.create_session(self.user_id, google_token, expiration)  # plaintext
-
-        result = self.ds.encrypt_google_token(token, self.key)
-        self.assertTrue(result)
-
-        # Should be readable with key
-        session = self.ds.get_session(token, encryption_key=self.key)
-        self.assertEqual(session.google_token, google_token)
-
-        # Without key should get fallback
-        session_no_key = self.ds.get_session(token)
-        self.assertEqual(session_no_key.google_token["user_name"], self.user_id)
-
-    def test_decrypt_google_token_migration(self):
-        """Decrypt encrypted session token back to plaintext."""
-        expiration = datetime.now(timezone.utc) + timedelta(days=7)
-        google_token = {"access_token": "tok", "user_name": "Test"}
-        token = self.ds.create_session(
-            self.user_id, google_token, expiration, encryption_key=self.key
-        )
-
-        result = self.ds.decrypt_google_token(token, self.key)
-        self.assertTrue(result)
-
-        # Should be readable without key now
-        session = self.ds.get_session(token)
-        self.assertEqual(session.google_token, google_token)
-
-    def test_no_key_plaintext_unchanged(self):
-        """Creating and reading without key should work exactly as before."""
-        expiration = datetime.now(timezone.utc) + timedelta(days=7)
-        google_token = {"access_token": "tok123"}
-        token = self.ds.create_session(self.user_id, google_token, expiration)
-
-        session = self.ds.get_session(token)
-        self.assertIsNotNone(session)
-        self.assertEqual(session.google_token, google_token)
-
-    def test_encrypt_already_encrypted_noop(self):
-        """encrypt_google_token on already-encrypted row returns False."""
-        expiration = datetime.now(timezone.utc) + timedelta(days=7)
-        token = self.ds.create_session(
-            self.user_id, {"t": "1"}, expiration, encryption_key=self.key
-        )
-
-        result = self.ds.encrypt_google_token(token, self.key)
-        self.assertFalse(result)
-
-    def test_decrypt_already_plaintext_noop(self):
-        """decrypt_google_token on plaintext row returns False."""
-        expiration = datetime.now(timezone.utc) + timedelta(days=7)
-        token = self.ds.create_session(self.user_id, {"t": "1"}, expiration)
-
-        result = self.ds.decrypt_google_token(token, self.key)
-        self.assertFalse(result)
-
-    def test_encryption_version_column_exists(self):
-        """Ensure the encryption_version column was created."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         cursor.execute("PRAGMA table_info(sessions)")
         columns = [row[1] for row in cursor.fetchall()]
         conn.close()
-        self.assertIn("encryption_version", columns)
+        self.assertNotIn("encryption_version", columns)
+
+    def test_has_user_profile_column(self):
+        """The sessions table should have a user_profile column (not google_token)."""
+        import sqlite3
+
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA table_info(sessions)")
+        columns = [row[1] for row in cursor.fetchall()]
+        conn.close()
+        self.assertIn("user_profile", columns)
+        self.assertNotIn("google_token", columns)
 
 
 if __name__ == "__main__":

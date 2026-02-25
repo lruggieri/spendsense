@@ -52,9 +52,8 @@ credentials_loader = None
 # Allowed emails for access control (None = unrestricted)
 allowed_emails = None
 
-# Gmail OAuth scopes
+# OAuth scopes — gmail.readonly is NOT included; Gmail access is client-side only
 SCOPES = [
-    "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/userinfo.profile",
     "openid",
