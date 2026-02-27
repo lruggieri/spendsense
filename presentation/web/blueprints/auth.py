@@ -71,9 +71,11 @@ def login_start():
         )
 
         # Generate authorization URL
+        # Note: include_granted_scopes is intentionally omitted so that Google
+        # does not re-attach previously granted scopes (e.g. gmail.readonly from
+        # an older login).  Only the scopes in SCOPES are requested.
         authorization_url, state = flow.authorization_url(
             access_type="offline",
-            include_granted_scopes="true",
             prompt="consent",  # Force consent screen to get refresh token
         )
 

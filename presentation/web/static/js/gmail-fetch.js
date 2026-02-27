@@ -15,6 +15,65 @@
 
   const GMAIL_API = 'https://gmail.googleapis.com/gmail/v1/users/me';
 
+  // =========================================================================
+  // Gmail message ID normalisation
+  // Port of infrastructure/email/gmail_utils.py:normalize_gmail_message_id()
+  // Gmail URLs show a reduced-charset (consonant-only) ID; the API needs hex.
+  // =========================================================================
+
+  const _CHARSET_REDUCED = 'BCDFGHJKLMNPQRSTVWXZbcdfghjklmnpqrstvwxz';
+  const _CHARSET_FULL    = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+  function _transformCharset(token, charsetIn, charsetOut) {
+    const sizeIn  = charsetIn.length;
+    const sizeOut = charsetOut.length;
+    const alphMap = {};
+    for (let i = 0; i < sizeIn; i++) alphMap[charsetIn[i]] = i;
+
+    // Input string → index array (reversed)
+    const inIdx = [];
+    for (let i = token.length - 1; i >= 0; i--) inIdx.push(alphMap[token[i]]);
+
+    const outIdx = [];
+    for (let i = inIdx.length - 1; i >= 0; i--) {
+      let offset = 0;
+      for (let j = 0; j < outIdx.length; j++) {
+        const v = sizeIn * outIdx[j] + offset;
+        outIdx[j] = v % sizeOut;
+        offset     = Math.floor(v / sizeOut);
+      }
+      while (offset) { outIdx.push(offset % sizeOut); offset = Math.floor(offset / sizeOut); }
+
+      offset = inIdx[i];
+      let j = 0;
+      while (offset) {
+        if (j >= outIdx.length) outIdx.push(0);
+        const v = outIdx[j] + offset;
+        outIdx[j] = v % sizeOut;
+        offset     = Math.floor(v / sizeOut);
+        j++;
+      }
+    }
+
+    return outIdx.reverse().map(i => charsetOut[i]).join('');
+  }
+
+  function _normalizeMessageId(id) {
+    id = id.trim();
+    if ([...id].every(c => _CHARSET_REDUCED.includes(c))) {
+      try {
+        const transformed = _transformCharset(id, _CHARSET_REDUCED, _CHARSET_FULL);
+        const padding  = '='.repeat((4 - transformed.length % 4) % 4);
+        const decoded  = atob(transformed + padding);
+        const m = decoded.match(/(?:msg-)?[a-z]:(\d+)/);
+        // Use BigInt: Gmail decimal IDs are 64-bit integers and exceed
+        // Number.MAX_SAFE_INTEGER, so parseInt() would lose precision.
+        if (m) return BigInt(m[1]).toString(16);
+      } catch (_) { /* fall through */ }
+    }
+    return id;
+  }
+
   // Chunk sizes
   const DEDUP_CHUNK   = 500;   // mail IDs per check-imported request
   const IMPORT_CHUNK  = 200;   // transactions per import request
@@ -58,11 +117,13 @@
 
     /**
      * Fetch a single message in full format.
+     * Accepts both API hex IDs and URL/UI consonant-charset IDs.
      * @param {string} token     - GIS access token
-     * @param {string} messageId - Gmail message ID
+     * @param {string} messageId - Gmail message ID (either format)
      * @returns {Promise<object>} Gmail message object
      */
     async getMessage(token, messageId) {
+      messageId = _normalizeMessageId(messageId);
       const resp = await fetch(
         `${GMAIL_API}/messages/${encodeURIComponent(messageId)}?format=full`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -127,10 +188,16 @@
 
       function stripHtml(html) {
         try {
+          // Remove style/script blocks and their content before parsing,
+          // matching Python's re.sub(r'<style...>.*?</style>', ..., re.DOTALL)
+          html = html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+          html = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
           const doc = new DOMParser().parseFromString(html, 'text/html');
-          return doc.body.textContent || '';
+          const text = doc.body.textContent || '';
+          // Collapse whitespace, matching Python's re.sub(r'\s+', ' ', text).strip()
+          return text.replace(/\s+/g, ' ').trim();
         } catch (e) {
-          return html.replace(/<[^>]+>/g, ' ');
+          return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
         }
       }
 
@@ -386,7 +453,8 @@
          message: `Found ${allMailIds.length} message(s) for "${fetcher.name}"` });
 
     if (allMailIds.length === 0) {
-      cb({ phase: 'done', fetcher: fetcher.name, imported: 0, skipped: 0 });
+      cb({ phase: 'done', fetcher: fetcher.name, imported: 0, skipped: 0,
+           message: `"${fetcher.name}": no messages found` });
       return { fetcher: fetcher.name, imported: 0, skipped: 0 };
     }
 
@@ -413,7 +481,8 @@
     });
 
     if (newMailIds.length === 0) {
-      cb({ phase: 'done', fetcher: fetcher.name, imported: 0, skipped: importedIds.length });
+      cb({ phase: 'done', fetcher: fetcher.name, imported: 0, skipped: importedIds.length,
+           message: `"${fetcher.name}": all messages already imported` });
       return { fetcher: fetcher.name, imported: 0, skipped: importedIds.length };
     }
 

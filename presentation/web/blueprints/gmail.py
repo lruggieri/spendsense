@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, jsonify, render_template, request
 from uuid6 import uuid7
 
-from config import get_supported_currency_codes
+from config import get_gis_client_id, get_supported_currency_codes, normalize_currency_code
 from domain.entities.transaction import Transaction
 from domain.services.amount_utils import to_minor_units
 from presentation.web.decorators import login_required
@@ -129,8 +129,10 @@ def api_email_config():
     fetcher_service = get_fetcher_service()
     transaction_service = get_transaction_service()
 
-    client_config = credentials_loader.get_client_config()
-    client_id = client_config["client_id"]
+    # Prefer a dedicated GIS_CLIENT_ID (Web application type) when set.
+    # GIS Token Client requires a Web application OAuth client; Desktop app
+    # clients will be rejected by Google with "NATIVE_DESKTOP" error.
+    client_id = get_gis_client_id() or credentials_loader.get_client_config()["client_id"]
 
     fetchers_data = fetcher_service.get_enabled_fetchers()
     fetchers = [
@@ -245,7 +247,7 @@ def api_email_import():
             warnings.append(f"Invalid date_iso: {e}")
             continue
 
-        currency = item.get("currency") or fetcher.default_currency
+        currency = normalize_currency_code(item.get("currency") or fetcher.default_currency)
         if currency not in supported_currency_codes:
             warnings.append(
                 f"Unsupported currency {currency}, using {fetcher.default_currency}"

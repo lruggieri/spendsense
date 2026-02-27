@@ -89,6 +89,14 @@ def create_app():
         "/manifest.json",
     )
 
+    # Suppress werkzeug access logs for static/public paths
+    class _StaticFilter(logging.Filter):
+        def filter(self, record: logging.LogRecord) -> bool:
+            msg = record.getMessage()
+            return not any(p in msg for p in ENCRYPTION_PUBLIC_PREFIXES)
+
+    logging.getLogger("werkzeug").addFilter(_StaticFilter())
+
     @app.before_request
     def extract_encryption_key():
         """Extract encryption key from X-Encryption-Key header or encryption_key cookie."""
@@ -113,6 +121,8 @@ def create_app():
     @app.before_request
     def before_request_timing():
         """Track request start time."""
+        if request.path.startswith(ENCRYPTION_PUBLIC_PREFIXES):
+            return
         request._start_time = time.time()
         logger.debug("")
         logger.debug("=" * 80)

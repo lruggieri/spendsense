@@ -129,6 +129,14 @@
     }
   }
 
+  /**
+   * Return true if a valid (non-expired) token is already in localStorage.
+   * Use this to detect whether the user skipped the auth page.
+   */
+  function hasToken() {
+    return _getStoredToken() !== null;
+  }
+
   // Expose on window so other scripts can import it
-  window.emailTokenManager = { init, getOrRequestToken, clearToken };
+  window.emailTokenManager = { init, getOrRequestToken, clearToken, hasToken };
 })();

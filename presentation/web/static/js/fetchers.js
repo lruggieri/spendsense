@@ -41,6 +41,14 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
+    // Pre-init GIS token manager so it's ready before the user clicks
+    // "Generate patterns" or "Test patterns". Non-blocking — ignore errors.
+    fetch('/api/email/config')
+        .then(r => r.json())
+        .then(config => window.emailTokenManager.init(config.client_id))
+        .catch(() => {});
+
+
     // Set up form submit handler
     const form = document.getElementById('fetcher-form');
     if (form) {
@@ -492,6 +500,44 @@ async function populateCurrencyDropdown() {
 }
 
 /**
+ * Fetch email bodies client-side using the GIS token.
+ * Handles both manual email-ID entries and Gmail search (from_emails).
+ * Returns an array of plain-text email body strings.
+ */
+async function fetchEmailTextsClientSide(examples, fromEmails, subjectFilter) {
+    const token = await window.emailTokenManager.getOrRequestToken();
+    const { GmailApiClient, FetcherEngine } = window.gmailFetch;
+    const emailTexts = [];
+
+    if (examples.length > 0) {
+        for (const ex of examples) {
+            if (ex.type === 'text') {
+                emailTexts.push(ex.value);
+            } else {
+                const msg = await GmailApiClient.getMessage(token, ex.value);
+                const body = FetcherEngine.getBodyFromMessage(msg);
+                if (body) emailTexts.push(body);
+            }
+        }
+    } else if (fromEmails.length > 0) {
+        const fromFilter = fromEmails.length === 1
+            ? `from:${fromEmails[0]}`
+            : `(${fromEmails.map(e => `from:${e}`).join(' OR ')})`;
+        const query = subjectFilter ? `${fromFilter} subject:${subjectFilter}` : fromFilter;
+        const ids = await GmailApiClient.listMessages(token, query);
+        const settled = await GmailApiClient.getMessages(token, ids.slice(0, 10), () => {});
+        settled.forEach(s => {
+            if (s.status === 'fulfilled') {
+                const body = FetcherEngine.getBodyFromMessage(s.value);
+                if (body) emailTexts.push(body);
+            }
+        });
+    }
+
+    return emailTexts;
+}
+
+/**
  * Submit the form and call the API
  */
 async function submitForm() {
@@ -500,53 +546,38 @@ async function submitForm() {
         return;
     }
 
-    // Get all email examples
     const examples = collectEmailExamples();
     const fromEmails = collectFromEmails();
     const subjectFilter = document.getElementById('subject-filter').value.trim();
-
-    // Get checkbox state
     const negateAmount = document.getElementById('negate-amount').checked;
 
-    // Build payload
-    const payload = {
-        negate_amount: negateAmount
-    };
-
-    // If manual training emails provided, use them
-    if (examples.length > 0) {
-        payload.email_texts = [];
-        payload.email_ids = [];
-
-        examples.forEach(ex => {
-            if (ex.type === 'text') {
-                payload.email_texts.push(ex.value);
-            } else {
-                payload.email_ids.push(ex.value);
-            }
-        });
-    }
-    // Otherwise, use Gmail search with filters
-    else if (fromEmails.length > 0) {
-        payload.from_emails = fromEmails;
-        payload.subject_filter = subjectFilter;
-        payload.limit = 10;
-    } else {
+    if (examples.length === 0 && fromEmails.length === 0) {
         showToast('Please add training emails or configure from email addresses', 'error');
         return;
     }
 
-    // Show loading overlay
     showLoading(true);
 
+    let emailTexts;
     try {
-        // Call API
-        const response = await fetch('/api/test-fetcher', {
+        emailTexts = await fetchEmailTextsClientSide(examples, fromEmails, subjectFilter);
+    } catch (err) {
+        showToast('Failed to fetch emails: ' + err.message, 'error');
+        showLoading(false);
+        return;
+    }
+
+    if (emailTexts.length === 0) {
+        showToast('No email text could be retrieved', 'error');
+        showLoading(false);
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/fetchers/generate-patterns', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email_texts: emailTexts, negate_amount: negateAmount })
         });
 
         const data = await response.json();
@@ -564,15 +595,11 @@ async function submitForm() {
         }
 
         if (data.success) {
-            // Display results
             displayResults(data);
-
-            // Show warning if remaining calls are low
             if (data.rate_limit && data.rate_limit.remaining <= 10) {
                 showToast(`${data.rate_limit.remaining} LLM calls remaining today`, 'warning');
             }
         } else {
-            // Show error
             showToast(data.error || 'Failed to generate patterns', 'error');
         }
     } catch (error) {
@@ -1006,62 +1033,49 @@ async function submitTestEmails() {
         negate_amount: document.getElementById('negate-amount').checked
     };
 
-    // Build payload
-    const payload = {
-        patterns: currentPatterns
-    };
-
-    // If test emails provided manually, use them
-    if (testExamples.length > 0) {
-        payload.email_texts = [];
-        payload.email_ids = [];
-
-        testExamples.forEach(ex => {
-            if (ex.type === 'text') {
-                payload.email_texts.push(ex.value);
-            } else {
-                payload.email_ids.push(ex.value);
-            }
-        });
-    }
-    // Otherwise, use Gmail search with filters
-    else if (fromEmails.length > 0) {
-        payload.from_emails = fromEmails;
-        payload.subject_filter = subjectFilter;
-        payload.limit = 10;
-    } else {
+    if (testExamples.length === 0 && fromEmails.length === 0) {
         showToast('Please add test emails or ensure from emails are configured', 'error');
         return;
     }
 
-    // Show loading
     showLoading(true);
 
+    let emailTexts;
     try {
-        // Call new test API endpoint
-        const response = await fetch('/api/test-patterns', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        });
+        emailTexts = await fetchEmailTextsClientSide(testExamples, fromEmails, subjectFilter);
+    } catch (err) {
+        showToast('Failed to fetch emails: ' + err.message, 'error');
+        showLoading(false);
+        return;
+    }
 
-        const data = await response.json();
+    if (emailTexts.length === 0) {
+        showToast('No email text could be retrieved', 'error');
+        showLoading(false);
+        return;
+    }
 
-        if (data.success) {
-            displayTestResults(data);
+    try {
+        // Run pattern matching entirely client-side — no server call needed
+        const fetcher = {
+            amount_pattern:   currentPatterns.amount_pattern,
+            merchant_pattern: currentPatterns.merchant_pattern,
+            currency_pattern: currentPatterns.currency_pattern,
+            negate_amount:    currentPatterns.negate_amount,
+        };
+        const emailsData = emailTexts.map(text => ({
+            email_text: text,
+            transactions: window.gmailFetch.FetcherEngine.parseTransactionsWithPatterns(text, fetcher),
+        }));
 
-            // Show save button if transactions were found
-            if (data.emails_data && data.emails_data.some(e => e.transactions.length > 0)) {
-                showSaveButton();
-            }
-        } else {
-            showToast(data.error || 'Failed to test patterns', 'error');
+        displayTestResults({ success: true, emails_data: emailsData });
+
+        if (emailsData.some(e => e.transactions.length > 0)) {
+            showSaveButton();
         }
     } catch (error) {
         console.error('Error:', error);
-        showToast('Network error: ' + error.message, 'error');
+        showToast('Error running patterns: ' + error.message, 'error');
     } finally {
         showLoading(false);
     }

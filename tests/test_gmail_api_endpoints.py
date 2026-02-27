@@ -233,3 +233,62 @@ class TestEmailImport:
         assert len(data["warnings"]) == 1
         mock_tx_svc.add_transactions_batch.assert_not_called()
         mock_cache.invalidate.assert_not_called()
+
+    def _import_with_currency(self, authenticated_client, currency):
+        """Helper: POST a single transaction with the given currency string."""
+        fetcher = self._mock_fetcher(currency="JPY")
+        mock_fetcher_svc = MagicMock()
+        mock_fetcher_svc.get_enabled_fetchers.return_value = [fetcher]
+        mock_tx_svc = MagicMock()
+        mock_tx_svc.add_transactions_batch.return_value = 1
+        mock_cache = MagicMock()
+
+        with patch(
+            "presentation.web.blueprints.gmail.get_fetcher_service",
+            return_value=mock_fetcher_svc,
+        ), patch(
+            "presentation.web.blueprints.gmail.get_transaction_service",
+            return_value=mock_tx_svc,
+        ), patch(
+            "presentation.web.blueprints.gmail.get_cache_manager",
+            return_value=mock_cache,
+        ):
+            tx = {**self._make_tx(), "currency": currency}
+            response = authenticated_client.post(
+                "/api/email/import",
+                json={"transactions": [tx]},
+            )
+        return response.get_json(), mock_tx_svc
+
+    def test_currency_kanji_yen_normalized(self, authenticated_client):
+        """円 (kanji) should be normalized to JPY without a warning."""
+        data, mock_tx_svc = self._import_with_currency(authenticated_client, "円")
+        assert data["imported"] == 1
+        assert data["warnings"] == []
+        tx_saved = mock_tx_svc.add_transactions_batch.call_args[0][0][0]
+        assert tx_saved.currency == "JPY"
+
+    def test_currency_fullwidth_yen_normalized(self, authenticated_client):
+        """￥ (fullwidth) should be normalized to JPY without a warning."""
+        data, mock_tx_svc = self._import_with_currency(authenticated_client, "￥")
+        assert data["imported"] == 1
+        assert data["warnings"] == []
+        tx_saved = mock_tx_svc.add_transactions_batch.call_args[0][0][0]
+        assert tx_saved.currency == "JPY"
+
+    def test_currency_name_yen_normalized(self, authenticated_client):
+        """'Yen' (name) should be normalized to JPY without a warning."""
+        data, mock_tx_svc = self._import_with_currency(authenticated_client, "Yen")
+        assert data["imported"] == 1
+        assert data["warnings"] == []
+        tx_saved = mock_tx_svc.add_transactions_batch.call_args[0][0][0]
+        assert tx_saved.currency == "JPY"
+
+    def test_truly_unknown_currency_warns_and_falls_back(self, authenticated_client):
+        """A currency string that can't be recognized should warn and use the fetcher default."""
+        data, mock_tx_svc = self._import_with_currency(authenticated_client, "ZORKMID")
+        assert data["imported"] == 1
+        assert len(data["warnings"]) == 1
+        assert "ZORKMID" in data["warnings"][0]
+        tx_saved = mock_tx_svc.add_transactions_batch.call_args[0][0][0]
+        assert tx_saved.currency == "JPY"  # fetcher default_currency

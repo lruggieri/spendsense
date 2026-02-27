@@ -189,11 +189,21 @@
     const afterDate = params.get('after_date') || '';
     const selectedFetcherIds = params.getAll('fetchers');
 
-    onProgress({ phase: 'config', message: 'Starting Gmail fetch process...' });
-
-    window.gmailFetch.runImport(selectedFetcherIds, afterDate, onProgress)
-        .catch(function (err) {
-            onProgress({ phase: 'error', message: err.message || String(err) });
+    // If the user navigated directly to this page (bypassing the auth step on
+    // fetch_gmail.html), there will be no cached token and any popup attempt
+    // would be blocked by the browser.  Redirect back with a clear message.
+    if (!window.emailTokenManager.hasToken()) {
+        onProgress({
+            phase: 'error',
+            message: 'Gmail is not connected. Please go back and click "Start Fetching Transactions" to authorize.',
         });
+    } else {
+        onProgress({ phase: 'config', message: 'Starting Gmail fetch process...' });
+
+        window.gmailFetch.runImport(selectedFetcherIds, afterDate, onProgress)
+            .catch(function (err) {
+                onProgress({ phase: 'error', message: err.message || String(err) });
+            });
+    }
 </script>
 {% endblock %}
