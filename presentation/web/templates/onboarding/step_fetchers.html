@@ -3,6 +3,7 @@
 {% block extra_head %}
 {{ super() }}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/fetchers.css') }}">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 {% endblock %}
 
 {% block step_content %}
@@ -264,6 +265,8 @@
 
 {% block extra_scripts %}
 {{ super() }}
+<script src="{{ url_for('static', filename='js/email-token.js') }}"></script>
+<script src="{{ url_for('static', filename='js/gmail-fetch.js') }}"></script>
 <script src="{{ url_for('static', filename='js/fetchers.js') }}"></script>
 <script src="{{ url_for('static', filename='js/onboarding-wizard.js') }}"></script>
 <script>
