@@ -30,6 +30,8 @@ logger = logging.getLogger(__name__)
 gmail_bp = Blueprint("gmail", __name__)
 
 # Maximum number of transactions accepted per /api/email/import call
+# Hard ceiling for /api/email/import.  The client (gmail-fetch.js IMPORT_CHUNK = 200)
+# sends smaller chunks, so this limit only rejects accidentally oversized requests.
 _MAX_IMPORT_BATCH = 500
 
 

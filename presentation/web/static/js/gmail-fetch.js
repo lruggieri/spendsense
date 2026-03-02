@@ -76,7 +76,7 @@
 
   // Chunk sizes
   const DEDUP_CHUNK   = 500;   // mail IDs per check-imported request
-  const IMPORT_CHUNK  = 200;   // transactions per import request
+  const IMPORT_CHUNK  = 200;   // transactions per import request (server max: _MAX_IMPORT_BATCH=500 in gmail.py)
   const FETCH_CONCURRENCY = 20; // concurrent getMessage requests
 
   // =========================================================================
