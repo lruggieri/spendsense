@@ -177,10 +177,9 @@ def api_email_check_imported():
         return jsonify({"error": "mail_ids must be a list"}), 400
 
     transaction_service = get_transaction_service()
-    already_imported = transaction_service.get_processed_mail_ids()
+    imported_ids = transaction_service.filter_imported_mail_ids(mail_ids)
 
-    imported_ids = [mid for mid in mail_ids if mid in already_imported]
-    return jsonify({"imported_ids": imported_ids})
+    return jsonify({"imported_ids": list(imported_ids)})
 
 
 @gmail_bp.route("/api/email/import", methods=["POST"])

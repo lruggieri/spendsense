@@ -79,7 +79,7 @@ class TestEmailCheckImported:
     def test_filters_already_imported_ids(self, authenticated_client):
         """Should return only IDs already in the database."""
         mock_tx_svc = MagicMock()
-        mock_tx_svc.get_processed_mail_ids.return_value = {"abc123", "xyz789"}
+        mock_tx_svc.filter_imported_mail_ids.return_value = {"abc123", "xyz789"}
 
         with patch(
             "presentation.web.blueprints.gmail.get_transaction_service",
@@ -93,6 +93,9 @@ class TestEmailCheckImported:
         assert response.status_code == 200
         data = response.get_json()
         assert set(data["imported_ids"]) == {"abc123", "xyz789"}
+        mock_tx_svc.filter_imported_mail_ids.assert_called_once_with(
+            ["abc123", "def456", "xyz789"]
+        )
 
     def test_returns_400_for_non_list_input(self, authenticated_client):
         """mail_ids must be a list."""
@@ -105,7 +108,7 @@ class TestEmailCheckImported:
     def test_returns_empty_list_when_none_imported(self, authenticated_client):
         """If no IDs are already imported, imported_ids should be empty."""
         mock_tx_svc = MagicMock()
-        mock_tx_svc.get_processed_mail_ids.return_value = set()
+        mock_tx_svc.filter_imported_mail_ids.return_value = set()
 
         with patch(
             "presentation.web.blueprints.gmail.get_transaction_service",
