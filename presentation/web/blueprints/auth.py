@@ -12,7 +12,6 @@ from datetime import datetime, timedelta, timezone
 from flask import (
     Blueprint,
     flash,
-    g,
     make_response,
     redirect,
     render_template,
@@ -72,9 +71,11 @@ def login_start():
         )
 
         # Generate authorization URL
+        # Note: include_granted_scopes is intentionally omitted so that Google
+        # does not re-attach previously granted scopes (e.g. gmail.readonly from
+        # an older login).  Only the scopes in SCOPES are requested.
         authorization_url, state = flow.authorization_url(
             access_type="offline",
-            include_granted_scopes="true",
             prompt="consent",  # Force consent screen to get refresh token
         )
 
@@ -187,28 +188,11 @@ def login_callback():
             flash(f"Failed to decode ID token: {str(e)}", "error")
             return redirect(url_for("auth.login"))
 
-        # Store Google token as dictionary (including JWT ID token and user info)
-        # Note: We do NOT store client_id/client_secret here for security reasons
-        # They are the same for all users and should only be in credentials.json
-        google_token = {
-            "token": credentials.token,  # User's access token
-            "refresh_token": credentials.refresh_token,  # User's refresh token
-            "token_uri": credentials.token_uri,  # Google's token endpoint
-            "scopes": credentials.scopes,  # Granted scopes
-            "id_token": id_token,  # JWT (user identity proof)
-            "id_token_expiry": token_expiration.isoformat(),  # JWT expiration
-            "access_token_expiry": credentials.expiry.isoformat() if credentials.expiry else None,
-            "user_name": user_name,  # User's full name
-            "user_picture": user_picture,  # User's profile picture URL
-        }
-
-        # Create session in database (encrypt token if user is already unlocked)
-        encryption_key = getattr(g, "encryption_key", None)
+        # Create session in database with user profile only (no OAuth tokens stored server-side)
         session_token = session_datasource.create_session(
             user_id=user_email,
-            google_token=google_token,
+            user_profile={"user_name": user_name, "user_picture": user_picture},
             expiration=expiration,
-            encryption_key=encryption_key,
         )
 
         # Clear OAuth session data

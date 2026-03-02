@@ -1,52 +1,38 @@
 """
 Gmail blueprint.
 
-Handles Gmail fetch operations including SSE streaming for real-time progress updates.
+Handles Gmail transaction import via client-side OAuth (GIS token).
+The server never receives or stores Gmail access tokens; it only receives
+already-extracted transaction data from the browser.
 """
 
-import json
 import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
-from flask import (
-    Blueprint,
-    Response,
-    current_app,
-    flash,
-    g,
-    redirect,
-    render_template,
-    request,
-    session,
-    url_for,
-)
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
+from flask import Blueprint, jsonify, render_template, request
 from uuid6 import uuid7
 
-from config import get_database_path, get_supported_currency_codes
+from config import get_gis_client_id, get_supported_currency_codes, normalize_currency_code
 from domain.entities.transaction import Transaction
 from domain.services.amount_utils import to_minor_units
-from infrastructure.email.fetchers.db_fetcher_adapter import DBFetcherAdapter
-from infrastructure.persistence.sqlite.factory import SQLiteDataSourceFactory
 from presentation.web.decorators import login_required
 from presentation.web.extensions import (
     get_cache_manager,
     get_credentials_loader_instance,
-    get_session_datasource,
 )
 from presentation.web.utils import (
-    EncryptionKeyRequired,
     get_fetcher_service,
     get_transaction_service,
-    refresh_google_token_if_needed,
 )
 
 logger = logging.getLogger(__name__)
 
 gmail_bp = Blueprint("gmail", __name__)
+
+# Maximum number of transactions accepted per /api/email/import call
+# Hard ceiling for /api/email/import.  The client (gmail-fetch.js IMPORT_CHUNK = 200)
+# sends smaller chunks, so this limit only rejects accidentally oversized requests.
+_MAX_IMPORT_BATCH = 500
 
 
 def _calculate_fetch_start_date(transaction_service=None) -> str:
@@ -106,313 +92,202 @@ def fetch_gmail_page():
     return render_template("fetch_gmail.html", fetchers=fetchers, default_date=default_date)
 
 
-@gmail_bp.route("/fetch-gmail/start")
+@gmail_bp.route("/fetch-gmail/progress")
 @login_required
-def fetch_gmail_start():
-    """Start Gmail fetch using stored session credentials."""
-    transaction_service = get_transaction_service()
+def fetch_gmail_progress():
+    """Render the import progress page.
 
-    # Calculate fallback date based on last transaction date if not provided
-    fallback_date = (
-        _calculate_fetch_start_date(transaction_service)
-        if not request.args.get("after_date")
-        else "2025-06-01"
-    )
-
-    # Store fetch parameters in Flask session
-    session["after_date"] = request.args.get("after_date", fallback_date)
-
-    # Store selected fetchers (if any)
-    selected_fetchers = request.args.getlist("fetchers")
-    if selected_fetchers:
-        session["selected_fetchers"] = selected_fetchers
-    else:
-        # If none selected, use all
-        session["selected_fetchers"] = None
-
-    # Redirect directly to progress page - credentials already available from login
+    Selected fetcher IDs and after_date travel as URL query params
+    (set by the fetch_gmail.html form JS submit handler).
+    """
     return render_template("fetch_gmail_progress.html")
 
 
-@gmail_bp.route("/fetch-gmail/execute-stream")
+# =============================================================================
+# REST API endpoints (client-side Gmail OAuth flow)
+# =============================================================================
+
+
+@gmail_bp.route("/api/email/config")
 @login_required
-def fetch_gmail_execute_stream():
-    """Execute Gmail fetch with real-time progress updates via SSE."""
-    session_datasource = get_session_datasource()
+def api_email_config():
+    """
+    Return GIS client_id and enabled fetcher configurations.
+
+    The client uses this to initialise the GIS token client and to know
+    which fetchers to run and what patterns to apply client-side.
+
+    Response JSON:
+        {
+            "client_id": "...",
+            "fetchers": [ { id, name, from_emails, subject_filter,
+                            amount_pattern, merchant_pattern,
+                            currency_pattern, default_currency,
+                            negate_amount } ],
+            "default_fetch_date": "YYYY-MM-DD"
+        }
+    """
     credentials_loader = get_credentials_loader_instance()
-    cache_manager = get_cache_manager()
+    fetcher_service = get_fetcher_service()
+    transaction_service = get_transaction_service()
 
-    # Extract all data BEFORE entering generator (request context won't be available in generator)
-    # Get credentials from session datasource instead of Flask session
-    session_token = request.cookies.get("session_token")
-    encryption_key = getattr(g, "encryption_key", None)
-    session_data = session_datasource.get_session(session_token, encryption_key=encryption_key)
+    # Prefer a dedicated GIS_CLIENT_ID (Web application type) when set.
+    # GIS Token Client requires a Web application OAuth client; Desktop app
+    # clients will be rejected by Google with "NATIVE_DESKTOP" error.
+    client_id = get_gis_client_id() or credentials_loader.get_client_config()["client_id"]
 
-    if not session_data:
-        flash("Session expired. Please log in again.", "error")
-        return redirect(url_for("auth.login"))
+    fetchers_data = fetcher_service.get_enabled_fetchers()
+    fetchers = [
+        {
+            "id": f.id,
+            "name": f.name,
+            "from_emails": f.from_emails,
+            "subject_filter": f.subject_filter or "",
+            "amount_pattern": f.amount_pattern or "",
+            "merchant_pattern": f.merchant_pattern,
+            "currency_pattern": f.currency_pattern,
+            "default_currency": f.default_currency,
+            "negate_amount": f.negate_amount,
+        }
+        for f in fetchers_data
+    ]
 
-    # Extract user_id before entering generator
-    user_id = session_data.user_id
+    default_fetch_date = _calculate_fetch_start_date(transaction_service)
 
-    # Refresh access token if needed (automatically updates database)
-    try:
-        credentials_data = refresh_google_token_if_needed(
-            session_token, session_data.google_token, encryption_key=encryption_key
-        )
-    except EncryptionKeyRequired:
-        if encryption_key:
-            msg = "Could not decrypt credentials. Try logging out and back in."
-        else:
-            msg = "Your data is encrypted. Unlock with your passkey first."
-
-        def locked_error():
-            yield f"data: {json.dumps({'status': 'error', 'message': msg})}\n\n"
-
-        return Response(locked_error(), mimetype="text/event-stream")
-
-    # Calculate fallback date based on last transaction date (defensive fallback)
-    fallback_date = (
-        _calculate_fetch_start_date(user_id) if "after_date" not in session else "2025-06-01"
+    return jsonify(
+        {
+            "client_id": client_id,
+            "fetchers": fetchers,
+            "default_fetch_date": default_fetch_date,
+        }
     )
 
-    after_date = session.get("after_date", fallback_date)
-    selected_fetchers_list = session.get("selected_fetchers", None)
 
-    # Capture encryption key before entering generator (g won't be available)
-    encryption_key = getattr(g, "encryption_key", None)
-
-    def generate():
-        """Generator function for server-sent events."""
-        try:
-            yield f"data: {json.dumps({'status': 'starting', 'message': 'Initializing Gmail fetch...'})}\n\n"
-
-            # Check if credentials exist
-            if not credentials_data:
-                yield f"data: {json.dumps({'status': 'error', 'message': 'No credentials found'})}\n\n"
-                return
-
-            yield f"data: {json.dumps({'status': 'progress', 'message': 'Authenticating with Google...'})}\n\n"
-
-            # Load client credentials from config (NOT from database)
-            client_config = credentials_loader.get_client_config()
-            client_id = client_config["client_id"]
-            client_secret = client_config["client_secret"]
-
-            # Reconstruct credentials from session data + client config
-            creds = Credentials(
-                token=credentials_data["token"],
-                refresh_token=credentials_data["refresh_token"],
-                token_uri=credentials_data["token_uri"],
-                client_id=client_id,
-                client_secret=client_secret,
-                scopes=credentials_data["scopes"],
-            )
-
-            # Initialize datasources directly — inside SSE generator,
-            # Flask request context is unavailable so utils.py factories won't work.
-            datasource_path = get_database_path()
-            factory = SQLiteDataSourceFactory(
-                datasource_path, user_id, encryption_key=encryption_key
-            )
-            datasource = factory.get_transaction_datasource()
-            settings_datasource = factory.get_user_settings_datasource()
-
-            # Get user's default currency and supported currencies list
-            user_settings = settings_datasource.get_settings()
-            user_default_currency = user_settings.currency if user_settings else "JPY"
-            supported_currency_codes = get_supported_currency_codes()
-
-            yield f"data: {json.dumps({'status': 'progress', 'message': 'Building Gmail service...'})}\n\n"
-
-            # Build Gmail service
-            gmail_service = build("gmail", "v1", credentials=creds)
-
-            results = []
-
-            # Get fetchers from database
-            fetcher_datasource = factory.get_fetcher_datasource()
-
-            if selected_fetchers_list:
-                # Get selected fetchers by ID
-                db_fetchers = []
-                for fetcher_id in selected_fetchers_list:
-                    fetcher = fetcher_datasource.get_fetcher_by_id(fetcher_id)
-                    if fetcher and fetcher.enabled:
-                        db_fetchers.append(fetcher)
-                fetchers = [DBFetcherAdapter(f) for f in db_fetchers]
-            else:
-                # Get all enabled fetchers
-                db_fetchers = fetcher_datasource.get_enabled_fetchers()
-                fetchers = [DBFetcherAdapter(f) for f in db_fetchers]
-
-            yield f"data: {json.dumps({'status': 'progress', 'message': f'Found {len(fetchers)} fetcher(s) to process'})}\n\n"
-
-            # Helper function to fetch from Gmail using a fetcher
-            def fetch_with_fetcher(fetcher):
-                yield f"data: {json.dumps({'status': 'progress', 'message': f'Processing {fetcher.name}...', 'source': fetcher.name})}\n\n"
-
-                processed_mail_ids = (
-                    datasource.get_processed_mail_ids()
-                )  # Check globally, not per-source
-                mail_filter = fetcher.get_gmail_filter(after_date)
-
-                yield f"data: {json.dumps({'status': 'progress', 'message': f'Querying Gmail for {fetcher.name} messages...', 'source': fetcher.name})}\n\n"
-
-                all_messages = []
-                page_token = None
-
-                while True:
-                    iteration_messages = (
-                        gmail_service.users()
-                        .messages()
-                        .list(
-                            userId="me",
-                            q=mail_filter,
-                            pageToken=page_token,
-                        )
-                        .execute()
-                    )
-
-                    if "messages" in iteration_messages:
-                        all_messages.extend(iteration_messages["messages"])
-                        yield f"data: {json.dumps({'status': 'progress', 'message': f'Found {len(all_messages)} messages from {fetcher.name}...', 'source': fetcher.name})}\n\n"
-
-                    page_token = iteration_messages.get("nextPageToken", None)
-                    if not page_token:
-                        break
-
-                if not all_messages:
-                    yield f"data: {json.dumps({'status': 'progress', 'message': f'No messages found for {fetcher.name}', 'source': fetcher.name})}\n\n"
-                    return {"source": fetcher.name, "total": 0, "new": 0, "written": 0}
-
-                new_messages = [msg for msg in all_messages if msg["id"] not in processed_mail_ids]
-                yield f"data: {json.dumps({'status': 'progress', 'message': f'{len(new_messages)} new messages to process for {fetcher.name}', 'source': fetcher.name})}\n\n"
-
-                # Collect new transactions with concurrent message fetching
-                new_transactions = []
-
-                def fetch_single_message(msg, credentials):
-                    """Fetch a single message detail from Gmail API with thread-local service."""
-                    # Each thread creates its own Gmail service to avoid SSL/connection issues
-                    thread_service = build("gmail", "v1", credentials=credentials)
-                    return (
-                        thread_service.users().messages().get(userId="me", id=msg["id"]).execute()
-                    )
-
-                # Use ThreadPoolExecutor to fetch messages concurrently
-                # Limit to 20 concurrent requests to respect Gmail API rate limits
-                max_workers = min(20, len(new_messages)) if new_messages else 1
-                processed_count = 0
-
-                with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                    # Submit all fetch tasks with credentials for each thread
-                    future_to_msg = {
-                        executor.submit(fetch_single_message, msg, creds): msg
-                        for msg in new_messages
-                    }
-
-                    # Process results as they complete
-                    for future in as_completed(future_to_msg):
-                        msg = future_to_msg[future]
-                        processed_count += 1
-
-                        # Update progress every 10 messages
-                        if processed_count % 10 == 0:
-                            yield f"data: {json.dumps({'status': 'progress', 'message': f'Processing message {processed_count}/{len(new_messages)} for {fetcher.name}...', 'source': fetcher.name})}\n\n"
-
-                        try:
-                            message_detail = future.result()
-
-                            if "payload" in message_detail:
-                                parsed_transactions = fetcher.parse_transaction(message_detail)
-                                # Gmail internalDate is in milliseconds, convert to UTC datetime
-                                date = datetime.fromtimestamp(
-                                    int(message_detail["internalDate"]) / 1000, tz=timezone.utc
-                                )
-
-                                # Loop through all transactions from this email (can be multiple)
-                                for amount, merchant, currency in parsed_transactions:
-                                    if amount:
-                                        # Handle currency fallback to fetcher default if not provided
-                                        final_currency = (
-                                            currency if currency else fetcher.default_currency
-                                        )
-
-                                        # Validate currency against supported currencies
-                                        if final_currency not in supported_currency_codes:
-                                            # Log warning and use user's default currency
-                                            yield f"data: {json.dumps({'status': 'warning', 'message': f'Unsupported currency {final_currency}, using {user_default_currency} instead'})}\n\n"
-                                            final_currency = user_default_currency
-
-                                        # Convert amount string to minor units (e.g., "5.99" USD -> 599 cents)
-                                        try:
-                                            amount_minor = to_minor_units(amount, final_currency)
-                                        except ValueError as e:
-                                            logger.error(
-                                                f"Failed to convert amount '{amount}' for {final_currency}: {e}"
-                                            )
-                                            continue
-
-                                        tx = Transaction(
-                                            id=str(uuid7()),
-                                            date=date,
-                                            amount=amount_minor,
-                                            description=merchant or "Unknown",
-                                            category="",
-                                            source=fetcher.name,
-                                            currency=final_currency,
-                                            category_source=None,
-                                            mail_id=msg["id"],
-                                            created_at=datetime.now(timezone.utc),
-                                            fetcher_id=fetcher.id,  # Link to specific fetcher version
-                                        )
-                                        new_transactions.append(tx)
-                        except Exception as e:
-                            logger.error(
-                                f"Error processing message {msg['id']} for {fetcher.name}: {e}"
-                            )
-                            yield f"data: {json.dumps({'status': 'warning', 'message': f'Error processing message: {str(e)}'})}\n\n"
-
-                yield f"data: {json.dumps({'status': 'progress', 'message': f'Saving {len(new_transactions)} transactions for {fetcher.name}...', 'source': fetcher.name})}\n\n"
-                written_count = datasource.add_transactions_batch(new_transactions)
-
-                result = {
-                    "source": fetcher.name,
-                    "total": len(all_messages),
-                    "new": len(new_messages),
-                    "written": written_count,
-                }
-
-                yield f"data: {json.dumps({'status': 'progress', 'message': f'Completed {fetcher.name}: {written_count} transactions saved', 'source': fetcher.name})}\n\n"
-                return result
-
-            # Fetch from all selected fetchers
-            for fetcher in fetchers:
-                result = yield from fetch_with_fetcher(fetcher)
-                results.append(result)
-
-            # Invalidate Redis cache so the next page load re-classifies
-            # with newly fetched transactions included.
-            cache_manager.invalidate(user_id)
-
-            yield f"data: {json.dumps({'status': 'complete', 'message': 'Fetch completed successfully!', 'results': results})}\n\n"
-
-        except HttpError as error:
-            yield f"data: {json.dumps({'status': 'error', 'message': f'Gmail API error: {str(error)}'})}\n\n"
-        except Exception as e:
-            yield f"data: {json.dumps({'status': 'error', 'message': f'Error: {str(e)}'})}\n\n"
-
-    response = current_app.response_class(generate(), mimetype="text/event-stream")
-    response.headers["Cache-Control"] = "no-cache"
-    response.headers["X-Accel-Buffering"] = "no"
-    return response
-
-
-@gmail_bp.route("/fetch-gmail/execute")
+@gmail_bp.route("/api/email/check-imported", methods=["POST"])
 @login_required
-def fetch_gmail_execute():
-    """Show results page."""
-    # Since we can't store results in session from the generator,
-    # we'll just show a simple completion page
-    return render_template("fetch_gmail_results.html", results=[])
+def api_email_check_imported():
+    """
+    Deduplication: given a list of Gmail message IDs, return which are already imported.
+
+    Request JSON:  { "mail_ids": ["abc123", "def456", ...] }
+    Response JSON: { "imported_ids": ["abc123"] }
+    """
+    data = request.get_json()
+    mail_ids = data.get("mail_ids") if data else None
+
+    if not isinstance(mail_ids, list):
+        return jsonify({"error": "mail_ids must be a list"}), 400
+
+    transaction_service = get_transaction_service()
+    imported_ids = transaction_service.filter_imported_mail_ids(mail_ids)
+
+    return jsonify({"imported_ids": list(imported_ids)})
+
+
+@gmail_bp.route("/api/email/import", methods=["POST"])
+@login_required
+def api_email_import():
+    """
+    Import extracted transactions.  The browser extracts transaction data
+    client-side and POSTs it here; this endpoint validates, converts units,
+    and saves to the database.
+
+    Request JSON:
+        {
+            "transactions": [
+                {
+                    "fetcher_id": "uuid7",
+                    "mail_id":    "abc123",
+                    "date_iso":   "2025-01-15T10:30:00Z",
+                    "amount_str": "15.99",
+                    "description": "Starbucks",
+                    "currency":   "USD",
+                    "source":     "Chase Credit Card"
+                }
+            ]
+        }
+    Response JSON:
+        { "imported": 3, "skipped": 0, "warnings": [] }
+    """
+    data = request.get_json()
+    raw_transactions = data.get("transactions") if data else None
+
+    if not isinstance(raw_transactions, list) or len(raw_transactions) == 0:
+        return jsonify({"error": "transactions must be a non-empty list"}), 400
+
+    if len(raw_transactions) > _MAX_IMPORT_BATCH:
+        return (
+            jsonify({"error": f"Batch too large; max {_MAX_IMPORT_BATCH} per request"}),
+            400,
+        )
+
+    fetcher_service = get_fetcher_service()
+    transaction_service = get_transaction_service()
+    cache_manager = get_cache_manager()
+    supported_currency_codes = get_supported_currency_codes()
+
+    # Pre-load valid fetcher IDs for this user to validate ownership
+    enabled_fetchers = {f.id: f for f in fetcher_service.get_enabled_fetchers()}
+
+    transactions = []
+    warnings = []
+    skipped = 0
+
+    for item in raw_transactions:
+        fetcher_id = item.get("fetcher_id")
+        fetcher = enabled_fetchers.get(fetcher_id)
+        if not fetcher:
+            skipped += 1
+            warnings.append(f"Unknown or disabled fetcher_id: {fetcher_id}")
+            continue
+
+        try:
+            date = datetime.fromisoformat(item["date_iso"].replace("Z", "+00:00"))
+        except (KeyError, ValueError) as e:
+            skipped += 1
+            warnings.append(f"Invalid date_iso: {e}")
+            continue
+
+        currency = normalize_currency_code(item.get("currency") or fetcher.default_currency)
+        if currency not in supported_currency_codes:
+            warnings.append(
+                f"Unsupported currency {currency}, using {fetcher.default_currency}"
+            )
+            currency = fetcher.default_currency
+
+        amount_str = item.get("amount_str", "")
+        try:
+            amount_minor = to_minor_units(amount_str, currency)
+        except (ValueError, KeyError) as e:
+            skipped += 1
+            warnings.append(f"Could not convert amount '{amount_str}': {e}")
+            continue
+
+        tx = Transaction(
+            id=str(uuid7()),
+            date=date,
+            amount=amount_minor,
+            description=item.get("description") or "Unknown",
+            category=None,
+            source=item.get("source") or fetcher.name,
+            currency=currency,
+            category_source=None,
+            mail_id=item.get("mail_id"),
+            created_at=datetime.now(timezone.utc),
+            fetcher_id=fetcher_id,
+        )
+        transactions.append(tx)
+
+    imported_count = 0
+    if transactions:
+        imported_count = transaction_service.add_transactions_batch(transactions)
+        # Invalidate Redis cache so the next page load re-classifies with new transactions
+        cache_manager.invalidate(request.user_id)
+
+    return jsonify(
+        {
+            "imported": imported_count,
+            "skipped": skipped,
+            "warnings": warnings,
+        }
+    )

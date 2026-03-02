@@ -82,10 +82,10 @@ def mock_session_datasource():
         session_token="valid_test_token",
         user_id="test@example.com",
         expiration=datetime.now(timezone.utc) + timedelta(days=7),
-        google_token={"user_name": "Test User", "user_picture": ""},
+        user_profile={"user_name": "Test User", "user_picture": ""},
         created_at=datetime.now(timezone.utc),
     )
-    datasource.get_session.side_effect = lambda token, encryption_key=None: (
+    datasource.get_session.side_effect = lambda token: (
         valid_session if token == "valid_test_token" else None
     )
     return datasource

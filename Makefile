@@ -1,4 +1,4 @@
-.PHONY: help test test-verbose test-coverage test-fast test-watch test-specific clean install lint lint-strict mypy check quick-check format run
+.PHONY: help test test-js test-verbose test-coverage test-fast test-watch test-specific clean install lint lint-strict mypy check quick-check format run
 
 # Default Python command
 PYTHON := python3
@@ -17,8 +17,12 @@ help: ## Show this help message
 install: ## Install all dependencies
 	$(PYTHON) -m pip install -r requirements.txt
 
-test: ## Run all tests with pytest
+test: ## Run all tests (Python + JS)
 	$(PYTHON) -m pytest tests/ -v
+	npx vitest run
+
+test-js: ## Run JS unit tests (FetcherEngine, parseAmount, etc.)
+	npx vitest run
 
 test-coverage: ## Run tests with coverage report (minimum 70%)
 	$(PYTHON) -m pytest tests/ --cov=domain --cov=application --cov=infrastructure --cov=presentation --cov-report=html --cov-report=term --cov-report=xml --cov-fail-under=70

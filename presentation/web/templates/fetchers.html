@@ -12,6 +12,7 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/fetchers.css') }}">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 {% endblock %}
 
 {% block header_actions %}
@@ -346,6 +347,8 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/email-token.js') }}"></script>
+<script src="{{ url_for('static', filename='js/gmail-fetch.js') }}"></script>
 <script src="{{ url_for('static', filename='js/fetchers.js') }}"></script>
 <script>
     // Pass mode and fetcher data to JavaScript

@@ -44,6 +44,7 @@ class CredentialsLoader:
 
         Returns:
             Dictionary with structure matching Google's credentials.json format
+            (Web application type — top-level key must be 'web').
 
         Raises:
             FileNotFoundError: If neither env vars nor config file are available
@@ -57,7 +58,7 @@ class CredentialsLoader:
         if client_id and client_secret:
             logger.info("Using credentials from environment variables")
             return {
-                'installed': {
+                'web': {
                     'client_id': client_id,
                     'client_secret': client_secret,
                     'project_id': project_id,
@@ -83,14 +84,17 @@ class CredentialsLoader:
             with open(self.credentials_file, 'r') as f:
                 credentials = json.load(f)
 
-            # Validate structure
-            if 'installed' not in credentials:
-                raise ValueError("Invalid credentials.json format: missing 'installed' key")
+            if 'web' not in credentials:
+                raise ValueError(
+                    "Invalid credentials.json: expected a top-level 'web' key. "
+                    "Download a 'Web application' OAuth 2.0 client from "
+                    "Google Cloud Console → APIs & Services → Credentials."
+                )
 
             required_fields = ['client_id', 'client_secret']
             for field in required_fields:
-                if field not in credentials['installed']:
-                    raise ValueError(f"Invalid credentials.json: missing '{field}' in 'installed' section")
+                if field not in credentials['web']:
+                    raise ValueError(f"Invalid credentials.json: missing '{field}' in 'web' section")
 
             return credentials
 
@@ -106,9 +110,29 @@ class CredentialsLoader:
         """
         credentials = self.get_credentials()
         return {
-            'client_id': credentials['installed']['client_id'],
-            'client_secret': credentials['installed']['client_secret']
+            'client_id': credentials['web']['client_id'],
+            'client_secret': credentials['web']['client_secret']
         }
+
+
+def get_gis_client_id() -> Optional[str]:
+    """
+    Get the OAuth 2.0 client_id to use for the browser-side GIS Token Client.
+
+    GIS Token Client only works with a *Web application* OAuth client (not a
+    Desktop app client).  If your main credentials.json uses a Desktop app
+    client for the server-side login flow, set this environment variable to
+    the client_id of a separate Web application OAuth client that has the
+    app's origin added to 'Authorized JavaScript origins' in Google Cloud
+    Console.
+
+    If not set, falls back to the main client_id from credentials.json (which
+    works only when that client is already a Web application type).
+
+    Environment variable:
+        GIS_CLIENT_ID: Web application OAuth 2.0 client_id for browser GIS use
+    """
+    return os.getenv('GIS_CLIENT_ID')
 
 
 def get_database_path() -> str:

@@ -373,7 +373,7 @@ def dismiss_encryption_banner():
 @webauthn_bp.route("/api/encryption/migrate", methods=["POST"])
 @login_required
 def migrate_encrypt():
-    """Encrypt all plaintext transactions and the current session's google_token."""
+    """Encrypt all plaintext transactions."""
     encryption_key = getattr(g, "encryption_key", None)
     if not encryption_key:
         return jsonify({"success": False, "error": "Encryption key not available"}), 400

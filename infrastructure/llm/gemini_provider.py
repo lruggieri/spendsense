@@ -55,8 +55,11 @@ class GeminiProvider(BaseLLMProvider):
         if not self.api_key:
             raise ValueError("Gemini API key not found. Set GEMINI_API_KEY environment variable.")
 
-        self.client = genai.Client(api_key=self.api_key)
-        self.model_name = "gemini-flash-latest"
+        self.client = genai.Client(
+            api_key=self.api_key,
+            http_options=genai.types.HttpOptions(timeout=120_000),  # 120 s (unit: ms)
+        )
+        self.model_name = "gemini-flash-lite-latest"
 
     def generate_patterns(self, email_text: str) -> Dict[str, Optional[str]]:
         """

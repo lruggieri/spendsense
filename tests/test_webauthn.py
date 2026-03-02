@@ -489,10 +489,10 @@ class TestMigrateEncrypt:
                 session_token="valid_test_token",
                 user_id="test@example.com",
                 expiration=datetime.now(timezone.utc) + timedelta(days=7),
-                google_token={"user_name": "Test User", "user_picture": ""},
+                user_profile={"user_name": "Test User", "user_picture": ""},
                 created_at=datetime.now(timezone.utc),
             )
-            mock_ds.get_session.side_effect = lambda token, encryption_key=None: (
+            mock_ds.get_session.side_effect = lambda token: (
                 valid_session if token == "valid_test_token" else None
             )
             mock_ds_factory.return_value = mock_ds
@@ -509,8 +509,8 @@ class TestMigrateEncrypt:
         assert data["success"] is False
         assert "not available" in data["error"].lower()
 
-    def test_migrates_transactions_and_google_token(self, unlocked_client, mock_webauthn_services):
-        """Migrate should encrypt plaintext transactions and the session's google token."""
+    def test_migrates_transactions(self, unlocked_client, mock_webauthn_services):
+        """Migrate should encrypt plaintext transactions."""
         mock_enc_svc = mock_webauthn_services["encryption_service"]
         mock_enc_svc.migrate_to_encrypted.return_value = 5
 
@@ -523,10 +523,10 @@ class TestMigrateEncrypt:
         assert data["transactions_migrated"] == 5
         mock_enc_svc.migrate_to_encrypted.assert_called_once_with("valid_test_token")
 
-    def test_encrypts_google_token_even_with_zero_transactions(
+    def test_migrate_called_even_with_zero_transactions(
         self, unlocked_client, mock_webauthn_services
     ):
-        """Google token should be encrypted even if there are no transactions to migrate."""
+        """migrate_to_encrypted should be called even if there are no transactions."""
         mock_enc_svc = mock_webauthn_services["encryption_service"]
         mock_enc_svc.migrate_to_encrypted.return_value = 0
 
@@ -571,10 +571,10 @@ class TestDecryptAll:
                 session_token="valid_test_token",
                 user_id="test@example.com",
                 expiration=datetime.now(timezone.utc) + timedelta(days=7),
-                google_token={"user_name": "Test User", "user_picture": ""},
+                user_profile={"user_name": "Test User", "user_picture": ""},
                 created_at=datetime.now(timezone.utc),
             )
-            mock_ds.get_session.side_effect = lambda token, encryption_key=None: (
+            mock_ds.get_session.side_effect = lambda token: (
                 valid_session if token == "valid_test_token" else None
             )
             mock_ds_factory.return_value = mock_ds
@@ -590,8 +590,8 @@ class TestDecryptAll:
         data = response.get_json()
         assert data["success"] is False
 
-    def test_decrypts_transactions_and_google_token(self, unlocked_client, mock_webauthn_services):
-        """Should decrypt all transactions and the session's google token."""
+    def test_decrypts_transactions(self, unlocked_client, mock_webauthn_services):
+        """Should decrypt all transactions."""
         mock_enc_svc = mock_webauthn_services["encryption_service"]
         mock_enc_svc.migrate_to_plaintext.return_value = 7
 

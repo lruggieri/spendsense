@@ -3,15 +3,22 @@
 {% block title %}Fetch Gmail Transactions - SpendSense{% endblock %}
 {% block page_title %}Fetch Gmail Transactions{% endblock %}
 
+{% block extra_head %}
+{# GIS must be loaded before we can call initTokenClient #}
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+{% endblock %}
+
 {% block content %}
 <div class="info-note">
     <p><strong>What does this do?</strong></p>
-    <p>This feature fetches transaction data from your Gmail account by scanning emails from configured sources. The data is automatically parsed and saved to persistent storage for classification.</p>
-    <p><strong>Note:</strong> Your Gmail credentials from login will be used automatically - no additional authorization needed!</p>
+    <p>This feature fetches transaction data from your Gmail account by scanning emails from configured sources. Gmail is accessed directly in your browser — no Gmail data passes through the SpendSense server.</p>
+    <div id="gmail-status-badge" style="margin-top: var(--spacing-sm); display: inline-block; padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-sm); font-size: 0.875rem; background: var(--bg-secondary); color: var(--text-muted);">
+        Checking Gmail connection...
+    </div>
 </div>
 
 <div class="card">
-    <form action="{{ url_for('gmail.fetch_gmail_start') }}" method="get">
+    <form id="fetch-form">
         <div class="form-group">
             <label class="form-label">Select sources to fetch:</label>
             <div style="margin-top: var(--spacing-sm);">
@@ -60,9 +67,10 @@
             </div>
         </div>
 
-        <button type="submit" class="btn btn-success" style="font-size: 1rem; padding: var(--spacing-md) var(--spacing-xl);" {% if not fetchers %}disabled{% endif %}>
+        <button type="submit" class="btn btn-success" id="start-btn" style="font-size: 1rem; padding: var(--spacing-md) var(--spacing-xl);" {% if not fetchers %}disabled{% endif %}>
             Start Fetching Transactions
         </button>
+        <div id="auth-error" style="display:none; margin-top: var(--spacing-sm); color: var(--danger); font-size: 0.875rem;"></div>
     </form>
 </div>
 
@@ -72,9 +80,95 @@
         <li>Select which sources to fetch (or leave all checked for all sources)</li>
         <li>Choose the start date for fetching emails</li>
         <li>Click "Start Fetching Transactions"</li>
-        <li>The app will scan your Gmail using your existing credentials</li>
+        <li>Authorize Gmail access in the popup (first time only — auto-refreshes after that)</li>
+        <li>The app will scan your Gmail directly in your browser</li>
         <li>Transactions will be automatically parsed and saved</li>
         <li>Progress will be displayed in real-time</li>
     </ol>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/email-token.js') }}"></script>
+<script>
+(function () {
+    const TOKEN_KEY  = 'gmail_gis_token';
+    const EXPIRY_KEY = 'gmail_gis_token_expiry';
+    const badge      = document.getElementById('gmail-status-badge');
+    const startBtn   = document.getElementById('start-btn');
+    const authError  = document.getElementById('auth-error');
+
+    function updateBadge() {
+        const token  = localStorage.getItem(TOKEN_KEY);
+        const expiry = parseInt(localStorage.getItem(EXPIRY_KEY) || '0', 10);
+        const valid  = token && Date.now() + 60000 < expiry;
+        if (valid) {
+            badge.textContent = 'Gmail Connected';
+            badge.style.background = 'var(--bg-success)';
+            badge.style.color = '#2e7d32';
+        } else {
+            badge.textContent = 'Connect Gmail (popup on first fetch)';
+            badge.style.background = 'var(--bg-secondary)';
+            badge.style.color = 'var(--text-muted)';
+        }
+    }
+
+    // Pre-fetch config as soon as GIS is ready so initTokenClient is called
+    // before the user clicks (speeds up the popup).
+    function tryInitTokenManager() {
+        fetch('/api/email/config')
+            .then(r => r.json())
+            .then(data => {
+                window.emailTokenManager.init(data.client_id);
+            })
+            .catch(() => { /* non-critical; token manager is re-inited on submit */ });
+    }
+
+    // Wait for GIS library, then pre-init
+    if (window.google && window.google.accounts) {
+        tryInitTokenManager();
+    } else {
+        window.addEventListener('load', tryInitTokenManager);
+    }
+
+    updateBadge();
+
+    // The GIS popup MUST be triggered directly from a user-gesture (click).
+    // We request the token here, in the submit handler, before navigating so
+    // the progress page can read it from localStorage without needing a popup.
+    document.getElementById('fetch-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const form = e.target;
+
+        startBtn.disabled = true;
+        startBtn.textContent = 'Connecting to Gmail…';
+        authError.style.display = 'none';
+
+        // getOrRequestToken() is called synchronously inside the click handler —
+        // this is the only context in which the browser allows a popup.
+        window.emailTokenManager.getOrRequestToken()
+            .then(function () {
+                // Token is now cached in localStorage; navigate to progress page.
+                updateBadge();
+                const afterDate = form.querySelector('#after_date').value;
+                const checked = Array.from(
+                    form.querySelectorAll('input[name="fetchers"]:checked')
+                ).map(cb => cb.value);
+
+                const params = new URLSearchParams();
+                if (afterDate) params.set('after_date', afterDate);
+                checked.forEach(id => params.append('fetchers', id));
+
+                window.location.href =
+                    '{{ url_for("gmail.fetch_gmail_progress") }}?' + params.toString();
+            })
+            .catch(function (err) {
+                startBtn.disabled = false;
+                startBtn.textContent = 'Start Fetching Transactions';
+                authError.textContent = 'Gmail authorization failed: ' + (err.message || err);
+                authError.style.display = 'block';
+            });
+    });
+})();
+</script>
 {% endblock %}

@@ -417,6 +417,21 @@ class TransactionService(BaseService):
         """
         return self._transaction_datasource.get_processed_mail_ids()
 
+    def filter_imported_mail_ids(self, candidate_ids: list) -> set:
+        """
+        Given a list of candidate mail IDs, return the subset already imported.
+
+        More efficient than get_processed_mail_ids() for targeted dedup checks
+        because it uses WHERE mail_id IN (...) instead of loading all IDs.
+
+        Args:
+            candidate_ids: Mail IDs to check
+
+        Returns:
+            Set of mail IDs from candidate_ids that already exist
+        """
+        return self._transaction_datasource.filter_imported_mail_ids(candidate_ids)
+
     def get_last_transaction_date(self) -> Optional[datetime]:
         """
         Get the date of the most recent transaction.

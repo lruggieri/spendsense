@@ -287,40 +287,6 @@ class TestEncryptionServiceMigration:
         assert count == 5
         mock_tx_ds.migrate_to_encrypted.assert_called_once()
 
-    def test_migrate_to_encrypted_encrypts_google_token(
-        self,
-        mock_encryption_repo,
-        mock_tx_ds,
-        mock_session_ds,
-    ):
-        mock_tx_ds.migrate_to_encrypted.return_value = 0
-        service = EncryptionService(
-            mock_encryption_repo,
-            transaction_datasource=mock_tx_ds,
-            session_datasource=mock_session_ds,
-            encryption_key="key123",
-        )
-
-        service.migrate_to_encrypted("session_tok")
-        mock_session_ds.encrypt_google_token.assert_called_once_with("session_tok", "key123")
-
-    def test_migrate_to_encrypted_skips_session_without_token(
-        self,
-        mock_encryption_repo,
-        mock_tx_ds,
-        mock_session_ds,
-    ):
-        mock_tx_ds.migrate_to_encrypted.return_value = 0
-        service = EncryptionService(
-            mock_encryption_repo,
-            transaction_datasource=mock_tx_ds,
-            session_datasource=mock_session_ds,
-            encryption_key="key123",
-        )
-
-        service.migrate_to_encrypted(None)
-        mock_session_ds.encrypt_google_token.assert_not_called()
-
     def test_migrate_to_encrypted_raises_without_tx_datasource(
         self,
         mock_encryption_repo,
@@ -346,23 +312,6 @@ class TestEncryptionServiceMigration:
         count = service.migrate_to_plaintext("tok")
         assert count == 7
         mock_tx_ds.migrate_to_plaintext.assert_called_once()
-
-    def test_migrate_to_plaintext_decrypts_google_token(
-        self,
-        mock_encryption_repo,
-        mock_tx_ds,
-        mock_session_ds,
-    ):
-        mock_tx_ds.migrate_to_plaintext.return_value = 0
-        service = EncryptionService(
-            mock_encryption_repo,
-            transaction_datasource=mock_tx_ds,
-            session_datasource=mock_session_ds,
-            encryption_key="key123",
-        )
-
-        service.migrate_to_plaintext("session_tok")
-        mock_session_ds.decrypt_google_token.assert_called_once_with("session_tok", "key123")
 
     def test_migrate_to_plaintext_raises_without_tx_datasource(
         self,

@@ -439,6 +439,34 @@ class SQLiteTransactionDataSource(TransactionRepository):
         conn.close()
         return mail_ids
 
+    def filter_imported_mail_ids(self, candidate_ids: List[str]) -> Set[str]:
+        """Return the subset of candidate_ids that already exist in the DB."""
+        if not candidate_ids:
+            return set()
+
+        conn = sqlite3.connect(self.db_filepath)
+        cursor = get_logging_cursor(conn)
+
+        try:
+            # Process in chunks to stay within SQLite variable limit (999)
+            result: Set[str] = set()
+            for i in range(0, len(candidate_ids), 900):
+                chunk = candidate_ids[i : i + 900]
+                placeholders = ",".join("?" * len(chunk))
+                cursor.execute(
+                    f"""
+                    SELECT DISTINCT mail_id
+                    FROM transactions
+                    WHERE user_id = ? AND mail_id IN ({placeholders})
+                """,
+                    (self.user_id, *chunk),
+                )
+                result.update(row[0] for row in cursor.fetchall())
+        finally:
+            conn.close()
+
+        return result
+
     def get_transactions_by_source(self, source: str) -> List[Transaction]:
         """
         Get all transactions from a specific source.

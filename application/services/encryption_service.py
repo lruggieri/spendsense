@@ -152,9 +152,6 @@ class EncryptionService:
             self._embedding_datasource.invalidate_all()
             logger.info(f"Invalidated embedding cache after encrypting {count} transactions")
 
-        if session_token and self._session_repo and self._encryption_key:
-            self._session_repo.encrypt_google_token(session_token, self._encryption_key)
-
         return count
 
     def migrate_to_plaintext(self, session_token: Optional[str] = None) -> int:
@@ -178,8 +175,5 @@ class EncryptionService:
         if count > 0 and self._embedding_datasource:
             self._embedding_datasource.invalidate_all()
             logger.info(f"Invalidated embedding cache after decrypting {count} transactions")
-
-        if session_token and self._session_repo and self._encryption_key:
-            self._session_repo.decrypt_google_token(session_token, self._encryption_key)
 
         return count

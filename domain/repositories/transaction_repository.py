@@ -92,6 +92,21 @@ class TransactionRepository(ABC):
         """
 
     @abstractmethod
+    def filter_imported_mail_ids(self, candidate_ids: List[str]) -> Set[str]:
+        """
+        Given a list of candidate mail IDs, return the subset already in the DB.
+
+        Uses a targeted WHERE mail_id IN (...) query instead of loading all
+        mail IDs into memory.
+
+        Args:
+            candidate_ids: Mail IDs to check
+
+        Returns:
+            Set of mail IDs from candidate_ids that already exist
+        """
+
+    @abstractmethod
     def get_transactions_by_source(self, source: str) -> List[Transaction]:
         """
         Get all transactions from a specific source.
