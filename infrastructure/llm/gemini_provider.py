@@ -57,7 +57,7 @@ class GeminiProvider(BaseLLMProvider):
 
         self.client = genai.Client(
             api_key=self.api_key,
-            http_options=genai.types.HttpOptions(timeout=60_000),  # 30 s (SDK unit: ms)
+            http_options=genai.types.HttpOptions(timeout=120_000),  # 120 s (unit: ms)
         )
         self.model_name = "gemini-flash-lite-latest"
 
