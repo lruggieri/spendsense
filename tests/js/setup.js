@@ -6,8 +6,10 @@
  */
 
 import { readFileSync } from 'fs';
-import { resolve } from 'path';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const STATIC_JS = resolve(__dirname, '../../presentation/web/static/js');
 
 // gmail-fetch.js depends on window.emailTokenManager from email-token.js,
