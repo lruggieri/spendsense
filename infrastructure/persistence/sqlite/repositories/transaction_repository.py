@@ -447,22 +447,24 @@ class SQLiteTransactionDataSource(TransactionRepository):
         conn = sqlite3.connect(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
-        # Process in chunks to stay within SQLite variable limit (999)
-        result: Set[str] = set()
-        for i in range(0, len(candidate_ids), 900):
-            chunk = candidate_ids[i : i + 900]
-            placeholders = ",".join("?" * len(chunk))
-            cursor.execute(
-                f"""
-                SELECT DISTINCT mail_id
-                FROM transactions
-                WHERE user_id = ? AND mail_id IN ({placeholders})
-            """,
-                (self.user_id, *chunk),
-            )
-            result.update(row[0] for row in cursor.fetchall())
+        try:
+            # Process in chunks to stay within SQLite variable limit (999)
+            result: Set[str] = set()
+            for i in range(0, len(candidate_ids), 900):
+                chunk = candidate_ids[i : i + 900]
+                placeholders = ",".join("?" * len(chunk))
+                cursor.execute(
+                    f"""
+                    SELECT DISTINCT mail_id
+                    FROM transactions
+                    WHERE user_id = ? AND mail_id IN ({placeholders})
+                """,
+                    (self.user_id, *chunk),
+                )
+                result.update(row[0] for row in cursor.fetchall())
+        finally:
+            conn.close()
 
-        conn.close()
         return result
 
     def get_transactions_by_source(self, source: str) -> List[Transaction]:
