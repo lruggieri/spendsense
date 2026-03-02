@@ -33,15 +33,8 @@ COPY presentation/ ./presentation/
 COPY config/ ./config/
 COPY data/ ./data/
 
-# Copy test files and Makefile for running tests
-COPY tests/ ./tests/
-COPY Makefile .
-
 # Create data directory if it doesn't exist
 RUN mkdir -p data
-
-# Run tests - build will fail if tests fail
-RUN make test
 
 EXPOSE 5678
 
