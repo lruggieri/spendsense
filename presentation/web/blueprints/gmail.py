@@ -280,8 +280,7 @@ def api_email_import():
     if transactions:
         imported_count = transaction_service.add_transactions_batch(transactions)
         # Invalidate Redis cache so the next page load re-classifies with new transactions
-        from flask import request as flask_request
-        cache_manager.invalidate(flask_request.user_id)
+        cache_manager.invalidate(request.user_id)
 
     return jsonify(
         {

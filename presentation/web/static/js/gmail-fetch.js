@@ -284,22 +284,39 @@
 
       if (commaCount === 0 && dotCount === 0) return s;
 
-      if (commaCount > 1 || (commaCount >= 1 && dotCount === 0)) {
-        // European thousands: 1,234,567 or 1,234 → comma is thousands sep
-        return s.replace(/,/g, '');
-      }
-      if (dotCount > 1 || (dotCount >= 1 && commaCount === 0)) {
-        // US thousands: 1,234.56 or bare 15.99 → dot is decimal
-        return s.replace(/,/g, '');
-      }
-      // One comma and one dot
-      if (lastDot > lastComma) {
-        // 1,234.56 → dot is decimal
-        return s.replace(/,/g, '');
+      let normalized;
+
+      if (commaCount === 1 && dotCount === 0) {
+        // Ambiguous: "1,234" (US thousands) vs "5,99" (EU decimal).
+        // Heuristic from Python _detect_locale: exactly 3 digits after comma → thousands.
+        const afterComma = s.split(',')[1];
+        if (afterComma.length === 3) {
+          normalized = s.replace(/,/g, '');  // thousands
+        } else {
+          normalized = s.replace(',', '.');  // decimal
+        }
+      } else if (commaCount > 1) {
+        // Multiple commas: 1,234,567 → commas are thousands sep
+        normalized = s.replace(/,/g, '');
+      } else if (dotCount === 1 && commaCount === 0) {
+        // Bare dot: 15.99 → dot is decimal
+        normalized = s;
+      } else if (dotCount > 1) {
+        // Multiple dots: 1.234.567 → dots are thousands sep
+        normalized = s.replace(/\./g, '');
+      } else if (lastDot > lastComma) {
+        // One comma and one dot, dot last: 1,234.56 → dot is decimal
+        normalized = s.replace(/,/g, '');
       } else {
-        // 1.234,56 → comma is decimal
-        return s.replace(/\./g, '').replace(',', '.');
+        // One comma and one dot, comma last: 1.234,56 → comma is decimal
+        normalized = s.replace(/\./g, '').replace(',', '.');
       }
+
+      // Strip trailing zeros after decimal point (match Python Decimal.normalize())
+      if (normalized.includes('.')) {
+        normalized = normalized.replace(/\.?0+$/, '');
+      }
+      return normalized;
     },
 
     /**
