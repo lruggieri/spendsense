@@ -43,10 +43,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Pre-init GIS token manager so it's ready before the user clicks
     // "Generate patterns" or "Test patterns". Non-blocking — ignore errors.
+    // Note: initFetchers() also calls this for wizard mode; init() is idempotent.
     fetch('/api/email/config')
         .then(r => r.json())
         .then(config => window.emailTokenManager.init(config.client_id))
-        .catch(() => {});
+        .catch(err => console.warn('Failed to load email config:', err));
 
 
     // Set up form submit handler
@@ -90,7 +91,7 @@ function initFetchers(context = 'standalone') {
     fetch('/api/email/config')
         .then(r => r.json())
         .then(config => window.emailTokenManager.init(config.client_id))
-        .catch(() => {});
+        .catch(err => console.warn('Failed to load email config:', err));
 
     // Set up form submit handler
     const form = document.getElementById('fetcher-form');

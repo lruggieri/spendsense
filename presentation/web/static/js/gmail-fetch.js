@@ -17,7 +17,6 @@
 
   // =========================================================================
   // Gmail message ID normalisation
-  // Port of infrastructure/email/gmail_utils.py:normalize_gmail_message_id()
   // Gmail URLs show a reduced-charset (consonant-only) ID; the API needs hex.
   // =========================================================================
 
@@ -125,7 +124,8 @@
   async function _resolveMessageId(token, id) {
     id = id.trim().replace(/^<|>$/g, '');  // strip optional angle brackets
 
-    // If it contains "@", treat as RFC 822 Message-ID and search for it
+    // If it contains "@", treat as RFC 822 Message-ID and search for it.
+    // Gmail hex IDs are pure hex (0-9a-f) and never contain "@", so this is unambiguous.
     if (id.includes('@')) {
       const q = `rfc822msgid:${id}`;
       const params = new URLSearchParams({ q, maxResults: '1' });
@@ -242,7 +242,6 @@
   const FetcherEngine = {
     /**
      * Extract text body from a Gmail message object.
-     * Port of infrastructure/email/gmail_utils.py:get_body_from_message()
      * @param {object} msg - Gmail API message object
      * @returns {string}
      */
@@ -414,7 +413,6 @@
 
     /**
      * Build a Gmail search filter string for a fetcher.
-     * Port of infrastructure/email/fetchers/db_fetcher_adapter.py:get_gmail_filter()
      * @param {object} fetcher   - fetcher config from /api/email/config
      * @param {string} afterDate - YYYY-MM-DD
      * @returns {string}
@@ -770,5 +768,6 @@
     runImport,
     buildProgressCallback,
     _normalizeMessageId,  // exported for testing
+    _resolveMessageId,    // exported for testing
   };
 })();
