@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { FetcherEngine } from './setup.js';
+import { FetcherEngine, normalizeMessageId } from './setup.js';
 
 // =========================================================================
 // parseAmount — port of domain/services/amount_parser.py
@@ -342,5 +342,36 @@ describe('FetcherEngine.detectPythonNamedGroups', () => {
       'amount_pattern',
       'currency_pattern',
     ]);
+  });
+});
+
+// =========================================================================
+// normalizeMessageId
+// =========================================================================
+
+describe('normalizeMessageId', () => {
+  it('passes through an already-hex API id unchanged', () => {
+    expect(normalizeMessageId('19b9643045e9a09a')).toBe('19b9643045e9a09a');
+  });
+
+  it('converts a legacy f:DECIMAL URL id to hex', () => {
+    // FMfcgzQfBGfsVHzgNPZvccFHwCmhpvCQ decodes to f:1853622880133816474
+    // hex(1853622880133816474) = 19b9643045e9a09a
+    expect(normalizeMessageId('FMfcgzQfBGfsVHzgNPZvccFHwCmhpvCQ')).toBe('19b9643045e9a09a');
+  });
+
+  it('rejects new-interface a:r- IDs with a helpful message', () => {
+    // QgrcJHsbcTKZdZfsPrGPMhxffQMVJKShBXL decodes to a:r-8005764291723302336
+    // These are internal Gmail IDs that cannot be converted to API message IDs
+    expect(() => normalizeMessageId('QgrcJHsbcTKZdZfsPrGPMhxffQMVJKShBXL'))
+      .toThrow('new Gmail interface');
+  });
+
+  it('strips whitespace before normalizing', () => {
+    expect(normalizeMessageId('  19b9643045e9a09a  ')).toBe('19b9643045e9a09a');
+  });
+
+  it('throws a descriptive error for an undecodable consonant-only id', () => {
+    expect(() => normalizeMessageId('BCDFGHJK')).toThrow('Could not decode');
   });
 });

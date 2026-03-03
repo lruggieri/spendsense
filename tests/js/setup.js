@@ -27,3 +27,4 @@ eval(emailTokenSrc);
 eval(gmailFetchSrc);
 
 export const FetcherEngine = window.gmailFetch.FetcherEngine;
+export const normalizeMessageId = window.gmailFetch._normalizeMessageId;
