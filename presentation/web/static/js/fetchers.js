@@ -43,10 +43,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Pre-init GIS token manager so it's ready before the user clicks
     // "Generate patterns" or "Test patterns". Non-blocking — ignore errors.
+    // Note: initFetchers() also calls this for wizard mode; init() is idempotent.
     fetch('/api/email/config')
         .then(r => r.json())
         .then(config => window.emailTokenManager.init(config.client_id))
-        .catch(() => {});
+        .catch(err => console.warn('Failed to load email config:', err));
 
 
     // Set up form submit handler
@@ -85,6 +86,12 @@ document.addEventListener('DOMContentLoaded', function() {
  */
 function initFetchers(context = 'standalone') {
     window.FETCHER_MODE = context;
+
+    // Pre-init GIS token manager so it's ready before the user submits the form.
+    fetch('/api/email/config')
+        .then(r => r.json())
+        .then(config => window.emailTokenManager.init(config.client_id))
+        .catch(err => console.warn('Failed to load email config:', err));
 
     // Set up form submit handler
     const form = document.getElementById('fetcher-form');
@@ -230,9 +237,12 @@ function addEmailExample() {
                 id="email-id-${id}"
                 name="email_id_${id}"
                 class="form-input"
-                placeholder="e.g., FMfcgzQfBGfsVHzgNPZvccFHwCmhpvCQ"
+                placeholder="e.g., CANLLRpb...@mail.gmail.com"
             >
-            <small class="form-help">Enter the message ID from the Gmail URL</small>
+            <small class="form-help">
+                Open the email in Gmail &rarr; three-dot menu &rarr;
+                "Show original" &rarr; copy the <strong>Message ID</strong> value.
+            </small>
         </div>
     `;
 
@@ -920,9 +930,12 @@ function addTestEmailExample() {
                 id="test-email-id-${id}"
                 name="test_email_id_${id}"
                 class="form-input"
-                placeholder="e.g., FMfcgzQfBGfsVHzgNPZvccFHwCmhpvCQ"
+                placeholder="e.g., CANLLRpb...@mail.gmail.com"
             >
-            <small class="form-help">Enter the message ID from the Gmail URL</small>
+            <small class="form-help">
+                Open the email in Gmail &rarr; three-dot menu &rarr;
+                "Show original" &rarr; copy the <strong>Message ID</strong> value.
+            </small>
         </div>
     `;
 

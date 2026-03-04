@@ -1,15 +1,15 @@
 /**
  * Tests for gmail-fetch.js FetcherEngine business logic.
  *
- * Covers the JS ports of:
- *   - domain/services/amount_parser.py          → parseAmount()
- *   - infrastructure/email/fetchers/pattern_parser.py → applyPattern(), parseTransactionsWithPatterns()
- *   - infrastructure/email/gmail_utils.py       → getBodyFromMessage()
- *   - infrastructure/email/fetchers/db_fetcher_adapter.py → buildGmailFilter()
+ * Covers:
+ *   - parseAmount()
+ *   - applyPattern(), parseTransactionsWithPatterns()
+ *   - getBodyFromMessage()
+ *   - buildGmailFilter()
  */
 
-import { describe, it, expect } from 'vitest';
-import { FetcherEngine } from './setup.js';
+import { describe, it, expect, vi } from 'vitest';
+import { FetcherEngine, normalizeMessageId, resolveMessageId } from './setup.js';
 
 // =========================================================================
 // parseAmount — port of domain/services/amount_parser.py
@@ -342,5 +342,89 @@ describe('FetcherEngine.detectPythonNamedGroups', () => {
       'amount_pattern',
       'currency_pattern',
     ]);
+  });
+});
+
+// =========================================================================
+// normalizeMessageId
+// =========================================================================
+
+describe('normalizeMessageId', () => {
+  it('passes through an already-hex API id unchanged', () => {
+    expect(normalizeMessageId('19b9643045e9a09a')).toBe('19b9643045e9a09a');
+  });
+
+  it('converts a legacy f:DECIMAL URL id to hex', () => {
+    // FMfcgzQfBGfsVHzgNPZvccFHwCmhpvCQ decodes to f:1853622880133816474
+    // hex(1853622880133816474) = 19b9643045e9a09a
+    expect(normalizeMessageId('FMfcgzQfBGfsVHzgNPZvccFHwCmhpvCQ')).toBe('19b9643045e9a09a');
+  });
+
+  it('rejects new-interface a:r- IDs with a helpful message', () => {
+    // QgrcJHsbcTKZdZfsPrGPMhxffQMVJKShBXL decodes to a:r-8005764291723302336
+    // These are internal Gmail IDs that cannot be converted to API message IDs
+    expect(() => normalizeMessageId('QgrcJHsbcTKZdZfsPrGPMhxffQMVJKShBXL'))
+      .toThrow('new Gmail interface');
+  });
+
+  it('strips whitespace before normalizing', () => {
+    expect(normalizeMessageId('  19b9643045e9a09a  ')).toBe('19b9643045e9a09a');
+  });
+
+  it('throws a descriptive error for an undecodable consonant-only id', () => {
+    expect(() => normalizeMessageId('BCDFGHJK')).toThrow('Could not decode');
+  });
+});
+
+// =========================================================================
+// resolveMessageId — RFC 822 Message-ID lookup path
+// =========================================================================
+
+describe('resolveMessageId', () => {
+  it('returns a hex id unchanged', async () => {
+    expect(await resolveMessageId('token', '19b9643045e9a09a')).toBe('19b9643045e9a09a');
+  });
+
+  it('converts a legacy consonant-charset id without fetching', async () => {
+    expect(await resolveMessageId('token', 'FMfcgzQfBGfsVHzgNPZvccFHwCmhpvCQ')).toBe('19b9643045e9a09a');
+  });
+
+  it('searches Gmail API for an RFC 822 Message-ID containing @', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ messages: [{ id: 'abc123def456' }] }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await resolveMessageId('mytoken', '<CAFoo+bar@mail.example.com>');
+    expect(result).toBe('abc123def456');
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining('rfc822msgid'),
+      expect.objectContaining({ headers: { Authorization: 'Bearer mytoken' } }),
+    );
+
+    vi.unstubAllGlobals();
+  });
+
+  it('throws when the RFC 822 search returns no messages', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ messages: [] }),
+    }));
+
+    await expect(resolveMessageId('token', 'no-match@example.com')).rejects.toThrow('No message found');
+    vi.unstubAllGlobals();
+  });
+
+  it('throws when the Gmail API returns an error status', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 403,
+      statusText: 'Forbidden',
+      json: async () => ({ error: { message: 'Forbidden' } }),
+    }));
+
+    await expect(resolveMessageId('token', 'foo@example.com')).rejects.toThrow('403');
+    vi.unstubAllGlobals();
   });
 });

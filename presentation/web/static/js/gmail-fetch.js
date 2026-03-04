@@ -17,7 +17,6 @@
 
   // =========================================================================
   // Gmail message ID normalisation
-  // Port of infrastructure/email/gmail_utils.py:normalize_gmail_message_id()
   // Gmail URLs show a reduced-charset (consonant-only) ID; the API needs hex.
   // =========================================================================
 
@@ -65,13 +64,87 @@
         const transformed = _transformCharset(id, _CHARSET_REDUCED, _CHARSET_FULL);
         const padding  = '='.repeat((4 - transformed.length % 4) % 4);
         const decoded  = atob(transformed + padding);
+
+        // Gmail URL IDs decode to formats like "f:DECIMAL" or "msg-f:DECIMAL"
+        // (legacy/classic interface).  Only these can be converted to the hex
+        // message IDs accepted by the Gmail API.
+        //
+        // The *new* Gmail interface produces "a:r-DECIMAL" / "msg-a:r-DECIMAL"
+        // which are internal action IDs — they CANNOT be converted to API IDs.
+        // See https://github.com/KartikTalwar/gmail.js/issues/591
+
+        // Detect unsupported new-interface IDs (a:…, msg-a:…, thread-a:…)
+        if (/(?:msg-|thread-)?a:/.test(decoded)) {
+          throw new Error(
+            'This Gmail URL is from the new Gmail interface and cannot be converted to an API message ID. ' +
+            'Please paste the raw email text instead, or leave the examples empty and let the app ' +
+            'auto-fetch emails using the configured "From" addresses.'
+          );
+        }
+
+        // Legacy format: "f:DECIMAL" or "msg-f:DECIMAL"
         const m = decoded.match(/(?:msg-)?[a-z]:(\d+)/);
-        // Use BigInt: Gmail decimal IDs are 64-bit integers and exceed
-        // Number.MAX_SAFE_INTEGER, so parseInt() would lose precision.
-        if (m) return BigInt(m[1]).toString(16);
-      } catch (_) { /* fall through */ }
+        if (m) {
+          // Use BigInt: Gmail decimal IDs are 64-bit integers and exceed
+          // Number.MAX_SAFE_INTEGER, so parseInt() would lose precision.
+          return BigInt(m[1]).toString(16);
+        }
+
+        // Decoded but unrecognised format
+        throw new Error(
+          'Could not decode this Gmail URL ID. ' +
+          'Please paste the raw email text instead.'
+        );
+      } catch (e) {
+        // Re-throw our own errors; wrap unexpected errors
+        if (e.message && (e.message.startsWith('This Gmail URL') ||
+            e.message.startsWith('Could not decode')))
+          throw e;
+        throw new Error(
+          'Could not decode this Gmail URL ID. ' +
+          'Please paste the raw email text instead.'
+        );
+      }
     }
     return id;
+  }
+
+  /**
+   * Resolve any supported message identifier to a Gmail API hex ID.
+   *
+   * Supported formats:
+   *   1. Hex API ID         — returned as-is (e.g. "19cb38980451d491")
+   *   2. Legacy URL ID      — consonant-charset, decoded via _normalizeMessageId
+   *   3. RFC 822 Message-ID — contains "@", looked up via messages.list rfc822msgid:
+   *
+   * @param {string} token - GIS access token (needed for rfc822msgid search)
+   * @param {string} id    - message identifier in any format
+   * @returns {Promise<string>} Gmail API hex message ID
+   */
+  async function _resolveMessageId(token, id) {
+    id = id.trim().replace(/^<|>$/g, '');  // strip optional angle brackets
+
+    // If it contains "@", treat as RFC 822 Message-ID and search for it.
+    // Gmail hex IDs are pure hex (0-9a-f) and never contain "@", so this is unambiguous.
+    if (id.includes('@')) {
+      const q = `rfc822msgid:${id}`;
+      const params = new URLSearchParams({ q, maxResults: '1' });
+      const resp = await fetch(`${GMAIL_API}/messages?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(`Gmail search error ${resp.status}: ${err.error?.message || resp.statusText}`);
+      }
+      const data = await resp.json();
+      if (!data.messages || data.messages.length === 0) {
+        throw new Error(`No message found with Message-ID "${id}"`);
+      }
+      return data.messages[0].id;
+    }
+
+    // Otherwise use the existing charset-conversion / passthrough logic
+    return _normalizeMessageId(id);
   }
 
   // Chunk sizes
@@ -117,13 +190,16 @@
 
     /**
      * Fetch a single message in full format.
-     * Accepts both API hex IDs and URL/UI consonant-charset IDs.
+     * Accepts:
+     *   - Gmail API hex IDs (e.g. "19cb38980451d491")
+     *   - Legacy URL consonant-charset IDs (e.g. "FMfcgz…")
+     *   - RFC 822 Message-IDs (e.g. "<…@mail.gmail.com>" or "…@mail.gmail.com")
      * @param {string} token     - GIS access token
-     * @param {string} messageId - Gmail message ID (either format)
+     * @param {string} messageId - Gmail message ID in any of the above formats
      * @returns {Promise<object>} Gmail message object
      */
     async getMessage(token, messageId) {
-      messageId = _normalizeMessageId(messageId);
+      messageId = await _resolveMessageId(token, messageId);
       const resp = await fetch(
         `${GMAIL_API}/messages/${encodeURIComponent(messageId)}?format=full`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -166,7 +242,6 @@
   const FetcherEngine = {
     /**
      * Extract text body from a Gmail message object.
-     * Port of infrastructure/email/gmail_utils.py:get_body_from_message()
      * @param {object} msg - Gmail API message object
      * @returns {string}
      */
@@ -338,7 +413,6 @@
 
     /**
      * Build a Gmail search filter string for a fetcher.
-     * Port of infrastructure/email/fetchers/db_fetcher_adapter.py:get_gmail_filter()
      * @param {object} fetcher   - fetcher config from /api/email/config
      * @param {string} afterDate - YYYY-MM-DD
      * @returns {string}
@@ -693,5 +767,7 @@
     FetcherEngine,
     runImport,
     buildProgressCallback,
+    _normalizeMessageId,  // exported for testing
+    _resolveMessageId,    // exported for testing
   };
 })();
