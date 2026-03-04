@@ -28,7 +28,7 @@
 {% block content %}
 <div class="privacy-wrap">
   <h1>Privacy Policy for SpendSense</h1>
-  <p class="last-updated"><strong>Last Updated:</strong> February 19, 2026</p>
+  <p class="last-updated"><strong>Last Updated:</strong> March 5, 2026</p>
 
   <h2>Introduction</h2>
   <p>This Privacy Policy describes how SpendSense ("we", "our", or "the application") collects, uses, and protects your personal information when you use our expense tracking and classification service.</p>
@@ -40,15 +40,16 @@
   <ul>
     <li>Your email address</li>
     <li>Your Google account ID</li>
-    <li>Access tokens for Gmail API (if you choose to fetch transactions from Gmail)</li>
+    <li>Your display name and profile picture (stored in the server-side session)</li>
   </ul>
 
   <h3>2. Gmail Data</h3>
-  <p>If you choose to use the Gmail transaction fetching feature, we access:</p>
+  <p>If you choose to use the Gmail transaction fetching feature, Gmail access happens <strong>entirely within your browser</strong>:</p>
   <ul>
-    <li>Email messages from specific financial service providers (banks, payment services)</li>
-    <li>Email content to extract transaction information (date, amount, description)</li>
-    <li>This data is processed locally and stored in the application database</li>
+    <li>Your Gmail access token is obtained via Google Identity Services and stored only in your browser's <code>localStorage</code> — it is <strong>never transmitted to or stored on our server</strong></li>
+    <li>Email messages from specific financial service providers (banks, payment services) are fetched directly from Gmail by your browser</li>
+    <li>Email content is parsed in your browser to extract transaction information (date, amount, description)</li>
+    <li>Only the extracted transaction data you choose to import is sent to and stored in the application database</li>
   </ul>
 
   <h3>3. Transaction Data</h3>
@@ -62,15 +63,15 @@
 
   <h3>4. Usage Data</h3>
   <ul>
-    <li>Session information (stored in the application database)</li>
-    <li>OAuth tokens (encrypted and stored for API access)</li>
+    <li>Session information (stored in the application database), including your display name and profile picture</li>
+    <li>Gmail access tokens are stored only in your browser's <code>localStorage</code> and are never stored server-side</li>
   </ul>
 
   <h2>How We Use Your Information</h2>
   <p>We use the collected information to:</p>
   <ol>
     <li><strong>Authenticate your access</strong> — Verify your identity using Google OAuth</li>
-    <li><strong>Fetch transactions</strong> — Retrieve transaction emails from your Gmail account</li>
+    <li><strong>Fetch transactions</strong> — Your browser retrieves transaction emails directly from Gmail via Google Identity Services; the server receives only the extracted transaction data you choose to import</li>
     <li><strong>Categorize expenses</strong> — Automatically classify transactions using regex patterns and machine learning</li>
     <li><strong>Generate regex patterns</strong> — Optionally use Google Gemini API to generate classification rules from email content</li>
     <li><strong>Provide analysis</strong> — Generate expense reports, charts, and trends</li>
@@ -91,7 +92,6 @@
   <ul>
     <li>Transaction descriptions</li>
     <li>Transaction comments</li>
-    <li>OAuth tokens</li>
   </ul>
   <p>Encryption details:</p>
   <ul>
@@ -107,7 +107,7 @@
     <li>Google OAuth 2.0 for secure authentication</li>
     <li>Session-based access control with 7-day session expiration</li>
     <li>Session cookies set with <code>HttpOnly</code> and <code>SameSite=Lax</code> flags; <code>Secure</code> flag enabled in production</li>
-    <li>Access token refresh mechanism to minimize token exposure</li>
+    <li>Gmail access tokens are managed entirely client-side via Google Identity Services and stored only in <code>localStorage</code> — the server never handles or stores them</li>
     <li>Optional <code>ALLOWED_EMAILS</code> environment variable to restrict access to authorized accounts only</li>
   </ul>
 
@@ -118,9 +118,9 @@
   <ul>
     <li><strong>Google OAuth 2.0</strong> — For user authentication</li>
     <li><strong>Gmail API</strong> — To fetch transaction emails (only when you explicitly initiate a fetch)</li>
-    <li><strong>Google Gemini API</strong> (<code>gemini-flash-latest</code>) — Optionally used to generate regex classification patterns from email text; sends email body content to the Gemini API only when explicitly triggered</li>
+    <li><strong>Google Gemini API</strong> — Optionally used to generate regex classification patterns from email text; sends email body content to the Gemini API only when you explicitly trigger this feature</li>
   </ul>
-  <p>Google's use of information received from Gmail APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+  <p>SpendSense's use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
 
   <h3>European Central Bank (ECB)</h3>
   <p>The application may download daily currency exchange rate tables from the European Central Bank's public data feed. <strong>No personal data is transmitted to the ECB</strong> — only publicly available rate tables are downloaded.</p>
@@ -137,10 +137,10 @@
   <h2>Gmail API Scope and Usage</h2>
 
   <h3>Limited Use Disclosure</h3>
-  <p>Our use of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+  <p>SpendSense's use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements. This includes data sent to Google Gemini API, which is used solely to provide the regex pattern generation feature explicitly triggered by the user.</p>
 
   <h3>Scopes Used</h3>
-  <p>The application requests the following Gmail API scope:</p>
+  <p>The application requests the following Gmail API scope, obtained client-side via Google Identity Services in your browser — it is <strong>not</strong> requested during server-side login:</p>
   <ul>
     <li><code>https://www.googleapis.com/auth/gmail.readonly</code> — Read-only access to Gmail messages</li>
   </ul>
@@ -148,12 +148,12 @@
   <h3>How We Use Gmail Data</h3>
   <p>Gmail data is used exclusively to:</p>
   <ol>
-    <li>Search for transaction emails from specific financial service providers</li>
-    <li>Extract transaction information (date, amount, merchant name)</li>
-    <li>Store extracted transaction data in the application database</li>
-    <li>No Gmail content is shared with any third party</li>
-    <li>Gmail access occurs only when you explicitly trigger a transaction fetch</li>
+    <li>Search for transaction emails from specific financial service providers — performed by your browser, not the server</li>
+    <li>Extract transaction information (date, amount, merchant name) — performed locally in your browser</li>
+    <li>Store the extracted transaction data you choose to import in the application database</li>
+    <li>Optionally generate regex classification patterns via Gemini API — only when you explicitly trigger this feature; only the email body text for the selected email is sent</li>
   </ol>
+  <p>Raw Gmail content (email subjects, bodies, or metadata) is never stored on our server. The Gmail access token never leaves your browser. The one exception is the Gemini pattern-generation feature (item 4 above): when you explicitly trigger it, the selected email's body text is sent from your browser to our server, which forwards it to the Gemini API — no other Gmail content reaches the server.</p>
 
   <h2>Your Rights and Choices</h2>
   <p>You have the right to:</p>
