@@ -147,6 +147,30 @@ def api_fetchers_generate_patterns():
                 400,
             )
 
+        _MAX_EMAIL_COUNT = 10
+        _MAX_EMAIL_CHARS = 50_000
+        if len(email_texts) > _MAX_EMAIL_COUNT:
+            return (
+                jsonify(
+                    {
+                        "success": False,
+                        "error": f"Too many email examples (max {_MAX_EMAIL_COUNT})",
+                    }
+                ),
+                400,
+            )
+        for i, text in enumerate(email_texts):
+            if len(text) > _MAX_EMAIL_CHARS:
+                return (
+                    jsonify(
+                        {
+                            "success": False,
+                            "error": f"Email {i + 1} is too long (max {_MAX_EMAIL_CHARS} characters)",
+                        }
+                    ),
+                    400,
+                )
+
         # Combine all email texts with separators for LLM
         combined_email_text = "\n\n===== EMAIL EXAMPLE SEPARATOR =====\n\n".join(email_texts)
 

@@ -88,12 +88,15 @@ CURRENCY_PATTERN: 引落金額：\s*[0-9,]+(円)"""
         self.assertEqual(result["merchant_pattern"], r"内容\s*[：:]\s*(.+)")
         self.assertEqual(result["currency_pattern"], r"引落金額：\s*[0-9,]+(円)")
 
-        # Verify generate_content was called
+        # Verify generate_content was called with system_instruction and user content
         mock_client.models.generate_content.assert_called_once()
         call_kwargs = mock_client.models.generate_content.call_args[1]
         self.assertEqual(call_kwargs["model"], "gemini-flash-lite-latest")
+        # Email text is in user content (wrapped in XML delimiters)
         self.assertIn(email_text, call_kwargs["contents"])
-        self.assertIn("AMOUNT_PATTERN", call_kwargs["contents"])
+        self.assertIn("<email_content>", call_kwargs["contents"])
+        # Task instructions are in system_instruction, not in user content
+        self.assertIn("AMOUNT_PATTERN", call_kwargs["config"]["system_instruction"])
 
     @patch("infrastructure.llm.gemini_provider.genai")
     def test_generate_patterns_with_no_currency(self, mock_genai):
