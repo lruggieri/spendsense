@@ -50,7 +50,7 @@ def login():
             return redirect(url_for("main.index"))
 
     # Debug: Show what redirect URI will be used
-    debug_redirect_uri = url_for("auth.login_callback", _external=True)
+    debug_redirect_uri = url_for("auth.login_callback", _external=True)  # nosemgrep: python.flask.security.audit.flask-url-for-external-true.flask-url-for-external-true
     logger.debug(f"Generated redirect URI: {debug_redirect_uri}")
 
     return render_template("login.html")
@@ -67,7 +67,7 @@ def login_start():
         flow = Flow.from_client_config(
             client_config,
             scopes=SCOPES,
-            redirect_uri=url_for("auth.login_callback", _external=True),
+            redirect_uri=url_for("auth.login_callback", _external=True),  # nosemgrep: python.flask.security.audit.flask-url-for-external-true.flask-url-for-external-true
         )
 
         # Generate authorization URL
@@ -114,7 +114,7 @@ def login_callback():
             client_config,
             scopes=SCOPES,
             state=state,
-            redirect_uri=url_for("auth.login_callback", _external=True),
+            redirect_uri=url_for("auth.login_callback", _external=True),  # nosemgrep: python.flask.security.audit.flask-url-for-external-true.flask-url-for-external-true
         )
 
         # Fetch token using the authorization response

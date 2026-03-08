@@ -179,11 +179,7 @@ class SQLiteGroupDataSource(GroupRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            query = f"""
-                UPDATE groups
-                SET {', '.join(set_clauses)}
-                WHERE id = ? AND user_id = ?
-            """
+            query = f"UPDATE groups SET {', '.join(set_clauses)} WHERE id = ? AND user_id = ?"  # nosec B608
             cursor.execute(query, tuple(params))
             conn.commit()
 

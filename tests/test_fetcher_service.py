@@ -22,7 +22,7 @@ class TestFetcherService(unittest.TestCase):
             user_id=self.user_id,
             fetcher_datasource=self.mock_ds,
             user_settings_service=self.mock_settings,
-            db_path="/tmp/test.db",
+            db_path="/tmp/test.db",  # nosec B108 - hardcoded tmp path is fine in tests
         )
 
     def _make_fetcher(

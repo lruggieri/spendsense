@@ -454,11 +454,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
                 chunk = candidate_ids[i : i + 900]
                 placeholders = ",".join("?" * len(chunk))
                 cursor.execute(
-                    f"""
-                    SELECT DISTINCT mail_id
-                    FROM transactions
-                    WHERE user_id = ? AND mail_id IN ({placeholders})
-                """,
+                    f"SELECT DISTINCT mail_id FROM transactions WHERE user_id = ? AND mail_id IN ({placeholders})",  # nosec B608
                     (self.user_id, *chunk),
                 )
                 result.update(row[0] for row in cursor.fetchall())

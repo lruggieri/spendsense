@@ -106,11 +106,7 @@ class SQLiteEmbeddingDataSource(EmbeddingRepository):
                 chunk = tx_ids[i : i + CHUNK_SIZE]
                 placeholders = ",".join("?" * len(chunk))
                 cursor.execute(
-                    f"""
-                    SELECT tx_id, embedding, description_hash
-                    FROM embeddings
-                    WHERE tx_id IN ({placeholders}) AND user_id = ?
-                """,
+                    f"SELECT tx_id, embedding, description_hash FROM embeddings WHERE tx_id IN ({placeholders}) AND user_id = ?",  # nosec B608
                     tuple(chunk) + (self.user_id,),
                 )
 

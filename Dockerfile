@@ -42,6 +42,11 @@ EXPOSE 5678
 ENV PYTHONUNBUFFERED=1
 ENV FLASK_APP=presentation.web.app
 
+# Run as non-root user
+RUN useradd --no-create-home --shell /bin/false appuser \
+    && chown -R appuser:appuser /app
+USER appuser
+
 # Run the application with Gunicorn from project root
 WORKDIR /app
 CMD ["gunicorn", "--bind", "0.0.0.0:5678", "--workers", "4", "--timeout", "120", "presentation.web.app:app"]

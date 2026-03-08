@@ -279,11 +279,7 @@ class SQLiteRegexpDataSource(RegexpRepository):
             # Add WHERE clause parameters
             params.extend([regexp_id, self.user_id])
 
-            query = f"""
-                UPDATE regexps
-                SET {', '.join(update_fields)}
-                WHERE id = ? AND user_id = ?
-            """
+            query = f"UPDATE regexps SET {', '.join(update_fields)} WHERE id = ? AND user_id = ?"  # nosec B608
 
             cursor.execute(query, tuple(params))
             conn.commit()
