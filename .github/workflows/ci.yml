@@ -86,7 +86,7 @@ jobs:
         run: make mypy
 
   test-js:
-    name: JS Tests
+    name: Tests (JS)
     runs-on: ubuntu-latest
 
     steps:
