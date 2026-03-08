@@ -79,9 +79,13 @@ def login_start():
             prompt="consent",  # Force consent screen to get refresh token
         )
 
-        # Store state in Flask session for verification
+        # Store state and PKCE code verifier in Flask session.
+        # google-auth-oauthlib generates a code_verifier automatically; we must
+        # persist it here since a new Flow instance is created in the callback.
         session["oauth_state"] = state
         session["oauth_flow"] = "login"  # Mark this as login flow
+        if flow.code_verifier:
+            session["oauth_code_verifier"] = flow.code_verifier
 
         return redirect(authorization_url)
     except Exception as e:
@@ -117,8 +121,10 @@ def login_callback():
             redirect_uri=url_for("auth.login_callback", _external=True),  # nosemgrep: python.flask.security.audit.flask-url-for-external-true.flask-url-for-external-true
         )
 
-        # Fetch token using the authorization response
-        flow.fetch_token(authorization_response=request.url)
+        # Fetch token using the authorization response, passing back the PKCE
+        # code verifier that was generated in login_start and stored in the session.
+        code_verifier = session.pop("oauth_code_verifier", None)
+        flow.fetch_token(authorization_response=request.url, code_verifier=code_verifier)
 
         # Get credentials
         credentials = flow.credentials
