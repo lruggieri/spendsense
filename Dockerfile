@@ -22,7 +22,9 @@ RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/wh
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-download the SentenceTransformer model to speed up first startup
+# Pre-download the SentenceTransformer model into /app/.cache so it's accessible
+# to the non-root appuser (who owns /app but not /root)
+ENV HF_HOME=/app/.cache
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 
 # Copy application code
