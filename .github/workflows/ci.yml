@@ -104,3 +104,51 @@ jobs:
 
       - name: Run JS tests
         run: make test-js
+
+  secret-scan:
+    name: Secret scanning (TruffleHog)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history so TruffleHog can scan all commits
+
+      - name: Run TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --only-verified  # suppress unverified findings to reduce noise
+
+  sast-bandit:
+    name: SAST - Bandit (Python)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install Bandit
+        run: pip install bandit
+
+      - name: Run Bandit
+        run: bandit -r . -x .venv,tests,node_modules -ll  # medium + high severity only
+
+  sast-semgrep:
+    name: SAST - Semgrep (Flask)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Run Semgrep
+        run: semgrep --config=p/python --config=p/flask --config=p/owasp-top-ten --error .
