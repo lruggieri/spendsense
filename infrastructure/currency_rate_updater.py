@@ -84,7 +84,7 @@ class CurrencyRateUpdater:
                 ssl_context = ssl.create_default_context(cafile=certifi.where())
 
                 # Download to temporary file first with SSL context
-                with urllib.request.urlopen(ECB_URL, context=ssl_context) as response:
+                with urllib.request.urlopen(ECB_URL, context=ssl_context) as response:  # nosec B310 - ECB_URL is a hardcoded trusted constant
                     with open(temp_file, "wb") as out_file:
                         out_file.write(response.read())
 

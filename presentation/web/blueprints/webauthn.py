@@ -92,7 +92,7 @@ def register_options():
                     "success": False,
                     "error": f"WebAuthn requires a domain name, not an IP address. "
                     f'Use http://localhost:{request.host.split(":")[-1]} instead of '
-                    f"http://{request.host}",
+                    f"http://{request.host}",  # nosemgrep: python.flask.security.injection.tainted-url-host.tainted-url-host
                 }
             ),
             400,
@@ -231,7 +231,7 @@ def authenticate_options():
                     "success": False,
                     "error": f"WebAuthn requires a domain name, not an IP address. "
                     f'Use http://localhost:{request.host.split(":")[-1]} instead of '
-                    f"http://{request.host}",
+                    f"http://{request.host}",  # nosemgrep: python.flask.security.injection.tainted-url-host.tainted-url-host
                 }
             ),
             400,

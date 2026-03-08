@@ -182,7 +182,7 @@ class SQLiteCategoryDataSource(CategoryRepository):
                 return True  # Nothing to update
 
             params.extend([category_id, self.user_id])
-            query = f"UPDATE categories SET {', '.join(updates)} WHERE id = ? AND user_id = ?"
+            query = f"UPDATE categories SET {', '.join(updates)} WHERE id = ? AND user_id = ?"  # nosec B608 - field names are hardcoded, values use parameterized placeholders
 
             cursor.execute(query, tuple(params))
             conn.commit()

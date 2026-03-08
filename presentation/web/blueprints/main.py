@@ -98,12 +98,12 @@ def sitemap_xml():
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
         "  <url>\n"
-        f"    <loc>{base}/</loc>\n"
+        f"    <loc>{base}/</loc>\n"  # nosemgrep: python.flask.security.injection.raw-html-concat.raw-html-format,python.django.security.injection.raw-html-format.raw-html-format
         "    <changefreq>monthly</changefreq>\n"
         "    <priority>1.0</priority>\n"
         "  </url>\n"
         "  <url>\n"
-        f"    <loc>{base}/privacy-policy</loc>\n"
+        f"    <loc>{base}/privacy-policy</loc>\n"  # nosemgrep: python.flask.security.injection.raw-html-concat.raw-html-format,python.django.security.injection.raw-html-format.raw-html-format
         "    <changefreq>yearly</changefreq>\n"
         "    <priority>0.5</priority>\n"
         "  </url>\n"

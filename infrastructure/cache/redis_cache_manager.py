@@ -120,7 +120,7 @@ class RedisCacheManager:
 
                 # Deserialize from pickle
                 t1 = time.time()
-                service = pickle.loads(cached_data)
+                service = pickle.loads(cached_data)  # nosec B301 - data is from trusted internal Redis storage
                 unpickle_time = (time.time() - t1) * 1000
 
                 logger.info(f"Unpickling took {unpickle_time:.2f}ms")

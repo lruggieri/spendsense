@@ -22,7 +22,9 @@ RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/wh
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-download the SentenceTransformer model to speed up first startup
+# Pre-download the SentenceTransformer model into /app/.cache so it's accessible
+# to the non-root appuser (who owns /app but not /root)
+ENV HF_HOME=/app/.cache
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
 
 # Copy application code
@@ -41,6 +43,11 @@ EXPOSE 5678
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV FLASK_APP=presentation.web.app
+
+# Run as non-root user
+RUN useradd --no-create-home --shell /bin/false appuser \
+    && chown -R appuser:appuser /app
+USER appuser
 
 # Run the application with Gunicorn from project root
 WORKDIR /app
