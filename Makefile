@@ -25,7 +25,7 @@ test-js: ## Run JS unit tests (FetcherEngine, parseAmount, etc.)
 	npx vitest run
 
 test-coverage: ## Run tests with coverage report (minimum 70%)
-	$(PYTHON) -m pytest tests/ --cov=domain --cov=application --cov=infrastructure --cov=presentation --cov-report=html --cov-report=term --cov-report=xml --cov-fail-under=70
+	$(PYTHON) -m pytest tests/ --cov=domain --cov=application --cov=infrastructure --cov=presentation --cov-report=html --cov-report=term --cov-report=xml --cov-fail-under=80
 
 test-specific: ## Run specific test file (usage: make test-specific FILE=test_classifier.py)
 	$(PYTHON) -m pytest tests/$(FILE) -v
