@@ -6,11 +6,15 @@ This module provides reusable functions for extracting transaction data
 Used by both DBFetcherAdapter and the web UI for pattern testing.
 """
 
-import re
 from typing import List, Optional
+
+import regex
 
 from config import normalize_currency_code
 from domain.services.amount_parser import parse_amount
+
+_REGEX_FLAGS = regex.MULTILINE | regex.DOTALL
+_REGEX_TIMEOUT = 5  # seconds per findall call
 
 
 def flatten_regex_results(results: list) -> list:
@@ -24,7 +28,7 @@ def flatten_regex_results(results: list) -> list:
     - ['880'] or ['3704']
 
     Args:
-        results: Output from re.findall() - could be list of strings or list of tuples
+        results: Output from regex.findall() - could be list of strings or list of tuples
 
     Returns:
         List of strings with alternation tuples flattened
@@ -74,19 +78,19 @@ def parse_transactions_with_patterns(
     # Extract amounts (if pattern available)
     amounts = []
     if amount_pattern:
-        amounts_raw = re.findall(amount_pattern, email_text, re.MULTILINE | re.DOTALL)
+        amounts_raw = regex.findall(amount_pattern, email_text, _REGEX_FLAGS, timeout=_REGEX_TIMEOUT)
         amounts = flatten_regex_results(amounts_raw)
 
     # Extract merchants (if pattern available)
     merchants = []
     if merchant_pattern:
-        merchants_raw = re.findall(merchant_pattern, email_text, re.MULTILINE | re.DOTALL)
+        merchants_raw = regex.findall(merchant_pattern, email_text, _REGEX_FLAGS, timeout=_REGEX_TIMEOUT)
         merchants = flatten_regex_results(merchants_raw)
 
     # Extract currencies (may be empty, one, or N)
     currencies = []
     if currency_pattern:
-        currencies_raw = re.findall(currency_pattern, email_text, re.MULTILINE | re.DOTALL)
+        currencies_raw = regex.findall(currency_pattern, email_text, _REGEX_FLAGS, timeout=_REGEX_TIMEOUT)
         currencies = flatten_regex_results(currencies_raw)
 
     # Build transaction list
