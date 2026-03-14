@@ -18,11 +18,7 @@ services:
 #      retries: 3
 
   spendsense:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        TORCH_VARIANT: ${TORCH_VARIANT:-cpu}
+    image: ghcr.io/lruggieri/spendsense:latest
     container_name: spendsense-app
     env_file:
       - .env
@@ -41,5 +37,28 @@ services:
 #    depends_on:
 #      redis:
 #        condition: service_healthy
-    # Uncomment the following if you need to override the default command
-    # command: python app.py
+
+  spendsense-local:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        TORCH_VARIANT: ${TORCH_VARIANT:-cpu}
+    container_name: spendsense-app-local
+    env_file:
+      - .env
+    ports:
+      - "5678:5678"
+    volumes:
+      # Mount data directory for persistent storage
+      - ./data:/app/data
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+      - DATABASE_PATH=/app/data/transactions.db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    restart: unless-stopped
+#    depends_on:
+#      redis:
+#        condition: service_healthy
