@@ -191,6 +191,8 @@ def charts():
             from_date=from_date_display,
             to_date=to_date_display,
             currency_symbol=currency_symbol,
+            currency_code=default_currency,
+            supported_currencies=user_settings_service.get_supported_currencies(),
         )
     )
 
