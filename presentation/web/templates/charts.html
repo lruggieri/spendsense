@@ -169,12 +169,21 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<!-- Currency configuration from backend (single source of truth) -->
+<script>
+    window.CURRENCY_CONFIG = {
+        {% for currency in supported_currencies %}
+        '{{ currency.code }}': {{ currency.minor_units }}{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+</script>
 <script src="{{ url_for('static', filename='js/charts-common.js') }}"></script>
 <script>
     // Parse tree data from server
     const treeData = {{ tree_data | tojson }};
     const fromDate = '{{ from_date }}';
     const toDate = '{{ to_date }}';
+    const currencyCode = '{{ currency_code }}';
 
     // Adjust charts default dates to local timezone (server defaults to current UTC month)
     (function() {
@@ -210,17 +219,17 @@
 
     // Update summary
     const currencySymbol = '{{ currency_symbol }}';
-    document.getElementById('total-expenses').textContent = `${currencySymbol}${total.toLocaleString()}`;
+    document.getElementById('total-expenses').textContent = `${currencySymbol}${formatChartAmount(total, currencyCode)}`;
     document.getElementById('num-categories').textContent = allCategories.length;
     if (topCategories.length > 0) {
         document.getElementById('largest-category').textContent = topCategories[0].name;
     }
 
     // Create charts using shared functions
-    createPieChart('pieChart', treeData, redirectToReview, currencySymbol);
-    createStackedBarChart('barChart', treeData, redirectToReview, currencySymbol);
+    createPieChart('pieChart', treeData, redirectToReview, currencySymbol, currencyCode);
+    createStackedBarChart('barChart', treeData, redirectToReview, currencySymbol, currencyCode);
 
     // Populate table using shared function
-    populateCategoryTable('categoryTableBody', treeData, redirectToReview, currencySymbol);
+    populateCategoryTable('categoryTableBody', treeData, redirectToReview, currencySymbol, currencyCode);
 </script>
 {% endblock %}
