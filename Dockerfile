@@ -33,9 +33,8 @@ COPY application/ ./application/
 COPY infrastructure/ ./infrastructure/
 COPY presentation/ ./presentation/
 COPY config/ ./config/
-COPY data/ ./data/
 
-# Create data directory if it doesn't exist
+# Create data directory (not in source control)
 RUN mkdir -p data
 
 EXPOSE 5678
