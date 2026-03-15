@@ -2,25 +2,8 @@
 // SHARED CHART UTILITIES
 // ========================================
 
-/**
- * Format a chart amount respecting zero-decimal currencies (e.g. JPY, KRW, ISK)
- * Uses window.CURRENCY_CONFIG injected from backend
- * @param {number} value - Amount to format
- * @param {string} currencyCode - ISO currency code (e.g. 'JPY', 'USD')
- * @returns {string} Formatted amount string
- */
-function formatChartAmount(value, currencyCode) {
-    const minorUnits = (window.CURRENCY_CONFIG && window.CURRENCY_CONFIG[currencyCode] !== undefined)
-        ? window.CURRENCY_CONFIG[currencyCode]
-        : 2;
-    if (minorUnits === 0) {
-        return Math.round(value).toLocaleString();
-    }
-    return value.toLocaleString(undefined, {
-        minimumFractionDigits: minorUnits,
-        maximumFractionDigits: minorUnits
-    });
-}
+// Currency utilities (getCurrencyMinorUnits, formatAmount)
+// are loaded from currency-utils.js
 
 /**
  * Truncate text to a maximum length with ellipsis
@@ -124,7 +107,7 @@ function createBarChart(canvasId, treeData, onCategoryClick, currencySymbol = '$
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        callback: value => currencySymbol + formatChartAmount(value, currencyCode)
+                        callback: value => currencySymbol + formatAmount(value, currencyCode)
                     }
                 }
             },
@@ -139,7 +122,7 @@ function createBarChart(canvasId, treeData, onCategoryClick, currencySymbol = '$
                         label: function(context) {
                             const value = context.parsed.y || 0;
                             const percentage = total > 0 ? (value / total * 100).toFixed(1) : 0;
-                            return `${currencySymbol}${formatChartAmount(value, currencyCode)} (${percentage}%)`;
+                            return `${currencySymbol}${formatAmount(value, currencyCode)} (${percentage}%)`;
                         }
                     }
                 }
@@ -199,7 +182,7 @@ function createPieChart(canvasId, treeData, onCategoryClick, currencySymbol = '$
                         label: function(context) {
                             const value = context.parsed || 0;
                             const percentage = total > 0 ? (value / total * 100).toFixed(1) : 0;
-                            return `${currencySymbol}${formatChartAmount(value, currencyCode)} (${percentage}%)`;
+                            return `${currencySymbol}${formatAmount(value, currencyCode)} (${percentage}%)`;
                         }
                     }
                 }
@@ -340,7 +323,7 @@ function createStackedBarChart(canvasId, treeData, onCategoryClick, currencySymb
                     stacked: true,
                     beginAtZero: true,
                     ticks: {
-                        callback: value => currencySymbol + formatChartAmount(value, currencyCode)
+                        callback: value => currencySymbol + formatAmount(value, currencyCode)
                     }
                 }
             },
@@ -363,7 +346,7 @@ function createStackedBarChart(canvasId, treeData, onCategoryClick, currencySymb
                             const barTotal = topCategory.total;
 
                             const lines = [];
-                            lines.push(`${topCategory.name}: ${currencySymbol}${formatChartAmount(barTotal, currencyCode)}`);
+                            lines.push(`${topCategory.name}: ${currencySymbol}${formatAmount(barTotal, currencyCode)}`);
 
                             // Check if top category has children
                             if (!topCategory.children || topCategory.children.length === 0) {
@@ -387,7 +370,7 @@ function createStackedBarChart(canvasId, treeData, onCategoryClick, currencySymb
                                     if (child.total > 0) {
                                         const indent = '  '.repeat(level);
                                         const percentage = barTotal > 0 ? ((child.total / barTotal) * 100).toFixed(1) : 0;
-                                        lines.push(`${indent}∟ ${child.name}: ${currencySymbol}${formatChartAmount(child.total, currencyCode)} (${percentage}%)`);
+                                        lines.push(`${indent}∟ ${child.name}: ${currencySymbol}${formatAmount(child.total, currencyCode)} (${percentage}%)`);
 
                                         // Recursively add this child's children
                                         addNodeRecursively(child, level + 1);
@@ -433,7 +416,7 @@ function populateCategoryTable(tableBodyId, treeData, onCategoryClick, currencyS
 
         row.innerHTML = `
             <td class="${indentClass}">${escapeHtml(cat.name)}</td>
-            <td style="text-align: right;">${currencySymbol}${formatChartAmount(cat.total, currencyCode)}</td>
+            <td style="text-align: right;">${currencySymbol}${formatAmount(cat.total, currencyCode)}</td>
             <td style="text-align: right;" class="text-muted">${cat.percentage}%</td>
         `;
 

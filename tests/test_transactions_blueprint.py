@@ -23,7 +23,11 @@ def mock_services():
     mock_user_settings_service.get_currency_converter.return_value = MagicMock(
         convert=lambda a, f, t, d=None: a
     )
-    mock_user_settings_service.get_supported_currencies.return_value = ["JPY", "USD", "EUR"]
+    mock_user_settings_service.get_supported_currencies.return_value = [
+        {"code": "JPY", "symbol": "¥", "name": "Japanese Yen", "minor_units": 0},
+        {"code": "USD", "symbol": "$", "name": "US Dollar", "minor_units": 2},
+        {"code": "EUR", "symbol": "€", "name": "Euro", "minor_units": 2},
+    ]
     mock_user_settings_service.get_default_currency.return_value = "JPY"
     mock_user_settings_service.validate_currency.side_effect = lambda c: c in ["JPY", "USD", "EUR"]
 

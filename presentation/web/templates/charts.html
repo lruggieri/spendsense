@@ -177,6 +177,7 @@
         {% endfor %}
     };
 </script>
+<script src="{{ url_for('static', filename='js/currency-utils.js') }}"></script>
 <script src="{{ url_for('static', filename='js/charts-common.js') }}"></script>
 <script>
     // Parse tree data from server
@@ -219,7 +220,7 @@
 
     // Update summary
     const currencySymbol = '{{ currency_symbol }}';
-    document.getElementById('total-expenses').textContent = `${currencySymbol}${formatChartAmount(total, currencyCode)}`;
+    document.getElementById('total-expenses').textContent = `${currencySymbol}${formatAmount(total, currencyCode)}`;
     document.getElementById('num-categories').textContent = allCategories.length;
     if (topCategories.length > 0) {
         document.getElementById('largest-category').textContent = topCategories[0].name;
