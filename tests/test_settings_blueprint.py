@@ -11,7 +11,11 @@ def mock_services():
     mock_user_settings = MagicMock(currency="JPY", language="en", browser_settings={})
     mock_user_settings_service = MagicMock()
     mock_user_settings_service.get_user_settings.return_value = mock_user_settings
-    mock_user_settings_service.get_supported_currencies.return_value = ["JPY", "USD", "EUR"]
+    mock_user_settings_service.get_supported_currencies.return_value = [
+        {"code": "JPY", "symbol": "¥", "name": "Japanese Yen", "minor_units": 0},
+        {"code": "USD", "symbol": "$", "name": "US Dollar", "minor_units": 2},
+        {"code": "EUR", "symbol": "€", "name": "Euro", "minor_units": 2},
+    ]
     mock_user_settings_service.update_user_settings.return_value = (True, None)
 
     patches = {

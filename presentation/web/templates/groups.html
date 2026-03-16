@@ -453,6 +453,15 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<!-- Currency configuration from backend (single source of truth) -->
+<script>
+    window.CURRENCY_CONFIG = {
+        {% for currency in supported_currencies %}
+        '{{ currency.code }}': {{ currency.minor_units }}{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+</script>
+<script src="{{ url_for('static', filename='js/currency-utils.js') }}"></script>
 <script src="{{ url_for('static', filename='js/review.js') }}"></script>
 <script src="{{ url_for('static', filename='js/groups.js') }}"></script>
 
@@ -463,6 +472,7 @@
     const treeData = {{ tree_data | tojson }};
     const groupId = '{{ selected_group.id }}';
     const currencySymbol = '{{ currency_symbol }}';
+    const currencyCode = '{{ default_currency }}';
 
     // Helper function to redirect to review page with category filter
     function redirectToReviewWithCategory(categoryId) {
@@ -470,7 +480,7 @@
     }
 
     // Create stacked bar chart with subcategories using shared function
-    const chart = createStackedBarChart('groupBarChart', treeData, redirectToReviewWithCategory, currencySymbol);
+    const chart = createStackedBarChart('groupBarChart', treeData, redirectToReviewWithCategory, currencySymbol, currencyCode);
 
     // Hide chart card if no data
     if (!chart) {

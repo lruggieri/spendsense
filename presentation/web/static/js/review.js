@@ -1,45 +1,8 @@
 // ========================================
 // REVIEW PAGE - TRANSACTION MANAGEMENT
 // ========================================
-
-// ========================================
-// CURRENCY UTILITIES
-// ========================================
-
-/**
- * Get currency minor units (0=JPY/KRW/ISK, 2=USD/EUR/etc.)
- * Uses configuration from backend (window.CURRENCY_CONFIG) - single source of truth
- */
-function getCurrencyMinorUnits(currency) {
-    // Use configuration injected from backend (config/__init__.py)
-    if (window.CURRENCY_CONFIG && window.CURRENCY_CONFIG[currency] !== undefined) {
-        return window.CURRENCY_CONFIG[currency];
-    }
-    // Fallback to 2 decimals if currency not found (same as backend)
-    return 2;
-}
-
-/**
- * Convert minor units to major units (e.g., 599 cents → 5.99 dollars)
- */
-function toMajorUnits(amountMinor, currency) {
-    const minorUnits = getCurrencyMinorUnits(currency);
-    return amountMinor / Math.pow(10, minorUnits);
-}
-
-/**
- * Format amount with proper decimal places
- */
-function formatAmount(amountMajor, currency, includeDecimals = true) {
-    const minorUnits = getCurrencyMinorUnits(currency);
-    if (!includeDecimals || minorUnits === 0) {
-        return Math.round(amountMajor).toLocaleString();
-    }
-    return amountMajor.toLocaleString(undefined, {
-        minimumFractionDigits: minorUnits,
-        maximumFractionDigits: minorUnits
-    });
-}
+// Currency utilities (getCurrencyMinorUnits, toMajorUnits, formatAmount)
+// are loaded from currency-utils.js
 
 // State management
 let pendingChanges = {}; // { txId: { categoryId, categoryName } }
