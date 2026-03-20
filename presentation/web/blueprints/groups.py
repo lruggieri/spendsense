@@ -17,7 +17,6 @@ from presentation.web.utils import (
     get_group_service,
     get_transaction_service,
     get_user_settings_service,
-    invalidate_service_cache,
     load_and_classify,
     tree_to_dict,
 )
@@ -165,7 +164,6 @@ def api_add_group_to_transaction():
         success, error = group_service.add_transaction_to_group(tx_id, group_id)
 
         if success:
-            invalidate_service_cache(request.user_id)
             return jsonify({"success": True})
         else:
             return jsonify(
@@ -193,7 +191,6 @@ def api_remove_group_from_transaction():
         success, error = group_service.remove_transaction_from_group(tx_id, group_id)
 
         if success:
-            invalidate_service_cache(request.user_id)
             return jsonify({"success": True})
         else:
             return jsonify(
@@ -221,7 +218,6 @@ def api_bulk_add_group():
         success, error, count = group_service.add_transactions_to_group(tx_ids, group_id)
 
         if success:
-            invalidate_service_cache(request.user_id)
             return jsonify({"success": True, "count": count})
         else:
             return jsonify({"success": False, "error": error}), 400
@@ -247,7 +243,6 @@ def api_bulk_remove_group():
         success, error, count = group_service.remove_transactions_from_group(tx_ids, group_id)
 
         if success:
-            invalidate_service_cache(request.user_id)
             return jsonify({"success": True, "count": count})
         else:
             return jsonify({"success": False, "error": error}), 400
@@ -272,7 +267,6 @@ def api_create_group():
         success, error, group_id = group_service.create_group(name)
 
         if success:
-            invalidate_service_cache(request.user_id)
             return jsonify({"success": True, "group_id": group_id})
         else:
             return jsonify({"success": False, "error": error}), 400
@@ -298,7 +292,6 @@ def api_update_group():
         success, error = group_service.update_group(group_id, name=name)
 
         if success:
-            invalidate_service_cache(request.user_id)
             return jsonify({"success": True})
         else:
             return jsonify({"success": False, "error": error or "Group not found"})
@@ -323,7 +316,6 @@ def api_delete_group():
         success, error = group_service.delete_group(group_id, cascade=True)
 
         if success:
-            invalidate_service_cache(request.user_id)
             return jsonify({"success": True})
         else:
             return jsonify({"success": False, "error": error or "Group not found"})

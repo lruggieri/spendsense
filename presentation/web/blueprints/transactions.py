@@ -31,7 +31,6 @@ from presentation.web.utils import (
     get_group_service,
     get_transaction_service,
     get_user_settings_service,
-    invalidate_service_cache,
     load_and_classify,
     parse_redirect_params,
 )
@@ -250,7 +249,6 @@ def assign_similarity():
     # Assign all categories at once
     if assignments:
         tx_service.assign_categories_bulk(assignments)
-        invalidate_service_cache(request.user_id)
         flash(f"Successfully reassigned {len(assignments)} transaction(s).", "success")
     else:
         flash("No changes detected. No transactions were updated.", "error")
@@ -367,7 +365,6 @@ def update_transaction():
     )
 
     if success:
-        invalidate_service_cache(request.user_id)
         return jsonify({"success": True})
     else:
         return jsonify({"success": False, "error": error_msg}), 400
@@ -420,7 +417,6 @@ def add_transaction():
     )
 
     if success:
-        invalidate_service_cache(request.user_id)
         return jsonify({"success": True})
     else:
         return jsonify({"success": False, "error": error_msg}), 400

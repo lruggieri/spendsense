@@ -64,9 +64,6 @@ def mock_services():
             "presentation.web.blueprints.transactions.get_group_service",
             return_value=mock_group_service,
         ),
-        "invalidate": patch(
-            "presentation.web.blueprints.transactions.invalidate_service_cache",
-        ),
     }
 
     started = {}

@@ -196,59 +196,6 @@ def get_allowed_emails() -> Optional[set]:
     return emails
 
 
-def get_redis_host() -> str:
-    """
-    Get Redis host from environment variable or use default.
-
-    Returns:
-        Redis hostname (default: 'localhost')
-    """
-    redis_host = os.getenv('REDIS_HOST', 'localhost')
-    logger.info(f"Redis host: {redis_host}")
-    return redis_host
-
-
-def get_redis_port() -> int:
-    """
-    Get Redis port from environment variable or use default.
-
-    Returns:
-        Redis port number (default: 6379)
-    """
-    redis_port = int(os.getenv('REDIS_PORT', '6379'))
-    logger.info(f"Redis port: {redis_port}")
-    return redis_port
-
-
-def get_redis_db() -> int:
-    """
-    Get Redis database number from environment variable or use default.
-
-    Returns:
-        Redis database number (default: 0, range: 0-15)
-    """
-    redis_db = int(os.getenv('REDIS_DB', '0'))
-    if redis_db < 0 or redis_db > 15:
-        logger.warning(f"Invalid REDIS_DB={redis_db}, using default 0")
-        redis_db = 0
-    logger.info(f"Redis DB: {redis_db}")
-    return redis_db
-
-
-def get_cache_ttl() -> int:
-    """
-    Get cache TTL (time-to-live) from environment variable or use default.
-
-    Returns:
-        Cache TTL in seconds (default: 1800 = 30 minutes)
-        Special values: 0 or negative = cache never expires
-    """
-    cache_ttl = int(os.getenv('CACHE_TTL', '1800'))
-    if cache_ttl <= 0:
-        logger.info(f"Cache TTL: NEVER EXPIRES (set to {cache_ttl})")
-    else:
-        logger.info(f"Cache TTL: {cache_ttl} seconds")
-    return cache_ttl
 
 
 def get_log_level() -> str:

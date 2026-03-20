@@ -17,9 +17,6 @@ def mock_services():
             "presentation.web.blueprints.categories.get_category_service",
             return_value=mock_category_service,
         ),
-        "invalidate": patch(
-            "presentation.web.blueprints.categories.invalidate_service_cache",
-        ),
     }
 
     started = {}

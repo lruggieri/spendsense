@@ -1,22 +1,4 @@
 services:
-#  redis:
-#    image: redis:7-alpine
-#    container_name: spendsense-redis
-#    ports:
-#      - "${REDIS_PORT:-6379}:6379"
-#    volumes:
-#      # Mount data directory for Redis persistence
-#      - ./data/redis:/data
-#    # Persistence: RDB snapshots only (saves every 60s if data changed)
-#    # AOF disabled for better performance since cache can be rebuilt from SQLite DB
-#    command: redis-server --save 60 1 --loglevel warning
-#    restart: unless-stopped
-#    healthcheck:
-#      test: ["CMD", "redis-cli", "ping"]
-#      interval: 10s
-#      timeout: 3s
-#      retries: 3
-
   spendsense:
     image: ghcr.io/lruggieri/spendsense:latest
     container_name: spendsense-app
@@ -31,12 +13,7 @@ services:
       - FLASK_ENV=production
       - PYTHONUNBUFFERED=1
       - DATABASE_PATH=/app/data/transactions.db
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
     restart: unless-stopped
-#    depends_on:
-#      redis:
-#        condition: service_healthy
 
   spendsense-local:
     build:
@@ -56,9 +33,4 @@ services:
       - FLASK_ENV=production
       - PYTHONUNBUFFERED=1
       - DATABASE_PATH=/app/data/transactions.db
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
     restart: unless-stopped
-#    depends_on:
-#      redis:
-#        condition: service_healthy

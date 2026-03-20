@@ -163,17 +163,12 @@ class TestEmailImport:
         mock_tx_svc = MagicMock()
         mock_tx_svc.add_transactions_batch.return_value = 1
 
-        mock_cache = MagicMock()
-
         with patch(
             "presentation.web.blueprints.gmail.get_fetcher_service",
             return_value=mock_fetcher_svc,
         ), patch(
             "presentation.web.blueprints.gmail.get_transaction_service",
             return_value=mock_tx_svc,
-        ), patch(
-            "presentation.web.blueprints.gmail.get_cache_manager",
-            return_value=mock_cache,
         ):
             response = authenticated_client.post(
                 "/api/email/import",
@@ -185,7 +180,6 @@ class TestEmailImport:
         assert data["imported"] == 1
         assert data["skipped"] == 0
         mock_tx_svc.add_transactions_batch.assert_called_once()
-        mock_cache.invalidate.assert_called_once()
 
     def test_returns_400_for_empty_list(self, authenticated_client):
         """Empty transactions list should return 400."""
@@ -212,17 +206,12 @@ class TestEmailImport:
         mock_tx_svc = MagicMock()
         mock_tx_svc.add_transactions_batch.return_value = 0
 
-        mock_cache = MagicMock()
-
         with patch(
             "presentation.web.blueprints.gmail.get_fetcher_service",
             return_value=mock_fetcher_svc,
         ), patch(
             "presentation.web.blueprints.gmail.get_transaction_service",
             return_value=mock_tx_svc,
-        ), patch(
-            "presentation.web.blueprints.gmail.get_cache_manager",
-            return_value=mock_cache,
         ):
             response = authenticated_client.post(
                 "/api/email/import",
@@ -235,7 +224,6 @@ class TestEmailImport:
         assert data["skipped"] == 1
         assert len(data["warnings"]) == 1
         mock_tx_svc.add_transactions_batch.assert_not_called()
-        mock_cache.invalidate.assert_not_called()
 
     def _import_with_currency(self, authenticated_client, currency):
         """Helper: POST a single transaction with the given currency string."""
@@ -244,7 +232,6 @@ class TestEmailImport:
         mock_fetcher_svc.get_enabled_fetchers.return_value = [fetcher]
         mock_tx_svc = MagicMock()
         mock_tx_svc.add_transactions_batch.return_value = 1
-        mock_cache = MagicMock()
 
         with patch(
             "presentation.web.blueprints.gmail.get_fetcher_service",
@@ -252,9 +239,6 @@ class TestEmailImport:
         ), patch(
             "presentation.web.blueprints.gmail.get_transaction_service",
             return_value=mock_tx_svc,
-        ), patch(
-            "presentation.web.blueprints.gmail.get_cache_manager",
-            return_value=mock_cache,
         ):
             tx = {**self._make_tx(), "currency": currency}
             response = authenticated_client.post(

@@ -28,26 +28,11 @@ from domain.services.embedding_similarity_calculator import EmbeddingSimilarityC
 from infrastructure.persistence.factory import DataSourceFactory
 from infrastructure.persistence.sqlite.factory import SQLiteDataSourceFactory
 from presentation.web.extensions import (
-    get_cache_manager,
     get_sentence_model,
     get_session_datasource,
 )
 
 logger = logging.getLogger(__name__)
-
-
-def invalidate_service_cache(user_id: Optional[str] = None):
-    """
-    Invalidate service cache in Redis for a specific user or all users.
-    Cache invalidation is now shared across all Flask workers/processes.
-    Call this when data changes that require reloading (e.g., after Gmail fetch,
-    category assignment, comment update, or new transaction).
-
-    Args:
-        user_id: Specific user to invalidate, or None to clear all cache entries
-    """
-    cache_manager = get_cache_manager()
-    cache_manager.invalidate(user_id)
 
 
 def parse_redirect_params(params_string):
