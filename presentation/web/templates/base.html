@@ -631,13 +631,17 @@
                     }
                 }
 
-                // Get backend debug info (ECB dates, etc.)
+                // Get backend debug info (version, ECB dates, etc.)
+                let appVersion = 'N/A';
                 let ecbFirstDate = 'N/A';
                 let ecbLastDate = 'N/A';
                 try {
                     const response = await fetch('/api/debug-info');
                     if (response.ok) {
                         const data = await response.json();
+                        if (data.app_version) {
+                            appVersion = data.app_version;
+                        }
                         if (data.ecb_first_date && data.ecb_last_date) {
                             // Format dates in UTC
                             ecbFirstDate = new Date(data.ecb_first_date).toISOString().split('T')[0];
@@ -652,6 +656,11 @@
 
                 // Build debug HTML
                 html = `
+                    <div style="margin-bottom: 15px;">
+                        <strong style="color: #2c3e50;">App Version:</strong>
+                        <span style="color: #8e44ad; font-weight: bold;">${appVersion}</span>
+                    </div>
+
                     <div style="margin-bottom: 15px;">
                         <strong style="color: #2c3e50;">Service Worker Status:</strong><br>
                         State: <span style="color: ${swState.includes('✓') ? '#27ae60' : '#e67e22'};">${swState}</span><br>

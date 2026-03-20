@@ -39,6 +39,10 @@ RUN mkdir -p data
 
 EXPOSE 5678
 
+# Application version (set at build time by CI)
+ARG APP_VERSION=dev
+ENV APP_VERSION=${APP_VERSION}
+
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV FLASK_APP=presentation.web.app
