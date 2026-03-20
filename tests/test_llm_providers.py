@@ -42,7 +42,7 @@ class TestGeminiProvider(unittest.TestCase):
         )
 
         # Should set model name
-        self.assertEqual(provider.model_name, "gemini-flash-lite-latest")
+        self.assertEqual(provider.model_name, "gemini-flash-latest")
 
     @patch("infrastructure.llm.gemini_provider.genai")
     def test_gemini_provider_missing_api_key(self, mock_genai):
@@ -91,7 +91,7 @@ CURRENCY_PATTERN: 引落金額：\s*[0-9,]+(円)"""
         # Verify generate_content was called
         mock_client.models.generate_content.assert_called_once()
         call_kwargs = mock_client.models.generate_content.call_args[1]
-        self.assertEqual(call_kwargs["model"], "gemini-flash-lite-latest")
+        self.assertEqual(call_kwargs["model"], "gemini-flash-latest")
         self.assertIn(email_text, call_kwargs["contents"])
         self.assertIn("AMOUNT_PATTERN", call_kwargs["contents"])
 
