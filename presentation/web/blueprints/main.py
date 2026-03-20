@@ -238,10 +238,11 @@ def api_tree_data():
 @login_required
 def api_debug_info():
     """API endpoint to get debug information."""
+    from config import get_app_version
     from domain.services.currency_converter import CurrencyConverterService
 
     # Set defaults
-    debug_info = {"ecb_first_date": None, "ecb_last_date": None}
+    debug_info = {"app_version": get_app_version(), "ecb_first_date": None, "ecb_last_date": None}
 
     # Get ECB currency data date range
     try:
