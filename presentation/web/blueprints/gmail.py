@@ -17,7 +17,6 @@ from domain.entities.transaction import Transaction
 from domain.services.amount_utils import to_minor_units
 from presentation.web.decorators import login_required
 from presentation.web.extensions import (
-    get_cache_manager,
     get_credentials_loader_instance,
 )
 from presentation.web.utils import (
@@ -223,7 +222,6 @@ def api_email_import():
 
     fetcher_service = get_fetcher_service()
     transaction_service = get_transaction_service()
-    cache_manager = get_cache_manager()
     supported_currency_codes = get_supported_currency_codes()
 
     # Pre-load valid fetcher IDs for this user to validate ownership
@@ -281,8 +279,6 @@ def api_email_import():
     imported_count = 0
     if transactions:
         imported_count = transaction_service.add_transactions_batch(transactions)
-        # Invalidate Redis cache so the next page load re-classifies with new transactions
-        cache_manager.invalidate(request.user_id)
 
     return jsonify(
         {

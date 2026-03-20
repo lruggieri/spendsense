@@ -24,9 +24,6 @@ def mock_services():
             "presentation.web.blueprints.patterns.get_pattern_service",
             return_value=mock_pattern_service,
         ),
-        "invalidate": patch(
-            "presentation.web.blueprints.patterns.invalidate_service_cache",
-        ),
     }
 
     started = {}

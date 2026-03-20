@@ -62,9 +62,6 @@ def mock_services():
             "presentation.web.blueprints.groups.get_group_service",
             return_value=mock_group_service,
         ),
-        "invalidate": patch(
-            "presentation.web.blueprints.groups.invalidate_service_cache",
-        ),
         "tree_to_dict": patch(
             "presentation.web.blueprints.groups.tree_to_dict",
             return_value={"id": "all", "name": "All", "total": 0, "children": []},

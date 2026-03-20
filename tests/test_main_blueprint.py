@@ -57,9 +57,6 @@ def mock_services():
             "presentation.web.blueprints.main.build_category_tree_data",
             return_value=tree_data,
         ),
-        "invalidate": patch(
-            "presentation.web.blueprints.main.invalidate_service_cache",
-        ),
     }
 
     started = {}

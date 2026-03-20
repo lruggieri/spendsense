@@ -4,7 +4,6 @@ Shared state and extensions for the Flask application.
 This module contains global state that is shared across all blueprints:
 - ML model (SentenceTransformer)
 - Currency rate updater
-- Redis cache manager
 - Session datasource
 - OAuth configuration
 """
@@ -18,14 +17,9 @@ from sentence_transformers import SentenceTransformer
 
 from config import (
     get_allowed_emails,
-    get_cache_ttl,
     get_credentials_loader,
     get_database_path,
-    get_redis_db,
-    get_redis_host,
-    get_redis_port,
 )
-from infrastructure.cache.redis_cache_manager import RedisCacheManager
 from infrastructure.currency_rate_updater import CurrencyRateUpdater
 from infrastructure.persistence.sqlite.repositories.session_repository import (
     SQLiteSessionDataSource,
@@ -39,9 +33,6 @@ _global_sentence_model = None
 
 # Currency rate updater - runs in background thread
 rate_updater = None
-
-# Redis-based cache manager for TransactionService instances
-_cache_manager = None
 
 # Session datasource using configured database path
 session_datasource = None
@@ -69,7 +60,7 @@ def init_extensions(app):
     Args:
         app: Flask application instance
     """
-    global _global_sentence_model, rate_updater, _cache_manager
+    global _global_sentence_model, rate_updater
     global session_datasource, credentials_loader, allowed_emails
 
     # Load ML model
@@ -102,14 +93,6 @@ def init_extensions(app):
     # Cleanup on shutdown
     atexit.register(rate_updater.stop)
 
-    # Initialize Redis-based cache manager
-    _cache_manager = RedisCacheManager(
-        redis_host=get_redis_host(),
-        redis_port=get_redis_port(),
-        redis_db=get_redis_db(),
-        default_ttl=get_cache_ttl(),
-    )
-
     # Initialize session datasource
     session_datasource = SQLiteSessionDataSource(get_database_path())
 
@@ -123,11 +106,6 @@ def init_extensions(app):
 def get_sentence_model():
     """Get the global sentence transformer model."""
     return _global_sentence_model
-
-
-def get_cache_manager():
-    """Get the Redis cache manager."""
-    return _cache_manager
 
 
 def get_session_datasource():

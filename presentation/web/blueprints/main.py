@@ -29,7 +29,6 @@ from presentation.web.utils import (
     get_classification_service,
     get_transaction_service,
     get_user_settings_service,
-    invalidate_service_cache,
     load_and_classify,
     parse_redirect_params,
 )
@@ -131,10 +130,9 @@ def service_worker():
 def recategorize():
     """Trigger re-categorization of all transactions.
 
-    Classification is runtime-computed, so this just invalidates the cache.
+    Classification is runtime-computed, so this just redirects.
     The redirect target (review page) will re-classify on load.
     """
-    invalidate_service_cache(request.user_id)
     # Preserve all query parameters when redirecting
     params = parse_redirect_params(request.form.get("redirect_params", ""))
     return redirect(url_for("transactions.review", **params))

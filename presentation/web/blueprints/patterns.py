@@ -10,7 +10,6 @@ from presentation.web.decorators import login_required
 from presentation.web.utils import (
     get_category_service,
     get_pattern_service,
-    invalidate_service_cache,
 )
 
 patterns_bp = Blueprint("patterns", __name__)
@@ -60,7 +59,6 @@ def create_pattern_api():
     success, error, pattern_id = pattern_service.create_pattern(rules, category_id, name)
 
     if success:
-        invalidate_service_cache(request.user_id)
         return jsonify({"success": True, "pattern_id": pattern_id})
     else:
         return jsonify({"success": False, "error": error})
@@ -80,7 +78,6 @@ def update_pattern_api():
     success, error = pattern_service.update_pattern(pattern_id, rules, category_id, name)
 
     if success:
-        invalidate_service_cache(request.user_id)
         return jsonify({"success": True})
     else:
         return jsonify({"success": False, "error": error})
@@ -97,7 +94,6 @@ def delete_pattern_api():
     success, error = pattern_service.delete_pattern(pattern_id)
 
     if success:
-        invalidate_service_cache(request.user_id)
         return jsonify({"success": True})
     else:
         return jsonify({"success": False, "error": error})
@@ -114,7 +110,6 @@ def reorder_patterns_api():
     success, error = pattern_service.reorder_patterns(order_map)
 
     if success:
-        invalidate_service_cache(request.user_id)
         return jsonify({"success": True})
     else:
         return jsonify({"success": False, "error": error})

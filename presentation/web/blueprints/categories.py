@@ -7,7 +7,7 @@ Handles category management routes including CRUD operations.
 from flask import Blueprint, jsonify, make_response, render_template, request
 
 from presentation.web.decorators import login_required
-from presentation.web.utils import get_category_service, invalidate_service_cache
+from presentation.web.utils import get_category_service
 
 categories_bp = Blueprint("categories", __name__)
 
@@ -55,7 +55,6 @@ def create_category_api():
     success, error, category_id = category_service.create_category(name, description, parent_id)
 
     if success:
-        invalidate_service_cache(request.user_id)
         return jsonify({"success": True, "category_id": category_id})
     else:
         return jsonify({"success": False, "error": error})
@@ -75,7 +74,6 @@ def update_category_api():
     success, error = category_service.update_category(category_id, name, description, parent_id)
 
     if success:
-        invalidate_service_cache(request.user_id)
         return jsonify({"success": True})
     else:
         return jsonify({"success": False, "error": error})
@@ -92,7 +90,6 @@ def delete_category_api():
     success, error = category_service.delete_category(category_id)
 
     if success:
-        invalidate_service_cache(request.user_id)
         return jsonify({"success": True})
     else:
         return jsonify({"success": False, "error": error})

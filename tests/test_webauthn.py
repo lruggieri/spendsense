@@ -620,7 +620,7 @@ class TestEncryptionMiddleware:
 
         from presentation.web.app import create_app
 
-        # Mock init_extensions to skip loading the ML model, Redis, and background
+        # Mock init_extensions to skip loading the ML model and background
         # threads — none of which are needed to test the request middleware.
         with patch("presentation.web.extensions.init_extensions"):
             app = create_app()
