@@ -182,5 +182,6 @@ class TestMainBlueprint:
 
         assert response.status_code == 200
         data = response.get_json()
+        assert "app_version" in data
         assert "ecb_first_date" in data
         assert "ecb_last_date" in data

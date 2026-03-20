@@ -305,6 +305,19 @@ def get_currency_data_file() -> str:
     return str(default_path)
 
 
+def get_app_version() -> str:
+    """
+    Get application version from environment variable.
+
+    Set at Docker build time via APP_VERSION build arg.
+    Falls back to 'dev' for local development.
+
+    Returns:
+        Version string (e.g., 'v1.2.3', 'sha-abc1234', 'dev')
+    """
+    return os.getenv('APP_VERSION', 'dev')
+
+
 def get_gemini_api_key() -> Optional[str]:
     """
     Get Gemini API key from environment variable.
