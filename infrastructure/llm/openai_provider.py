@@ -13,6 +13,10 @@ except ImportError:
 
 from .base_llm_provider import BaseLLMProvider, LLMProviderError, PatternParsingError
 
+# Suppress OpenAI client debug logs — they dump full request bodies including email content
+logging.getLogger("openai").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
 logger = logging.getLogger(__name__)
 
 

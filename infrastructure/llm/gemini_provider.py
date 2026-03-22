@@ -59,7 +59,7 @@ class GeminiProvider(BaseLLMProvider):
             api_key=self.api_key,
             http_options=genai.types.HttpOptions(timeout=10_000),  # 10 s (Gemini minimum)
         )
-        self.model_name = "gemini-flash-lite-latest"
+        self.model_name = "gemini-2.5-flash"
 
     def generate_patterns(self, email_text: str) -> Dict[str, Optional[str]]:
         """
