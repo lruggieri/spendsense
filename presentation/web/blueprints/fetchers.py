@@ -10,7 +10,7 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 
 from config import SUPPORTED_CURRENCIES
 from infrastructure.email.fetchers.pattern_parser import parse_transactions_with_patterns
-from infrastructure.llm.gemini_provider import GeminiProvider
+from infrastructure.llm.fallback_provider import FallbackLLMProvider
 from infrastructure.rate_limiter import LLMRateLimiter
 from presentation.web.decorators import login_required
 from presentation.web.utils import (
@@ -151,7 +151,7 @@ def api_fetchers_generate_patterns():
         combined_email_text = "\n\n===== EMAIL EXAMPLE SEPARATOR =====\n\n".join(email_texts)
 
         # Generate patterns using LLM (with all examples)
-        llm_provider = GeminiProvider()
+        llm_provider = FallbackLLMProvider()
         patterns = llm_provider.generate_patterns(combined_email_text)
 
         # Record successful LLM call for rate limiting
