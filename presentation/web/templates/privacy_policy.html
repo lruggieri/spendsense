@@ -73,7 +73,7 @@
     <li><strong>Authenticate your access</strong> — Verify your identity using Google OAuth</li>
     <li><strong>Fetch transactions</strong> — Your browser retrieves transaction emails directly from Gmail via Google Identity Services; the server receives only the extracted transaction data you choose to import</li>
     <li><strong>Categorize expenses</strong> — Automatically classify transactions using regex patterns and machine learning</li>
-    <li><strong>Generate regex patterns</strong> — Optionally use Google Gemini API to generate classification rules from email content</li>
+    <li><strong>Generate regex patterns</strong> — Optionally use LLM APIs (e.g., Google Gemini, OpenAI) to generate classification rules from email content</li>
     <li><strong>Provide analysis</strong> — Generate expense reports, charts, and trends</li>
     <li><strong>Maintain your preferences</strong> — Store manual category assignments and comments</li>
   </ol>
@@ -118,7 +118,7 @@
   <ul>
     <li><strong>Google OAuth 2.0</strong> — For user authentication</li>
     <li><strong>Gmail API</strong> — To fetch transaction emails (only when you explicitly initiate a fetch)</li>
-    <li><strong>Google Gemini API</strong> — Optionally used to generate regex classification patterns from email text; sends email body content to the Gemini API only when you explicitly trigger this feature</li>
+    <li><strong>LLM APIs (Google Gemini, OpenAI)</strong> — Optionally used to generate regex classification patterns from email text; sends email body content to the LLM API only when you explicitly trigger this feature</li>
   </ul>
   <p>SpendSense's use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
 
@@ -151,9 +151,9 @@
     <li>Search for transaction emails from specific financial service providers — performed by your browser, not the server</li>
     <li>Extract transaction information (date, amount, merchant name) — performed locally in your browser</li>
     <li>Store the extracted transaction data you choose to import in the application database</li>
-    <li>Optionally generate regex classification patterns via Gemini API — only when you explicitly trigger this feature; only the email body text for the selected email is sent</li>
+    <li>Optionally generate regex classification patterns via LLM API — only when you explicitly trigger this feature; only the email body text for the selected email is sent</li>
   </ol>
-  <p>Raw Gmail content (email subjects, bodies, or metadata) is never stored on our server. The Gmail access token never leaves your browser. The one exception is the Gemini pattern-generation feature (item 4 above): when you explicitly trigger it, the selected email's body text is sent from your browser to our server, which forwards it to the Gemini API — no other Gmail content reaches the server.</p>
+  <p>Raw Gmail content (email subjects, bodies, or metadata) is never stored on our server. The Gmail access token never leaves your browser. The one exception is the LLM pattern-generation feature (item 4 above): when you explicitly trigger it, the selected email's body text is sent from your browser to our server, which forwards it to the LLM API — no other Gmail content reaches the server.</p>
 
   <h2>Your Rights and Choices</h2>
   <p>You have the right to:</p>

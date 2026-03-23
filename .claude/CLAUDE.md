@@ -88,6 +88,10 @@ const RUNTIME_CACHE = 'spendsense-runtime-vXX';  // Increment XX
 
 **Mobile debug:** Triple-tap the header logo to open debug panel with cache info.
 
+## Logging & Privacy
+
+**CRITICAL: Never log email content, user data, or PII.** Suppress third-party library loggers (e.g., `openai`, `httpx`) that dump request/response bodies. Log only operation results, errors, and metadata — never the data itself.
+
 ## Code Comments Guidelines
 
 **Avoid migration references:** Never use terms like "migration period", "post-migration", or "during migration" in code comments. Future readers won't know what migration you're referring to. Instead, use "backward-compatibility" or "for backward-compatibility" when explaining fallback logic or default values.

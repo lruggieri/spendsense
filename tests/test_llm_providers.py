@@ -38,11 +38,11 @@ class TestGeminiProvider(unittest.TestCase):
         # Should create Client with API key
         mock_genai.Client.assert_called_once_with(
             api_key="test-api-key-12345",
-            http_options=mock_genai.types.HttpOptions(timeout=120_000),
+            http_options=mock_genai.types.HttpOptions(timeout=10_000),
         )
 
         # Should set model name
-        self.assertEqual(provider.model_name, "gemini-flash-latest")
+        self.assertEqual(provider.model_name, "gemini-2.5-flash")
 
     @patch("infrastructure.llm.gemini_provider.genai")
     def test_gemini_provider_missing_api_key(self, mock_genai):
@@ -62,7 +62,7 @@ class TestGeminiProvider(unittest.TestCase):
 
         mock_genai.Client.assert_called_once_with(
             api_key="explicit-key-123",
-            http_options=mock_genai.types.HttpOptions(timeout=120_000),
+            http_options=mock_genai.types.HttpOptions(timeout=10_000),
         )
 
     @patch("infrastructure.llm.gemini_provider.genai")
@@ -91,7 +91,7 @@ CURRENCY_PATTERN: 引落金額：\s*[0-9,]+(円)"""
         # Verify generate_content was called
         mock_client.models.generate_content.assert_called_once()
         call_kwargs = mock_client.models.generate_content.call_args[1]
-        self.assertEqual(call_kwargs["model"], "gemini-flash-latest")
+        self.assertEqual(call_kwargs["model"], "gemini-2.5-flash")
         self.assertIn(email_text, call_kwargs["contents"])
         self.assertIn("AMOUNT_PATTERN", call_kwargs["contents"])
 
@@ -287,6 +287,15 @@ class TestBaseLLMProvider(unittest.TestCase):
 
         with self.assertRaises(TypeError):
             IncompleteProvider()
+
+    def test_parse_response_incomplete_does_not_leak_response_text(self):
+        """Test that PatternParsingError does not include response text (PII)."""
+        with self.assertRaises(PatternParsingError) as context:
+            BaseLLMProvider._parse_response("some email content with no patterns")
+
+        error_msg = str(context.exception)
+        self.assertIn("Incomplete patterns", error_msg)
+        self.assertNotIn("some email content", error_msg)
 
 
 if __name__ == "__main__":
