@@ -209,7 +209,10 @@
 
                 <div class="section-header">
                     <h4>Test Patterns</h4>
-                    <p class="section-description">Test with emails to validate patterns work correctly</p>
+                    <p class="section-description">
+                        By default, the latest 10 emails matching the from addresses and subject filter above will be fetched.
+                        Optionally add specific emails below to test against instead.
+                    </p>
                 </div>
 
                 <div class="test-form-container">
@@ -219,6 +222,7 @@
                         <button type="button" class="btn btn-secondary" onclick="addTestEmailExample()">
                             + Add Test Email Example
                         </button>
+                        <small class="form-help">Optional — only needed if you want to test specific emails</small>
                     </div>
 
                     <div class="form-actions">

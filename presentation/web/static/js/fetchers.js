@@ -775,12 +775,6 @@ function displayResults(data) {
     const patternTestSection = document.getElementById('pattern-test-section');
     patternTestSection.classList.remove('hidden');
 
-    // Initialize with one test example if empty
-    const testContainer = document.getElementById('test-email-examples-container');
-    if (testContainer.children.length === 0) {
-        addTestEmailExample();
-    }
-
     // Scroll to results
     document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -1055,7 +1049,7 @@ async function submitTestEmails() {
     const subjectFilter = document.getElementById('subject-filter').value.trim();
 
     if (testExamples.length === 0 && fromEmails.length === 0) {
-        showToast('Please add test emails or ensure from emails are configured', 'error');
+        showToast('Please add test emails or configure from email addresses above', 'error');
         return;
     }
 
@@ -1226,12 +1220,8 @@ function showManualPatternEntry() {
     // No original patterns to reset to
     document.getElementById('reset-patterns-btn').style.display = 'none';
 
-    // Show test section with one test example
+    // Show test section
     showPatternTestSection();
-    const testContainer = document.getElementById('test-email-examples-container');
-    if (testContainer && testContainer.children.length === 0) {
-        addTestEmailExample();
-    }
 }
 
 /**
