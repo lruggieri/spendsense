@@ -21,7 +21,7 @@ from flask import (
 )
 
 from domain.entities.category_tree import UNKNOWN_CATEGORY_ID
-from domain.entities.transaction import CategorySource
+from domain.entities.transaction import ENCRYPTED_PLACEHOLDER, CategorySource
 from domain.services.amount_utils import to_major_units_float
 from presentation.web.decorators import login_required
 from presentation.web.utils import (
@@ -172,6 +172,7 @@ def review():
             currency_symbol=currency_symbol,
             default_currency=default_currency,
             converter=converter,
+            encrypted_placeholder=ENCRYPTED_PLACEHOLDER,
         )
     )
     logger.debug(f"[REVIEW] render_template() took {(time.time() - t7) * 1000:.2f}ms")
