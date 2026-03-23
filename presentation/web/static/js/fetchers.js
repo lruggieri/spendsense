@@ -561,18 +561,13 @@ async function fetchEmailTextsClientSide(examples, fromEmails, subjectFilter) {
  * Submit the form and call the API
  */
 async function submitForm() {
-    // Validate fetcher configuration
-    if (!validateFetcherConfig()) {
-        return;
-    }
-
     const examples = collectEmailExamples();
     const fromEmails = collectFromEmails();
     const subjectFilter = document.getElementById('subject-filter').value.trim();
     const negateAmount = document.getElementById('negate-amount').checked;
 
-    if (examples.length === 0 && fromEmails.length === 0) {
-        showToast('Please add training emails or configure from email addresses', 'error');
+    if (examples.length === 0) {
+        showToast('Please add at least one email example (raw text or message ID)', 'error');
         return;
     }
 
