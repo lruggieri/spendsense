@@ -322,8 +322,15 @@
       // session creation. Lax sends the cookie on top-level navigations (redirects,
       // link clicks) but still blocks cross-site subrequests (iframes, fetch).
       const secure = location.protocol === 'https:' ? '; Secure' : '';
+      // max-age=604800 (7 days) matches the session_token cookie lifetime
+      // so the encryption cookie survives PWA cold starts on Android/iOS.
+      // The DEK is already persisted in localStorage; this just prevents a
+      // stale-session-cookie race where the server renders the unlock banner
+      // even though the key is available client-side.
+      // Cleared on logout by both server (set_cookie expires=0) and client
+      // (login.html removes encryption_dek from localStorage before syncCookie).
       document.cookie = COOKIE_NAME + '=' + encodeURIComponent(dek)
-        + '; path=/; SameSite=Lax' + secure;
+        + '; path=/; SameSite=Lax; max-age=604800' + secure;
     } else {
       // Clear the cookie
       document.cookie = COOKIE_NAME + '=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
