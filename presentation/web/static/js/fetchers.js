@@ -77,6 +77,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.FETCHER_MODE === 'edit' && window.FETCHER_DATA) {
             loadFetcherData(window.FETCHER_DATA);
         }
+
+        // In create mode with expert mode on, show patterns for manual entry
+        if (window.FETCHER_MODE === 'create' && expertModeEnabled) {
+            showManualPatternEntry();
+        }
     })();
 });
 
@@ -114,6 +119,11 @@ function initFetchers(context = 'standalone') {
     // Initialize expert mode from database
     (async () => {
         await initializeExpertMode();
+
+        // In wizard/create mode with expert mode on, show patterns for manual entry
+        if (expertModeEnabled) {
+            showManualPatternEntry();
+        }
     })();
 }
 
@@ -652,6 +662,9 @@ function displayResults(data) {
     document.getElementById('merchant-pattern').value = data.patterns.merchant_pattern || '(none)';
     document.getElementById('currency-pattern').value = data.patterns.currency_pattern || '(none)';
 
+    // Show training results (may have been hidden by manual pattern entry)
+    showTrainingResults();
+
     // Render transaction tables for each email
     const transactionsContainer = document.getElementById('transactions-container');
     transactionsContainer.innerHTML = '';
@@ -1002,17 +1015,26 @@ function collectTestEmailExamples() {
  * Submit test emails for pattern testing
  */
 async function submitTestEmails() {
-    // Validate we have patterns
+    // Read current values from UI elements first
+    // This ensures we capture manually entered patterns (expert mode) and checkbox state
+    currentPatterns = {
+        amount_pattern: document.getElementById('amount-pattern').value.trim() || null,
+        merchant_pattern: document.getElementById('merchant-pattern').value.trim() || null,
+        currency_pattern: document.getElementById('currency-pattern').value.trim() || null,
+        negate_amount: document.getElementById('negate-amount').checked
+    };
+
+    // Validate we have at least one pattern
     if (!currentPatterns.amount_pattern && !currentPatterns.merchant_pattern) {
-        showToast('Please generate patterns first using training emails', 'error');
+        showToast('Please enter at least an amount or merchant pattern', 'error');
         return;
     }
 
-    // Validate patterns if in expert mode
+    // Validate pattern syntax if in expert mode
     if (expertModeEnabled) {
-        const amountPattern = document.getElementById('amount-pattern').value.trim();
-        const merchantPattern = document.getElementById('merchant-pattern').value.trim();
-        const currencyPattern = document.getElementById('currency-pattern').value.trim();
+        const amountPattern = currentPatterns.amount_pattern;
+        const merchantPattern = currentPatterns.merchant_pattern;
+        const currencyPattern = currentPatterns.currency_pattern;
 
         const amountValidation = amountPattern ? validateRegexPattern(amountPattern) : { valid: true };
         const merchantValidation = merchantPattern ? validateRegexPattern(merchantPattern) : { valid: true };
@@ -1036,15 +1058,6 @@ async function submitTestEmails() {
     const testExamples = collectTestEmailExamples();
     const fromEmails = collectFromEmails();
     const subjectFilter = document.getElementById('subject-filter').value.trim();
-
-    // Always read current values from UI elements before testing
-    // This ensures we capture the latest patterns and checkbox state
-    currentPatterns = {
-        amount_pattern: document.getElementById('amount-pattern').value.trim() || null,
-        merchant_pattern: document.getElementById('merchant-pattern').value.trim() || null,
-        currency_pattern: document.getElementById('currency-pattern').value.trim() || null,
-        negate_amount: document.getElementById('negate-amount').checked
-    };
 
     if (testExamples.length === 0 && fromEmails.length === 0) {
         showToast('Please add test emails or ensure from emails are configured', 'error');
@@ -1192,6 +1205,64 @@ function toggleTestEmailPreview(emailIndex) {
 
     header.classList.toggle('active');
     content.classList.toggle('open');
+}
+
+/* ===== MANUAL PATTERN ENTRY (EXPERT MODE) ===== */
+
+/**
+ * Show pattern fields for manual entry when expert mode is enabled on page load.
+ * Allows users to write regex patterns without running the LLM step first.
+ */
+function showManualPatternEntry() {
+    // Show results section
+    const resultsSection = document.getElementById('results-section');
+    if (resultsSection) {
+        resultsSection.classList.remove('hidden');
+    }
+
+    // Hide training results (no LLM-generated data yet)
+    hideTrainingResults();
+
+    // Make patterns editable and empty
+    makePatternEditable('amount', true);
+    makePatternEditable('merchant', true);
+    makePatternEditable('currency', true);
+
+    // No original patterns to reset to
+    document.getElementById('reset-patterns-btn').style.display = 'none';
+
+    // Show test section with one test example
+    showPatternTestSection();
+    const testContainer = document.getElementById('test-email-examples-container');
+    if (testContainer && testContainer.children.length === 0) {
+        addTestEmailExample();
+    }
+}
+
+/**
+ * Hide training results section (used when patterns are entered manually)
+ */
+function hideTrainingResults() {
+    const trainingHeader = document.querySelector('.training-results-header');
+    const transactionsCard = document.querySelector('.transactions-card');
+    const emailPreviews = document.getElementById('email-previews-container');
+
+    if (trainingHeader) trainingHeader.style.display = 'none';
+    if (transactionsCard) transactionsCard.style.display = 'none';
+    if (emailPreviews) emailPreviews.style.display = 'none';
+}
+
+/**
+ * Show training results section (used when LLM generates patterns)
+ */
+function showTrainingResults() {
+    const trainingHeader = document.querySelector('.training-results-header');
+    const transactionsCard = document.querySelector('.transactions-card');
+    const emailPreviews = document.getElementById('email-previews-container');
+
+    if (trainingHeader) trainingHeader.style.display = '';
+    if (transactionsCard) transactionsCard.style.display = '';
+    if (emailPreviews) emailPreviews.style.display = '';
 }
 
 /* ===== EXPERT MODE FUNCTIONS ===== */
@@ -1508,7 +1579,7 @@ async function saveFetcher() {
         const currencyPattern = document.getElementById('currency-pattern').value.trim();
 
         if (!amountPattern) {
-            showToast('Amount pattern is required. Please generate patterns first.', 'error');
+            showToast('Amount pattern is required', 'error');
             return;
         }
 
