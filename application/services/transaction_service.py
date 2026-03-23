@@ -15,7 +15,7 @@ from application.services.category_service import CategoryService
 from application.services.user_settings_service import UserSettingsService
 from application.services.utils import parse_date
 from domain.entities.category_tree import UNKNOWN_CATEGORY_ID
-from domain.entities.transaction import CategorySource, Transaction
+from domain.entities.transaction import ENCRYPTED_PLACEHOLDER, CategorySource, Transaction
 from domain.repositories.manual_assignment_repository import ManualAssignmentRepository
 from domain.repositories.transaction_repository import TransactionRepository
 from domain.services.amount_utils import to_minor_units
@@ -333,7 +333,7 @@ class TransactionService(BaseService):
         if not existing_tx:
             return False, "Transaction not found"
 
-        if existing_tx.encrypted:
+        if existing_tx.description == ENCRYPTED_PLACEHOLDER:
             return False, "Encrypted transactions cannot be edited"
 
         # Set currency to existing if not provided
