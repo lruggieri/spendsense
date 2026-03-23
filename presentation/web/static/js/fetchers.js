@@ -1357,19 +1357,29 @@ async function toggleExpertMode(enabled) {
 
         // Enable expert mode
         expertModeEnabled = true;
-        makePatternEditable('amount', true);
-        makePatternEditable('merchant', true);
-        makePatternEditable('currency', true);
 
-        // Show reset button
-        document.getElementById('reset-patterns-btn').style.display = 'inline-block';
+        // If results section is not yet visible, show manual pattern entry
+        const resultsSection = document.getElementById('results-section');
+        if (resultsSection && resultsSection.classList.contains('hidden')) {
+            showManualPatternEntry();
+        } else {
+            // Patterns already visible (from LLM or edit mode), just make editable
+            makePatternEditable('amount', true);
+            makePatternEditable('merchant', true);
+            makePatternEditable('currency', true);
+        }
+
+        // Show reset button only if we have original patterns from LLM
+        if (originalPatterns.amount_pattern) {
+            document.getElementById('reset-patterns-btn').style.display = 'inline-block';
+        }
 
         // Store original patterns if not already stored
         if (!originalPatterns.amount_pattern) {
             originalPatterns = { ...currentPatterns };
         }
 
-        showToast('Expert mode enabled. You can now edit patterns manually.', 'warning');
+        showToast('Expert mode enabled. You can now write patterns manually.', 'warning');
     } else {
         // Save preference to database
         await saveExpertModePreference(false);

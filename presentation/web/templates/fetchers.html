@@ -166,6 +166,20 @@
             </label>
             <small class="form-help">Check this to make amounts negative. Useful for payments received (income) rather than expenses.</small>
         </div>
+
+        <!-- Expert Mode Toggle -->
+        <div class="expert-mode-controls">
+            <div class="expert-mode-toggle-wrapper">
+                <label class="expert-mode-label">
+                    <span class="expert-mode-text">Expert Mode</span>
+                    <span class="expert-mode-description">Write regex patterns manually instead of using AI</span>
+                </label>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="expert-mode-toggle" onchange="toggleExpertMode(this.checked)">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
     </div>
 
     <!-- Input Form -->
@@ -211,18 +225,7 @@
             <h3>Regex Patterns</h3>
             <p class="card-subtitle">Patterns used to extract transaction data from emails</p>
 
-            <!-- Expert Mode Controls -->
-            <div class="expert-mode-controls">
-                <div class="expert-mode-toggle-wrapper">
-                    <label class="expert-mode-label">
-                        <span class="expert-mode-text">Expert Mode</span>
-                        <span class="expert-mode-description">Manually edit regex patterns</span>
-                    </label>
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="expert-mode-toggle" onchange="toggleExpertMode(this.checked)">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
+            <div class="expert-mode-inline-controls">
                 <button type="button" class="btn btn-secondary btn-sm" id="reset-patterns-btn" onclick="resetToOriginalPatterns()" style="display: none;">
                     Reset Patterns
                 </button>
