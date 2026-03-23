@@ -571,7 +571,7 @@ async function submitForm() {
         return;
     }
 
-    showLoading(true);
+    showLoading(true, 'Generating patterns with LLM');
 
     let emailTexts;
     try {
@@ -688,6 +688,15 @@ function displayResults(data) {
                         <tbody id="transactions-tbody-${emailIndex}"></tbody>
                     </table>
                 </div>
+                <div class="email-preview-card">
+                    <button class="collapsible-header" onclick="toggleEmailPreview(${emailIndex})">
+                        <span>View Email Text</span>
+                        <span class="chevron">▼</span>
+                    </button>
+                    <div id="email-preview-content-${emailIndex}" class="collapsible-content">
+                        <pre id="email-text-display-${emailIndex}" class="email-text-display"></pre>
+                    </div>
+                </div>
             `;
 
             transactionsContainer.appendChild(emailSection);
@@ -708,34 +717,15 @@ function displayResults(data) {
                 const row = tbody.insertRow();
                 row.innerHTML = '<td colspan="4" style="text-align: center; color: var(--text-muted);">No transactions found</td>';
             }
+
+            // Set email preview text
+            const preElement = document.getElementById(`email-text-display-${emailIndex}`);
+            if (preElement) {
+                preElement.textContent = emailData.email_text || '';
+            }
         });
     } else {
         transactionsContainer.innerHTML = '<p style="text-align: center; color: var(--text-muted);">No emails processed</p>';
-    }
-
-    // Render email preview sections
-    const emailPreviewsContainer = document.getElementById('email-previews-container');
-    emailPreviewsContainer.innerHTML = '';
-
-    if (data.emails_data && data.emails_data.length > 0) {
-        data.emails_data.forEach((emailData, emailIndex) => {
-            const previewCard = document.createElement('div');
-            previewCard.className = 'email-preview-card';
-            previewCard.innerHTML = `
-                <button class="collapsible-header" onclick="toggleEmailPreview(${emailIndex})">
-                    <span>Email ${emailIndex + 1} Text</span>
-                    <span class="chevron">▼</span>
-                </button>
-                <div id="email-preview-content-${emailIndex}" class="collapsible-content">
-                    <pre id="email-text-display-${emailIndex}" class="email-text-display"></pre>
-                </div>
-            `;
-            emailPreviewsContainer.appendChild(previewCard);
-
-            // Set email text using textContent to preserve newlines
-            const preElement = document.getElementById(`email-text-display-${emailIndex}`);
-            preElement.textContent = emailData.email_text || '';
-        });
     }
 
     // Show results section
@@ -863,8 +853,12 @@ function clearForm() {
 /**
  * Show loading overlay
  */
-function showLoading(show) {
+function showLoading(show, message) {
     const overlay = document.getElementById('loading-overlay');
+    if (message) {
+        const msgEl = overlay.querySelector('p');
+        if (msgEl) msgEl.textContent = message;
+    }
     if (show) {
         overlay.classList.remove('hidden');
     } else {
@@ -1049,11 +1043,11 @@ async function submitTestEmails() {
     const subjectFilter = document.getElementById('subject-filter').value.trim();
 
     if (testExamples.length === 0 && fromEmails.length === 0) {
-        showToast('Please add test emails or configure from email addresses above', 'error');
+        showToast('Please add test emails or configure the "from" email addresses field above is configured', 'error');
         return;
     }
 
-    showLoading(true);
+    showLoading(true, 'Fetching emails and testing patterns');
 
     let emailTexts;
     try {
@@ -1102,11 +1096,9 @@ async function submitTestEmails() {
 function displayTestResults(data) {
     const testResultsContainer = document.getElementById('test-results-container');
     const testTransactionsContainer = document.getElementById('test-transactions-container');
-    const testEmailPreviewsContainer = document.getElementById('test-email-previews-container');
 
     // Clear previous test results
     testTransactionsContainer.innerHTML = '';
-    testEmailPreviewsContainer.innerHTML = '';
 
     // Render transaction tables for each test email
     if (data.emails_data && data.emails_data.length > 0) {
@@ -1133,6 +1125,15 @@ function displayTestResults(data) {
                         <tbody id="test-transactions-tbody-${emailIndex}"></tbody>
                     </table>
                 </div>
+                <div class="email-preview-card">
+                    <button class="collapsible-header" onclick="toggleTestEmailPreview(${emailIndex})">
+                        <span>View Email Text</span>
+                        <span class="chevron">▼</span>
+                    </button>
+                    <div id="test-email-preview-content-${emailIndex}" class="collapsible-content">
+                        <pre id="test-email-text-display-${emailIndex}" class="email-text-display"></pre>
+                    </div>
+                </div>
             `;
 
             testTransactionsContainer.appendChild(emailSection);
@@ -1153,26 +1154,12 @@ function displayTestResults(data) {
                 const row = tbody.insertRow();
                 row.innerHTML = '<td colspan="4" style="text-align: center; color: var(--text-muted);">No transactions found</td>';
             }
-        });
 
-        // Render test email preview sections
-        data.emails_data.forEach((emailData, emailIndex) => {
-            const previewCard = document.createElement('div');
-            previewCard.className = 'email-preview-card';
-            previewCard.innerHTML = `
-                <button class="collapsible-header" onclick="toggleTestEmailPreview(${emailIndex})">
-                    <span>Test Email ${emailIndex + 1} Text</span>
-                    <span class="chevron">▼</span>
-                </button>
-                <div id="test-email-preview-content-${emailIndex}" class="collapsible-content">
-                    <pre id="test-email-text-display-${emailIndex}" class="email-text-display"></pre>
-                </div>
-            `;
-            testEmailPreviewsContainer.appendChild(previewCard);
-
-            // Set email text
+            // Set email preview text
             const preElement = document.getElementById(`test-email-text-display-${emailIndex}`);
-            preElement.textContent = emailData.email_text || '';
+            if (preElement) {
+                preElement.textContent = emailData.email_text || '';
+            }
         });
     } else {
         testTransactionsContainer.innerHTML = '<p style="text-align: center; color: var(--text-muted);">No test emails processed</p>';
@@ -1230,11 +1217,9 @@ function showManualPatternEntry() {
 function hideTrainingResults() {
     const trainingHeader = document.querySelector('.training-results-header');
     const transactionsCard = document.querySelector('.transactions-card');
-    const emailPreviews = document.getElementById('email-previews-container');
 
     if (trainingHeader) trainingHeader.style.display = 'none';
     if (transactionsCard) transactionsCard.style.display = 'none';
-    if (emailPreviews) emailPreviews.style.display = 'none';
 }
 
 /**
@@ -1243,11 +1228,9 @@ function hideTrainingResults() {
 function showTrainingResults() {
     const trainingHeader = document.querySelector('.training-results-header');
     const transactionsCard = document.querySelector('.transactions-card');
-    const emailPreviews = document.getElementById('email-previews-container');
 
     if (trainingHeader) trainingHeader.style.display = '';
     if (transactionsCard) transactionsCard.style.display = '';
-    if (emailPreviews) emailPreviews.style.display = '';
 }
 
 /* ===== EXPERT MODE FUNCTIONS ===== */
