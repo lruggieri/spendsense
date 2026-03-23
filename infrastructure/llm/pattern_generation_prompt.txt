@@ -19,7 +19,7 @@ CURRENCY_PATTERN: <regex or None>
 - Use `.+?` (non-greedy) when matching across lines.
 - DO NOT use variable-width lookbehinds — Python's `re` module only supports fixed-width lookbehinds.
 - Include context keywords (e.g. "Amount:", "at", "金額") to avoid matching noise.
-- For currency: prefer generic patterns like `([A-Z]{3})` over hardcoded `(JPY)`. Symbols like `(円)`, `(£)`, `(\$)` are fine.
+- For currency: reuse the AMOUNT_PATTERN context but capture the currency instead of the number. E.g. if amount is `\$([0-9,.]+)` then currency is `(\$)[0-9,.]+`; if amount is `([0-9,]+)\s*[A-Z]{3}` then currency is `[0-9,]+\s*([A-Z]{3})`. This ensures currency only matches next to actual amounts, avoiding false hits on URLs and random text.
 - Multiple emails may be separated by "===== EMAIL EXAMPLE SEPARATOR =====". Patterns must work for ALL examples.
 
 # Examples
