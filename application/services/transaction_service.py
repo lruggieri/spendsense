@@ -333,6 +333,9 @@ class TransactionService(BaseService):
         if not existing_tx:
             return False, "Transaction not found"
 
+        if existing_tx.encrypted:
+            return False, "Encrypted transactions cannot be edited"
+
         # Set currency to existing if not provided
         if not currency:
             currency = existing_tx.currency

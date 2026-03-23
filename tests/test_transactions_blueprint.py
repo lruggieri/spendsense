@@ -293,6 +293,28 @@ class TestTransactionsBlueprint:
         data = response.get_json()
         assert data["success"] is True
 
+    def test_update_encrypted_transaction_rejected(self, authenticated_client, mock_services):
+        """POST /update-transaction on encrypted tx should return 400."""
+        mock_services["tx_service"].update_transaction.return_value = (
+            False,
+            "Encrypted transactions cannot be edited",
+        )
+        response = authenticated_client.post(
+            "/update-transaction",
+            json={
+                "tx_id": "tx1",
+                "date": "2025-01-01",
+                "amount": "1000",
+                "description": "Should fail",
+                "comment": "",
+                "currency": "JPY",
+            },
+        )
+        assert response.status_code == 400
+        data = response.get_json()
+        assert data["success"] is False
+        assert "Encrypted" in data["error"]
+
     def test_add_transaction_success(self, authenticated_client, mock_services):
         """POST /add-transaction with valid data should return success."""
         mock_services["tx_service"].add_new_transaction.return_value = (True, "")

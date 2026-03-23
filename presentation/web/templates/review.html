@@ -125,9 +125,11 @@
                 </label>
                 <div class="transaction-card-header__actions">
                     {% include 'partials/_encryption_badge.html' %}
+                    {% if not tx.encrypted %}
                     <button type="button" class="edit-transaction-btn" onclick="openEditTransactionModal('{{ tx.id }}')" title="Edit transaction">
                         ✏️
                     </button>
+                    {% endif %}
                 </div>
             </div>
             <div class="transaction-info">
