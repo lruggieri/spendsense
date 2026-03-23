@@ -3,7 +3,7 @@
 import logging
 from typing import Dict, Optional
 
-from .base_llm_provider import BaseLLMProvider, LLMProviderError, PatternParsingError
+from .base_llm_provider import BaseLLMProvider, LLMProviderError
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +25,9 @@ class FallbackLLMProvider(BaseLLMProvider):
         try:
             from .openai_provider import OpenAIProvider
             self._openai = OpenAIProvider()
-            logger.info("FallbackLLMProvider: OpenAI ready")
+            logger.info("FallbackLLMProvider: OpenAI ready (fallback)")
         except Exception as e:
-            logger.warning(f"FallbackLLMProvider: OpenAI unavailable ({e})")
+            logger.warning(f"FallbackLLMProvider: OpenAI unavailable — fallback disabled ({e})")
 
         if not self._gemini and not self._openai:
             raise LLMProviderError(
@@ -41,10 +41,13 @@ class FallbackLLMProvider(BaseLLMProvider):
         Tries Gemini first. If it fails for any reason (timeout, API error,
         parse error), falls back to OpenAI.
         """
+        gemini_error: Optional[Exception] = None
+
         if self._gemini:
             try:
                 return self._gemini.generate_patterns(email_text)
             except Exception as e:
+                gemini_error = e
                 logger.warning(f"Gemini failed, falling back to OpenAI: {e}")
 
         if self._openai:
@@ -53,7 +56,7 @@ class FallbackLLMProvider(BaseLLMProvider):
             except Exception as e:
                 logger.error(f"OpenAI fallback also failed: {e}")
                 raise LLMProviderError(
-                    f"All LLM providers failed. Last error: {e}"
+                    f"All providers failed. Gemini: {gemini_error}, OpenAI: {e}"
                 )
 
         raise LLMProviderError("No LLM providers available.")

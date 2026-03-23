@@ -288,6 +288,15 @@ class TestBaseLLMProvider(unittest.TestCase):
         with self.assertRaises(TypeError):
             IncompleteProvider()
 
+    def test_parse_response_incomplete_does_not_leak_response_text(self):
+        """Test that PatternParsingError does not include response text (PII)."""
+        with self.assertRaises(PatternParsingError) as context:
+            BaseLLMProvider._parse_response("some email content with no patterns")
+
+        error_msg = str(context.exception)
+        self.assertIn("Incomplete patterns", error_msg)
+        self.assertNotIn("some email content", error_msg)
+
 
 if __name__ == "__main__":
     unittest.main()

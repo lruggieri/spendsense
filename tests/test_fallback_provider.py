@@ -68,7 +68,9 @@ class TestFallbackLLMProvider(unittest.TestCase):
 
         with self.assertRaises(LLMProviderError) as ctx:
             provider.generate_patterns("email text")
-        self.assertIn("All LLM providers failed", str(ctx.exception))
+        self.assertIn("All providers failed", str(ctx.exception))
+        self.assertIn("gemini down", str(ctx.exception))
+        self.assertIn("openai down", str(ctx.exception))
 
     def test_openai_only_when_gemini_unavailable(self):
         """Works with OpenAI only when Gemini is None."""

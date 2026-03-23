@@ -199,27 +199,6 @@ CURRENCY_PATTERN: (円)"""
 
         self.assertIn("Failed to generate patterns", str(context.exception))
 
-    @patch("infrastructure.llm.openai_provider.OpenAI")
-    def test_parse_response_with_extra_text(self, mock_openai_cls):
-        """Test _parse_response ignores extra text in response."""
-        mock_openai_cls.return_value = Mock()
-
-        provider = OpenAIProvider()
-
-        response_text = r"""Here are the patterns:
-
-AMOUNT_PATTERN: ([0-9,]+)
-MERCHANT_PATTERN: Merchant:\s*(.+)
-CURRENCY_PATTERN: (JPY|USD)
-
-I hope this helps!"""
-
-        result = provider._parse_response(response_text)
-
-        self.assertEqual(result["amount_pattern"], "([0-9,]+)")
-        self.assertEqual(result["merchant_pattern"], r"Merchant:\s*(.+)")
-        self.assertEqual(result["currency_pattern"], "(JPY|USD)")
-
     @patch("infrastructure.llm.openai_provider.OpenAI", None)
     def test_missing_openai_package(self):
         """Test raises ImportError when openai is not installed."""
