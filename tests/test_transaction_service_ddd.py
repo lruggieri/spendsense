@@ -58,7 +58,8 @@ class TestTransactionServiceDDD(unittest.TestCase):
             description TEXT NOT NULL, source TEXT NOT NULL, comment TEXT DEFAULT '',
             user_id TEXT, groups TEXT DEFAULT '[]', updated_at TEXT,
             mail_id TEXT, currency TEXT NOT NULL DEFAULT 'JPY',
-            created_at TEXT NOT NULL DEFAULT (datetime('now')), fetcher_id TEXT)""")
+            created_at TEXT NOT NULL DEFAULT (datetime('now')), fetcher_id TEXT,
+            encryption_version INTEGER NOT NULL DEFAULT 0)""")
         cursor.execute("""CREATE TABLE IF NOT EXISTS manual_assignments (
             tx_id TEXT PRIMARY KEY, category_id TEXT NOT NULL, user_id TEXT)""")
         cursor.execute("""CREATE TABLE IF NOT EXISTS regexps (
@@ -511,6 +512,29 @@ class TestTransactionServiceDDD(unittest.TestCase):
         )
         self.assertTrue(success)
         mock_embedding_ds.invalidate_embedding.assert_not_called()
+
+    def test_update_encrypted_transaction_rejected(self):
+        """Test that updating an encrypted transaction is rejected."""
+        self._add_sample_transactions()
+        # Mark tx1 as encrypted in the database
+        conn = sqlite3.connect(self.db_path)
+        conn.execute(
+            "UPDATE transactions SET encryption_version = 1 WHERE id = ? AND user_id = ?",
+            ("tx1", USER_ID),
+        )
+        conn.commit()
+        conn.close()
+
+        success, error = self.service.update_transaction(
+            tx_id="tx1",
+            date_str="2025-01-15",
+            amount="2000",
+            description="Should not update",
+            comment="",
+            currency="JPY",
+        )
+        self.assertFalse(success)
+        self.assertIn("Encrypted", error)
 
     # --- assign_category ---
 
