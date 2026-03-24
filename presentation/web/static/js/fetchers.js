@@ -998,14 +998,12 @@ function collectTestEmailExamples() {
  * Submit test emails for pattern testing
  */
 async function submitTestEmails() {
-    // Read current values from UI elements first
+    // Read current values from UI elements first (update in-place to avoid stale references)
     // This ensures we capture manually entered patterns (expert mode) and checkbox state
-    currentPatterns = {
-        amount_pattern: document.getElementById('amount-pattern').value.trim() || null,
-        merchant_pattern: document.getElementById('merchant-pattern').value.trim() || null,
-        currency_pattern: document.getElementById('currency-pattern').value.trim() || null,
-        negate_amount: document.getElementById('negate-amount').checked
-    };
+    currentPatterns.amount_pattern = document.getElementById('amount-pattern').value.trim() || null;
+    currentPatterns.merchant_pattern = document.getElementById('merchant-pattern').value.trim() || null;
+    currentPatterns.currency_pattern = document.getElementById('currency-pattern').value.trim() || null;
+    currentPatterns.negate_amount = document.getElementById('negate-amount').checked;
 
     // Validate we have at least one pattern
     if (!currentPatterns.amount_pattern && !currentPatterns.merchant_pattern) {
@@ -1043,7 +1041,7 @@ async function submitTestEmails() {
     const subjectFilter = document.getElementById('subject-filter').value.trim();
 
     if (testExamples.length === 0 && fromEmails.length === 0) {
-        showToast('Please add test emails or configure the "from" email addresses field above is configured', 'error');
+        showToast('Please add test emails or configure the "from" email addresses above', 'error');
         return;
     }
 
