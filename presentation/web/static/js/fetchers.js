@@ -77,6 +77,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.FETCHER_MODE === 'edit' && window.FETCHER_DATA) {
             loadFetcherData(window.FETCHER_DATA);
         }
+
+        // In create mode with expert mode on, show patterns for manual entry
+        if (window.FETCHER_MODE === 'create' && expertModeEnabled) {
+            showManualPatternEntry();
+        }
     })();
 });
 
@@ -114,6 +119,11 @@ function initFetchers(context = 'standalone') {
     // Initialize expert mode from database
     (async () => {
         await initializeExpertMode();
+
+        // In wizard/create mode with expert mode on, show patterns for manual entry
+        if (expertModeEnabled) {
+            showManualPatternEntry();
+        }
     })();
 }
 
@@ -551,22 +561,17 @@ async function fetchEmailTextsClientSide(examples, fromEmails, subjectFilter) {
  * Submit the form and call the API
  */
 async function submitForm() {
-    // Validate fetcher configuration
-    if (!validateFetcherConfig()) {
-        return;
-    }
-
     const examples = collectEmailExamples();
     const fromEmails = collectFromEmails();
     const subjectFilter = document.getElementById('subject-filter').value.trim();
     const negateAmount = document.getElementById('negate-amount').checked;
 
-    if (examples.length === 0 && fromEmails.length === 0) {
-        showToast('Please add training emails or configure from email addresses', 'error');
+    if (examples.length === 0) {
+        showToast('Please add at least one email example (raw text or message ID)', 'error');
         return;
     }
 
-    showLoading(true);
+    showLoading(true, 'Generating patterns with LLM');
 
     let emailTexts;
     try {
@@ -652,6 +657,9 @@ function displayResults(data) {
     document.getElementById('merchant-pattern').value = data.patterns.merchant_pattern || '(none)';
     document.getElementById('currency-pattern').value = data.patterns.currency_pattern || '(none)';
 
+    // Show training results (may have been hidden by manual pattern entry)
+    showTrainingResults();
+
     // Render transaction tables for each email
     const transactionsContainer = document.getElementById('transactions-container');
     transactionsContainer.innerHTML = '';
@@ -680,6 +688,15 @@ function displayResults(data) {
                         <tbody id="transactions-tbody-${emailIndex}"></tbody>
                     </table>
                 </div>
+                <div class="email-preview-card">
+                    <button class="collapsible-header" onclick="toggleEmailPreview(${emailIndex})">
+                        <span>View Email Text</span>
+                        <span class="chevron">▼</span>
+                    </button>
+                    <div id="email-preview-content-${emailIndex}" class="collapsible-content">
+                        <pre id="email-text-display-${emailIndex}" class="email-text-display"></pre>
+                    </div>
+                </div>
             `;
 
             transactionsContainer.appendChild(emailSection);
@@ -700,34 +717,15 @@ function displayResults(data) {
                 const row = tbody.insertRow();
                 row.innerHTML = '<td colspan="4" style="text-align: center; color: var(--text-muted);">No transactions found</td>';
             }
+
+            // Set email preview text
+            const preElement = document.getElementById(`email-text-display-${emailIndex}`);
+            if (preElement) {
+                preElement.textContent = emailData.email_text || '';
+            }
         });
     } else {
         transactionsContainer.innerHTML = '<p style="text-align: center; color: var(--text-muted);">No emails processed</p>';
-    }
-
-    // Render email preview sections
-    const emailPreviewsContainer = document.getElementById('email-previews-container');
-    emailPreviewsContainer.innerHTML = '';
-
-    if (data.emails_data && data.emails_data.length > 0) {
-        data.emails_data.forEach((emailData, emailIndex) => {
-            const previewCard = document.createElement('div');
-            previewCard.className = 'email-preview-card';
-            previewCard.innerHTML = `
-                <button class="collapsible-header" onclick="toggleEmailPreview(${emailIndex})">
-                    <span>Email ${emailIndex + 1} Text</span>
-                    <span class="chevron">▼</span>
-                </button>
-                <div id="email-preview-content-${emailIndex}" class="collapsible-content">
-                    <pre id="email-text-display-${emailIndex}" class="email-text-display"></pre>
-                </div>
-            `;
-            emailPreviewsContainer.appendChild(previewCard);
-
-            // Set email text using textContent to preserve newlines
-            const preElement = document.getElementById(`email-text-display-${emailIndex}`);
-            preElement.textContent = emailData.email_text || '';
-        });
     }
 
     // Show results section
@@ -766,12 +764,6 @@ function displayResults(data) {
     // Show pattern test section
     const patternTestSection = document.getElementById('pattern-test-section');
     patternTestSection.classList.remove('hidden');
-
-    // Initialize with one test example if empty
-    const testContainer = document.getElementById('test-email-examples-container');
-    if (testContainer.children.length === 0) {
-        addTestEmailExample();
-    }
 
     // Scroll to results
     document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -861,8 +853,12 @@ function clearForm() {
 /**
  * Show loading overlay
  */
-function showLoading(show) {
+function showLoading(show, message) {
     const overlay = document.getElementById('loading-overlay');
+    if (message) {
+        const msgEl = overlay.querySelector('p');
+        if (msgEl) msgEl.textContent = message;
+    }
     if (show) {
         overlay.classList.remove('hidden');
     } else {
@@ -1002,17 +998,24 @@ function collectTestEmailExamples() {
  * Submit test emails for pattern testing
  */
 async function submitTestEmails() {
-    // Validate we have patterns
+    // Read current values from UI elements first (update in-place to avoid stale references)
+    // This ensures we capture manually entered patterns (expert mode) and checkbox state
+    currentPatterns.amount_pattern = document.getElementById('amount-pattern').value.trim() || null;
+    currentPatterns.merchant_pattern = document.getElementById('merchant-pattern').value.trim() || null;
+    currentPatterns.currency_pattern = document.getElementById('currency-pattern').value.trim() || null;
+    currentPatterns.negate_amount = document.getElementById('negate-amount').checked;
+
+    // Validate we have at least one pattern
     if (!currentPatterns.amount_pattern && !currentPatterns.merchant_pattern) {
-        showToast('Please generate patterns first using training emails', 'error');
+        showToast('Please enter at least an amount or merchant pattern', 'error');
         return;
     }
 
-    // Validate patterns if in expert mode
+    // Validate pattern syntax if in expert mode
     if (expertModeEnabled) {
-        const amountPattern = document.getElementById('amount-pattern').value.trim();
-        const merchantPattern = document.getElementById('merchant-pattern').value.trim();
-        const currencyPattern = document.getElementById('currency-pattern').value.trim();
+        const amountPattern = currentPatterns.amount_pattern;
+        const merchantPattern = currentPatterns.merchant_pattern;
+        const currencyPattern = currentPatterns.currency_pattern;
 
         const amountValidation = amountPattern ? validateRegexPattern(amountPattern) : { valid: true };
         const merchantValidation = merchantPattern ? validateRegexPattern(merchantPattern) : { valid: true };
@@ -1037,21 +1040,12 @@ async function submitTestEmails() {
     const fromEmails = collectFromEmails();
     const subjectFilter = document.getElementById('subject-filter').value.trim();
 
-    // Always read current values from UI elements before testing
-    // This ensures we capture the latest patterns and checkbox state
-    currentPatterns = {
-        amount_pattern: document.getElementById('amount-pattern').value.trim() || null,
-        merchant_pattern: document.getElementById('merchant-pattern').value.trim() || null,
-        currency_pattern: document.getElementById('currency-pattern').value.trim() || null,
-        negate_amount: document.getElementById('negate-amount').checked
-    };
-
     if (testExamples.length === 0 && fromEmails.length === 0) {
-        showToast('Please add test emails or ensure from emails are configured', 'error');
+        showToast('Please add test emails or configure the "from" email addresses above', 'error');
         return;
     }
 
-    showLoading(true);
+    showLoading(true, 'Fetching emails and testing patterns');
 
     let emailTexts;
     try {
@@ -1100,11 +1094,9 @@ async function submitTestEmails() {
 function displayTestResults(data) {
     const testResultsContainer = document.getElementById('test-results-container');
     const testTransactionsContainer = document.getElementById('test-transactions-container');
-    const testEmailPreviewsContainer = document.getElementById('test-email-previews-container');
 
     // Clear previous test results
     testTransactionsContainer.innerHTML = '';
-    testEmailPreviewsContainer.innerHTML = '';
 
     // Render transaction tables for each test email
     if (data.emails_data && data.emails_data.length > 0) {
@@ -1131,6 +1123,15 @@ function displayTestResults(data) {
                         <tbody id="test-transactions-tbody-${emailIndex}"></tbody>
                     </table>
                 </div>
+                <div class="email-preview-card">
+                    <button class="collapsible-header" onclick="toggleTestEmailPreview(${emailIndex})">
+                        <span>View Email Text</span>
+                        <span class="chevron">▼</span>
+                    </button>
+                    <div id="test-email-preview-content-${emailIndex}" class="collapsible-content">
+                        <pre id="test-email-text-display-${emailIndex}" class="email-text-display"></pre>
+                    </div>
+                </div>
             `;
 
             testTransactionsContainer.appendChild(emailSection);
@@ -1151,26 +1152,12 @@ function displayTestResults(data) {
                 const row = tbody.insertRow();
                 row.innerHTML = '<td colspan="4" style="text-align: center; color: var(--text-muted);">No transactions found</td>';
             }
-        });
 
-        // Render test email preview sections
-        data.emails_data.forEach((emailData, emailIndex) => {
-            const previewCard = document.createElement('div');
-            previewCard.className = 'email-preview-card';
-            previewCard.innerHTML = `
-                <button class="collapsible-header" onclick="toggleTestEmailPreview(${emailIndex})">
-                    <span>Test Email ${emailIndex + 1} Text</span>
-                    <span class="chevron">▼</span>
-                </button>
-                <div id="test-email-preview-content-${emailIndex}" class="collapsible-content">
-                    <pre id="test-email-text-display-${emailIndex}" class="email-text-display"></pre>
-                </div>
-            `;
-            testEmailPreviewsContainer.appendChild(previewCard);
-
-            // Set email text
+            // Set email preview text
             const preElement = document.getElementById(`test-email-text-display-${emailIndex}`);
-            preElement.textContent = emailData.email_text || '';
+            if (preElement) {
+                preElement.textContent = emailData.email_text || '';
+            }
         });
     } else {
         testTransactionsContainer.innerHTML = '<p style="text-align: center; color: var(--text-muted);">No test emails processed</p>';
@@ -1192,6 +1179,56 @@ function toggleTestEmailPreview(emailIndex) {
 
     header.classList.toggle('active');
     content.classList.toggle('open');
+}
+
+/* ===== MANUAL PATTERN ENTRY (EXPERT MODE) ===== */
+
+/**
+ * Show pattern fields for manual entry when expert mode is enabled on page load.
+ * Allows users to write regex patterns without running the LLM step first.
+ */
+function showManualPatternEntry() {
+    // Show results section
+    const resultsSection = document.getElementById('results-section');
+    if (resultsSection) {
+        resultsSection.classList.remove('hidden');
+    }
+
+    // Hide training results (no LLM-generated data yet)
+    hideTrainingResults();
+
+    // Make patterns editable and empty
+    makePatternEditable('amount', true);
+    makePatternEditable('merchant', true);
+    makePatternEditable('currency', true);
+
+    // No original patterns to reset to
+    document.getElementById('reset-patterns-btn').style.display = 'none';
+
+    // Show test section
+    showPatternTestSection();
+}
+
+/**
+ * Hide training results section (used when patterns are entered manually)
+ */
+function hideTrainingResults() {
+    const trainingHeader = document.querySelector('.training-results-header');
+    const transactionsCard = document.querySelector('.transactions-card');
+
+    if (trainingHeader) trainingHeader.style.display = 'none';
+    if (transactionsCard) transactionsCard.style.display = 'none';
+}
+
+/**
+ * Show training results section (used when LLM generates patterns)
+ */
+function showTrainingResults() {
+    const trainingHeader = document.querySelector('.training-results-header');
+    const transactionsCard = document.querySelector('.transactions-card');
+
+    if (trainingHeader) trainingHeader.style.display = '';
+    if (transactionsCard) transactionsCard.style.display = '';
 }
 
 /* ===== EXPERT MODE FUNCTIONS ===== */
@@ -1286,19 +1323,29 @@ async function toggleExpertMode(enabled) {
 
         // Enable expert mode
         expertModeEnabled = true;
-        makePatternEditable('amount', true);
-        makePatternEditable('merchant', true);
-        makePatternEditable('currency', true);
 
-        // Show reset button
-        document.getElementById('reset-patterns-btn').style.display = 'inline-block';
+        // If results section is not yet visible, show manual pattern entry
+        const resultsSection = document.getElementById('results-section');
+        if (resultsSection && resultsSection.classList.contains('hidden')) {
+            showManualPatternEntry();
+        } else {
+            // Patterns already visible (from LLM or edit mode), just make editable
+            makePatternEditable('amount', true);
+            makePatternEditable('merchant', true);
+            makePatternEditable('currency', true);
+        }
+
+        // Show reset button only if we have original patterns from LLM
+        if (originalPatterns.amount_pattern) {
+            document.getElementById('reset-patterns-btn').style.display = 'inline-block';
+        }
 
         // Store original patterns if not already stored
         if (!originalPatterns.amount_pattern) {
             originalPatterns = { ...currentPatterns };
         }
 
-        showToast('Expert mode enabled. You can now edit patterns manually.', 'warning');
+        showToast('Expert mode enabled. You can now write patterns manually.', 'warning');
     } else {
         // Save preference to database
         await saveExpertModePreference(false);
@@ -1508,7 +1555,7 @@ async function saveFetcher() {
         const currencyPattern = document.getElementById('currency-pattern').value.trim();
 
         if (!amountPattern) {
-            showToast('Amount pattern is required. Please generate patterns first.', 'error');
+            showToast('Amount pattern is required', 'error');
             return;
         }
 

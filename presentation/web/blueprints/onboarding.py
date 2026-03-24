@@ -327,9 +327,12 @@ def api_advance():
         if current_step >= len(ONBOARDING_STEPS):
             # Completed!
             now = datetime.now(timezone.utc).isoformat()
-            _update_onboarding_status(
+            success = _update_onboarding_status(
                 settings_service, {"onboarding_step": 0, "onboarding_completed_at": now}
             )
+            if not success:
+                logger.error("Failed to save onboarding completion (database may be locked)")
+                return jsonify({"success": False, "error": "Failed to save progress. Please try again."}), 500
             # Cache completion in session to avoid future DB checks
             session["onboarding_version"] = ONBOARDING_VERSION
             return jsonify(
@@ -337,7 +340,10 @@ def api_advance():
             )
         else:
             next_step = current_step + 1
-            _update_onboarding_status(settings_service, {"onboarding_step": next_step})
+            success = _update_onboarding_status(settings_service, {"onboarding_step": next_step})
+            if not success:
+                logger.error(f"Failed to save onboarding step {next_step} (database may be locked)")
+                return jsonify({"success": False, "error": "Failed to save progress. Please try again."}), 500
             return jsonify(
                 {
                     "success": True,
