@@ -99,10 +99,13 @@ def update_browser_settings():
 
     settings_service = get_user_settings_service()
     current_settings = settings_service.get_user_settings()
+
+    # Merge incoming keys into existing browser_settings (don't replace)
+    merged_browser_settings = dict(current_settings.browser_settings or {})
+    merged_browser_settings.update(browser_settings)
+
     success, error = settings_service.update_user_settings(
-        language=current_settings.language,
-        currency=current_settings.currency,
-        browser_settings=browser_settings,
+        browser_settings=merged_browser_settings,
     )
 
     if success:

@@ -95,3 +95,17 @@ class TestOnboardingStep4:
         data = response.get_json()
         assert data["success"] is True
         assert data["next_step"] == 0  # completed
+
+    def test_advance_returns_error_when_db_write_fails(
+        self, authenticated_client, _mock_services
+    ):
+        """Advance should return 500 when the DB write fails (e.g., database locked)."""
+        _mock_services["settings"].update_user_settings.return_value = (False, "database is locked")
+        response = authenticated_client.post(
+            "/api/onboarding/advance",
+            data=json.dumps({"current_step": 4}),
+            content_type="application/json",
+        )
+        assert response.status_code == 500
+        data = response.get_json()
+        assert data["success"] is False
