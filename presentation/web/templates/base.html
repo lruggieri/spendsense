@@ -37,6 +37,9 @@
         }
     ] %}
 
+    <!-- SEO: default to noindex for authenticated app pages; public pages override -->
+    {% block meta_robots %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
     <!-- PWA Meta Tags -->
     <meta name="description" content="Track and categorize your expenses automatically">
     <meta name="theme-color" content="#0f3460">

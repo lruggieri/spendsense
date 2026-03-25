@@ -3,7 +3,11 @@
 
 {% block title %}Privacy Policy - SpendSense{% endblock %}
 
+{% block meta_robots %}<meta name="robots" content="index, follow">{% endblock %}
+
 {% block extra_head %}
+<meta name="description" content="SpendSense privacy policy. Learn how your financial data is protected with AES-256 encryption, client-side Gmail processing, and privacy-first design.">
+<link rel="canonical" href="{{ request.host_url.rstrip('/') }}/privacy-policy">
 <style>
   .privacy-wrap {
     max-width: 760px;
