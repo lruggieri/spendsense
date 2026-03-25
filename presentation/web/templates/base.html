@@ -173,7 +173,7 @@
             {% endif %}
         {% endwith %}
 
-        {% if show_unlock_banner %}
+        {% if show_unlock_banner and not hide_header %}
         <div class="encryption-banner" id="unlock-banner">
             <div class="encryption-banner__content">
                 <span class="encryption-banner__icon">&#x1f510;</span>
@@ -184,7 +184,7 @@
                 </span>
             </div>
         </div>
-        {% elif show_encryption_banner %}
+        {% elif show_encryption_banner and not hide_header %}
         <div class="encryption-banner" id="encryption-banner">
             <div class="encryption-banner__content">
                 <span class="encryption-banner__icon">&#x1f512;</span>

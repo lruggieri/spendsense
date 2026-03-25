@@ -275,6 +275,14 @@ def step(step_num: int):
         # all_categories with depth for category dropdown
         context["all_categories"] = category_service.get_categories_hierarchical()
 
+    # Add encryption step-specific data
+    if step_num == 4:
+        encryption_service = get_encryption_service()
+        user_id = getattr(request, "user_id", "")
+        credentials = encryption_service.get_credentials_for_user(user_id) if user_id else []
+        context["credentials"] = credentials
+        context["has_encryption"] = len(credentials) > 0
+
     return render_template(template_map[step_num], **context)
 
 

@@ -18,22 +18,42 @@
         </p>
     </div>
 
+    {% if has_encryption %}
     <div class="wizard-form-container">
         <div class="wizard-form-header">
-            <h3>Register Passkey</h3>
+            <h3>Registered Passkeys</h3>
+        </div>
+        <div class="encryption-form-body">
+            <div class="credential-list">
+                {% for cred in credentials %}
+                <div class="credential-item">
+                    <span class="credential-item__name">{{ cred.device_name or 'Passkey' }}</span>
+                    <span class="credential-item__date">{{ cred.created_at[:10] }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="wizard-form-container">
+        <div class="wizard-form-header">
+            <h3>{{ 'Add Another Passkey' if has_encryption else 'Register Passkey' }}</h3>
         </div>
 
         <div class="encryption-form-body">
+            {% if not has_encryption %}
             <div class="encryption-info-box">
                 <p>
                     <strong>How it works:</strong> A passkey on your device derives an encryption key using the PRF extension. The server uses this key to encrypt your data at rest. You'll authenticate with your passkey each session to provide the key.
                 </p>
             </div>
+            {% endif %}
 
             <div id="setup-status" class="encryption-status"></div>
 
             <button class="btn btn-primary" id="register-passkey-btn" onclick="registerPasskeyForOnboarding()">
-                Register Passkey
+                {{ 'Add Another Passkey' if has_encryption else 'Register Passkey' }}
             </button>
         </div>
     </div>
