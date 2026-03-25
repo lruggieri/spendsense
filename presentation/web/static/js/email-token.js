@@ -25,6 +25,7 @@
   let _tokenClient = null;
   let _pendingResolve = null;
   let _pendingReject  = null;
+  let _inflightPromise = null;  // deduplicates concurrent getOrRequestToken() calls
 
   /**
    * Initialise the GIS token client.  Must be called before getOrRequestToken().
@@ -47,18 +48,31 @@
    * @returns {Promise<string>} Resolves with the access token.
    */
   function getOrRequestToken() {
-    return new Promise((resolve, reject) => {
-      const stored = _getStoredToken();
-      if (stored) {
-        resolve(stored);
-        return;
-      }
+    const stored = _getStoredToken();
+    if (stored) return Promise.resolve(stored);
 
-      // No valid token — request one (silent first, popup only if needed)
+    // If a token request is already in flight, piggy-back on it
+    if (_inflightPromise) return _inflightPromise;
+
+    _inflightPromise = new Promise((resolve, reject) => {
       _pendingResolve = resolve;
       _pendingReject  = reject;
       _requestToken(/* silent */ true);
+    }).finally(() => {
+      _inflightPromise = null;
     });
+
+    return _inflightPromise;
+  }
+
+  /**
+   * Force-refresh the token: clear the stored (possibly revoked/expired) token
+   * and request a new one.  Concurrent callers share the same in-flight request.
+   * @returns {Promise<string>} Resolves with the new access token.
+   */
+  function forceRefreshToken() {
+    clearToken();
+    return getOrRequestToken();
   }
 
   /**
@@ -138,5 +152,5 @@
   }
 
   // Expose on window so other scripts can import it
-  window.emailTokenManager = { init, getOrRequestToken, clearToken, hasToken };
+  window.emailTokenManager = { init, getOrRequestToken, forceRefreshToken, clearToken, hasToken };
 })();

@@ -129,9 +129,7 @@
     if (id.includes('@')) {
       const q = `rfc822msgid:${id}`;
       const params = new URLSearchParams({ q, maxResults: '1' });
-      const resp = await fetch(`${GMAIL_API}/messages?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const resp = await _gmailApiFetch(`${GMAIL_API}/messages?${params}`, token);
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
         throw new Error(`Gmail search error ${resp.status}: ${err.error?.message || resp.statusText}`);
@@ -152,6 +150,36 @@
   const IMPORT_CHUNK  = 200;   // transactions per import request (server max: _MAX_IMPORT_BATCH=500 in gmail.py)
   const FETCH_CONCURRENCY = 20; // concurrent getMessage requests
 
+  /**
+   * Wrapper around fetch() for Gmail API calls that handles expired/revoked
+   * tokens.  On a 401 response the stored token is cleared, a fresh one is
+   * obtained via emailTokenManager.forceRefreshToken(), and the request is
+   * retried once.  If the retry also fails the response is returned as-is.
+   *
+   * @param {string} url   - Gmail API URL
+   * @param {string} token - current access token (may be stale)
+   * @returns {Promise<Response>}
+   */
+  async function _gmailApiFetch(url, token) {
+    let resp = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (resp.status === 401 && window.emailTokenManager) {
+      // If another call already refreshed the token, use it directly
+      // instead of triggering yet another refresh cycle.
+      const stored = localStorage.getItem('gmail_gis_token');
+      const newToken = (stored && stored !== token)
+        ? stored
+        : await window.emailTokenManager.forceRefreshToken();
+      resp = await fetch(url, {
+        headers: { Authorization: `Bearer ${newToken}` },
+      });
+    }
+
+    return resp;
+  }
+
   // =========================================================================
   // 1. GmailApiClient
   // =========================================================================
@@ -171,9 +199,7 @@
         const params = new URLSearchParams({ q: query });
         if (pageToken) params.set('pageToken', pageToken);
 
-        const resp = await fetch(`${GMAIL_API}/messages?${params}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const resp = await _gmailApiFetch(`${GMAIL_API}/messages?${params}`, token);
         if (!resp.ok) {
           const err = await resp.json().catch(() => ({}));
           throw new Error(`Gmail list error ${resp.status}: ${err.error?.message || resp.statusText}`);
@@ -200,9 +226,9 @@
      */
     async getMessage(token, messageId) {
       messageId = await _resolveMessageId(token, messageId);
-      const resp = await fetch(
+      const resp = await _gmailApiFetch(
         `${GMAIL_API}/messages/${encodeURIComponent(messageId)}?format=full`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        token
       );
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
