@@ -166,7 +166,12 @@
     });
 
     if (resp.status === 401 && window.emailTokenManager) {
-      const newToken = await window.emailTokenManager.forceRefreshToken();
+      // If another call already refreshed the token, use it directly
+      // instead of triggering yet another refresh cycle.
+      const stored = localStorage.getItem('gmail_gis_token');
+      const newToken = (stored && stored !== token)
+        ? stored
+        : await window.emailTokenManager.forceRefreshToken();
       resp = await fetch(url, {
         headers: { Authorization: `Bearer ${newToken}` },
       });

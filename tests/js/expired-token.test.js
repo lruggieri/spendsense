@@ -171,6 +171,38 @@ describe('GmailApiClient 401 auto-retry', () => {
       .rejects.toThrow('401');
   });
 
+  it('reuses already-refreshed token instead of refreshing again', async () => {
+    // Simulate: another call already refreshed the token into localStorage
+    localStorage.setItem('gmail_gis_token', 'already-fresh-token');
+    localStorage.setItem('gmail_gis_token_expiry', String(Date.now() + 999_999));
+
+    let callCount = 0;
+    fetchMock = vi.fn().mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return Promise.resolve({
+          status: 401,
+          ok: false,
+          json: async () => ({ error: { message: 'Token expired' } }),
+        });
+      }
+      return Promise.resolve({
+        status: 200,
+        ok: true,
+        json: async () => ({ messages: [{ id: 'msg1' }] }),
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    // Pass a stale token that differs from what's in localStorage
+    const ids = await GmailApiClient.listMessages('stale-token', 'from:test@example.com');
+
+    expect(ids).toEqual(['msg1']);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // Retry used the already-stored fresh token, not a newly requested one
+    expect(fetchMock.mock.calls[1][1].headers.Authorization).toBe('Bearer already-fresh-token');
+  });
+
   it('does not retry on non-401 errors', async () => {
     fetchMock = vi.fn().mockResolvedValue({
       status: 403,
