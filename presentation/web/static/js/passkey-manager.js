@@ -190,7 +190,13 @@
       }
     } catch (err) {
       console.error('Passkey registration error:', err);
-      showStatus(statusId, 'Registration failed: ' + err.message, 'error');
+      if (err.name === 'InvalidStateError') {
+        showStatus(statusId, 'This passkey is already registered. Try a different authenticator or continue to the next step.', 'error');
+      } else if (err.name === 'NotAllowedError') {
+        showStatus(statusId, 'Passkey registration was cancelled.', 'error');
+      } else {
+        showStatus(statusId, 'Registration failed: ' + err.message, 'error');
+      }
     } finally {
       if (btn) btn.disabled = false;
     }

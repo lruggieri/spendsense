@@ -811,3 +811,29 @@
     border-radius: var(--radius-sm);
     display: none;
 }
+
+/* === Credential List (Encryption Step) === */
+.credential-list {
+    margin: var(--spacing-sm) 0;
+}
+
+.credential-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-secondary, #f5f5f5);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--spacing-xs);
+    font-size: 0.875rem;
+}
+
+.credential-item__name {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.credential-item__date {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
