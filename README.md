@@ -1,5 +1,7 @@
 # SpendSense
 
+[![codecov](https://codecov.io/gh/lruggieri/spendsense/branch/main/graph/badge.svg)](https://codecov.io/gh/lruggieri/spendsense)
+
 Automatic expense tracking with AI-powered categorization.
 
 SpendSense is a self-hostable expense tracker that auto-categorizes transactions from bank notification emails. It uses a three-tier classification system — manual rules, regex patterns, and ML similarity — so categories improve over time with minimal effort. Try it at [spendsense.dev](https://spendsense.dev) or run it locally with Docker.
