@@ -48,7 +48,7 @@ ENV PYTHONUNBUFFERED=1
 ENV FLASK_APP=presentation.web.app
 
 # Run as non-root user
-RUN useradd --no-create-home --shell /bin/false appuser \
+RUN useradd --create-home --shell /bin/false appuser \
     && chown -R appuser:appuser /app
 USER appuser
 
