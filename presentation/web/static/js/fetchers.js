@@ -520,14 +520,38 @@ async function populateCurrencyDropdown() {
 }
 
 /**
+ * Ensure the GIS token manager is initialised with a client_id.
+ * The page-load pre-init is fire-and-forget, so it may not have finished
+ * by the time the user clicks "Generate Patterns".  Calling init() is
+ * idempotent — it no-ops if the token client already exists.
+ */
+async function _ensureTokenManagerInit() {
+    const resp = await fetch('/api/email/config');
+    if (!resp.ok) throw new Error('Failed to load email config');
+    const config = await resp.json();
+    window.emailTokenManager.init(config.client_id);
+}
+
+/**
  * Fetch email bodies client-side using the GIS token.
  * Handles both manual email-ID entries and Gmail search (from_emails).
  * Returns an array of plain-text email body strings.
+ *
+ * Skips token acquisition entirely when all examples are raw text (no
+ * Gmail API calls needed).
  */
 async function fetchEmailTextsClientSide(examples, fromEmails, subjectFilter) {
-    const token = await window.emailTokenManager.getOrRequestToken();
     const { GmailApiClient, FetcherEngine } = window.gmailFetch;
     const emailTexts = [];
+
+    const needsGmail = examples.some(ex => ex.type !== 'text') ||
+                       (examples.length === 0 && fromEmails.length > 0);
+
+    let token = null;
+    if (needsGmail) {
+        await _ensureTokenManagerInit();
+        token = await window.emailTokenManager.getOrRequestToken();
+    }
 
     if (examples.length > 0) {
         for (const ex of examples) {
