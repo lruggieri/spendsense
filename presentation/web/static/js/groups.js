@@ -35,7 +35,7 @@ function createGroup(event) {
 
     if (!name) {
         messageEl.textContent = 'Group name is required';
-        messageEl.style.color = 'var(--danger)';
+        messageEl.className = 'form-error';
         return;
     }
 
@@ -53,13 +53,13 @@ function createGroup(event) {
             window.location.reload();
         } else {
             messageEl.textContent = 'Error: ' + (data.error || 'Failed to create group');
-            messageEl.style.color = 'var(--danger)';
+            messageEl.className = 'form-error';
         }
     })
     .catch(error => {
         console.error('Error:', error);
         messageEl.textContent = 'Error creating group';
-        messageEl.style.color = 'var(--danger)';
+        messageEl.className = 'form-error';
     });
 }
 
@@ -88,7 +88,7 @@ function updateGroup(event) {
 
     if (!name) {
         messageEl.textContent = 'Group name is required';
-        messageEl.style.color = 'var(--danger)';
+        messageEl.className = 'form-error';
         return;
     }
 
@@ -109,13 +109,13 @@ function updateGroup(event) {
             window.location.reload();
         } else {
             messageEl.textContent = 'Error: ' + (data.error || 'Failed to update group');
-            messageEl.style.color = 'var(--danger)';
+            messageEl.className = 'form-error';
         }
     })
     .catch(error => {
         console.error('Error:', error);
         messageEl.textContent = 'Error updating group';
-        messageEl.style.color = 'var(--danger)';
+        messageEl.className = 'form-error';
     });
 }
 

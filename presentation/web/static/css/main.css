@@ -1000,12 +1000,14 @@ h3 { font-size: 1.25rem; }
     color: var(--danger);
     font-size: 0.75rem;
     margin-top: var(--spacing-xs);
+    margin-bottom: var(--spacing-sm);
 }
 
 .form-success {
     color: var(--secondary);
     font-size: 0.75rem;
     margin-top: var(--spacing-xs);
+    margin-bottom: var(--spacing-sm);
 }
 
 /* === FILTER SECTION === */
