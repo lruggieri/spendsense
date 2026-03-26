@@ -30,13 +30,13 @@ test-coverage: ## Run tests with coverage report (minimum 70%)
 test-specific: ## Run specific test file (usage: make test-specific FILE=test_classifier.py)
 	$(PYTHON) -m pytest tests/$(FILE) -v
 
-test-llm: ## Run LLM integration tests (requires GEMINI_API_KEY, expensive)
+test-llm: ## Run LLM integration tests (requires API keys, expensive)
 	@echo "⚠️  Running LLM tests - this will make API calls and may incur costs"
-	$(PYTHON) -m pytest -m llm -v
+	$(PYTHON) -m pytest tests/manual/ -m llm -v --override-ini="collect_ignore_glob="
 
 test-all: ## Run ALL tests including expensive LLM tests
 	@echo "⚠️  Running all tests including LLM tests - this may incur costs"
-	$(PYTHON) -m pytest -m "" -v
+	$(PYTHON) -m pytest tests/ tests/manual/ -m "" -v --override-ini="collect_ignore_glob="
 
 lint: ## Run linting checks with score threshold (CI-friendly)
 	$(PYTHON) -m pip install pylint
