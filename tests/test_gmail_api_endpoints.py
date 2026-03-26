@@ -54,6 +54,7 @@ class TestEmailConfig:
         assert response.status_code == 200
         data = response.get_json()
         assert data["client_id"] == "test-client-id"
+        assert data["user_email"] == "test@example.com"
         assert isinstance(data["fetchers"], list)
         assert len(data["fetchers"]) == 1
         assert data["fetchers"][0]["id"] == "fetcher-uuid"

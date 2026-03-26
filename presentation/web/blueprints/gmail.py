@@ -156,6 +156,7 @@ def api_email_config():
     return jsonify(
         {
             "client_id": client_id,
+            "user_email": request.user_id,
             "fetchers": fetchers,
             "default_fetch_date": default_fetch_date,
         }

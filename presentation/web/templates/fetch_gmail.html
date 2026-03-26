@@ -119,7 +119,7 @@
         fetch('/api/email/config')
             .then(r => r.json())
             .then(data => {
-                window.emailTokenManager.init(data.client_id);
+                window.emailTokenManager.init(data.client_id, data.user_email);
             })
             .catch(() => { /* non-critical; token manager is re-inited on submit */ });
     }
