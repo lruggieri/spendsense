@@ -529,7 +529,8 @@ function initAddTransactionForm() {
 
         if (!formData.date || !formData.amount || !formData.description) {
             messageDiv.textContent = 'Date, amount, and description are required';
-            messageDiv.className = 'form-error';
+            messageDiv.classList.remove('form-success');
+            messageDiv.classList.add('form-error');
             return;
         }
 
@@ -546,7 +547,8 @@ function initAddTransactionForm() {
 
         submitBtn.disabled = true;
         messageDiv.textContent = `${actionText} transaction...`;
-        messageDiv.className = 'form-success';
+        messageDiv.classList.remove('form-error');
+        messageDiv.classList.add('form-success');
 
         fetch(endpoint, {
             method: 'POST',
@@ -560,14 +562,16 @@ function initAddTransactionForm() {
                 setTimeout(() => window.location.reload(), 1000);
             } else {
                 messageDiv.textContent = 'Error: ' + (data.error || `Failed to ${actionText.toLowerCase()} transaction`);
-                messageDiv.className = 'form-error';
+                messageDiv.classList.remove('form-success');
+                messageDiv.classList.add('form-error');
                 submitBtn.disabled = false;
             }
         })
         .catch(error => {
             console.error(`Error ${actionText.toLowerCase()} transaction:`, error);
             messageDiv.textContent = `Error: Failed to ${actionText.toLowerCase()} transaction`;
-            messageDiv.className = 'form-error';
+            messageDiv.classList.remove('form-success');
+            messageDiv.classList.add('form-error');
             submitBtn.disabled = false;
         });
     });
