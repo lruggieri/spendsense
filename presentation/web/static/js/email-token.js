@@ -53,11 +53,14 @@
     const opts = {
       client_id: clientId,
       scope: SCOPE,
-      callback: _handleTokenResponse,
+      // GIS fires this callback synchronously and ignores the return value.
+      // Wrap in a safety net so uncaught async errors surface via _pendingReject
+      // instead of becoming silent unhandled-rejection events.
+      callback: (r) => _handleTokenResponse(r).catch(_handleUnexpectedError),
       error_callback: _handleTokenError,
     };
     if (_expectedEmail) {
-      opts.hint = _expectedEmail;
+      opts.hint = _expectedEmail;  // GIS "hint" = Google's login_hint
     }
     _tokenClient = google.accounts.oauth2.initTokenClient(opts);
   }
@@ -107,6 +110,17 @@
   // -------------------------------------------------------------------------
   // Internal helpers
   // -------------------------------------------------------------------------
+
+  function _handleUnexpectedError(err) {
+    if (_pendingReject) {
+      const rej = _pendingReject;
+      _pendingResolve = null;
+      _pendingReject  = null;
+      rej(err);
+    } else {
+      console.error('emailTokenManager: unhandled error in token callback', err);
+    }
+  }
 
   function _getStoredToken() {
     const token  = localStorage.getItem(TOKEN_KEY);
