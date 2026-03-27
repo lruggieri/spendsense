@@ -519,8 +519,8 @@
     if (!configResp.ok) throw new Error('Failed to load email config');
     const config = await configResp.json();
 
-    // 2. Initialise GIS token manager
-    window.emailTokenManager.init(config.client_id);
+    // 2. Initialise GIS token manager (pass user email for account mismatch protection)
+    window.emailTokenManager.init(config.client_id, config.user_email);
     cb({ phase: 'auth', message: 'Requesting Gmail access...' });
     const token = await window.emailTokenManager.getOrRequestToken();
 
