@@ -244,8 +244,12 @@ function updatePendingChangesBar() {
 
     if (changeCount > 0) {
         bar.classList.add('visible');
+        requestAnimationFrame(() => {
+            document.body.style.setProperty('--pending-bar-offset', bar.offsetHeight + 'px');
+        });
     } else {
         bar.classList.remove('visible');
+        document.body.style.setProperty('--pending-bar-offset', '0px');
     }
 }
 

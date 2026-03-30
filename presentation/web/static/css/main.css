@@ -516,14 +516,15 @@ h3 { font-size: 1.25rem; }
 /* === FLOATING ACTION BUTTON (FAB) === */
 .fab-container {
     position: fixed;
-    bottom: var(--spacing-lg);
+    bottom: calc(var(--pending-bar-offset, 0px) + var(--spacing-lg));
     right: var(--spacing-lg);
     z-index: 999;
+    transition: bottom var(--transition-normal);
 }
 
 @media (max-width: 639px) {
     .fab-container {
-        bottom: var(--spacing-md);
+        bottom: calc(var(--pending-bar-offset, 0px) + var(--spacing-md));
         right: var(--spacing-md);
     }
 }
