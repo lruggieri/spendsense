@@ -373,6 +373,25 @@ class TransactionService(BaseService):
 
         return False, "Failed to update transaction"
 
+    def update_comment(self, tx_id: str, comment: str) -> Tuple[bool, str]:
+        """
+        Update only the comment field of a transaction.
+
+        Args:
+            tx_id: Transaction ID to update
+            comment: New comment text
+
+        Returns:
+            Tuple of (success: bool, error_message: str)
+        """
+        if not tx_id:
+            return False, "Transaction ID is required"
+
+        if self._transaction_datasource.update_comment(tx_id, comment):
+            return True, ""
+
+        return False, "Transaction not found"
+
     def assign_category(self, tx_id: str, category_id: str):
         """
         Assign a category to a transaction and save via datasource.

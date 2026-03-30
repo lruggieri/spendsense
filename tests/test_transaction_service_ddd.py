@@ -536,6 +536,40 @@ class TestTransactionServiceDDD(unittest.TestCase):
         self.assertFalse(success)
         self.assertIn("Encrypted", error)
 
+    # --- update_comment ---
+
+    def test_update_comment_success(self):
+        """Test updating only the comment field."""
+        self._add_sample_transactions()
+        success, error = self.service.update_comment("tx1", "New comment")
+        self.assertTrue(success)
+        self.assertEqual(error, "")
+
+        # Verify comment was updated
+        all_txs = {tx.id: tx for tx in self.service.get_all_transactions()}
+        self.assertEqual(all_txs["tx1"].comment, "New comment")
+
+    def test_update_comment_not_found(self):
+        """Test updating comment for nonexistent transaction."""
+        success, error = self.service.update_comment("nonexistent", "test")
+        self.assertFalse(success)
+        self.assertIn("not found", error.lower())
+
+    def test_update_comment_empty_string(self):
+        """Test clearing comment with empty string."""
+        self._add_sample_transactions()
+        success, error = self.service.update_comment("tx1", "")
+        self.assertTrue(success)
+
+        all_txs = {tx.id: tx for tx in self.service.get_all_transactions()}
+        self.assertEqual(all_txs["tx1"].comment, "")
+
+    def test_update_comment_missing_tx_id(self):
+        """Test updating comment with empty tx_id."""
+        success, error = self.service.update_comment("", "test")
+        self.assertFalse(success)
+        self.assertIn("required", error.lower())
+
     # --- assign_category ---
 
     def test_assign_category(self):

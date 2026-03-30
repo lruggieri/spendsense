@@ -235,6 +235,19 @@ class TransactionRepository(ABC):
         """
 
     @abstractmethod
+    def update_comment(self, tx_id: str, comment: str) -> bool:
+        """
+        Update only the comment field of a transaction.
+
+        Args:
+            tx_id: Transaction ID to update
+            comment: New comment text
+
+        Returns:
+            True if transaction was found and updated, False otherwise
+        """
+
+    @abstractmethod
     def remove_group_from_all_transactions(self, group_id: str) -> int:
         """
         Remove a group from all transactions that have it.

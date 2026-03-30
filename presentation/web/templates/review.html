@@ -213,11 +213,24 @@
                 {% endif %}
             </div>
 
-            <div class="comment-section">
+            <div class="comment-section" data-tx-id="{{ tx.id }}">
                 <label class="form-label">Comment</label>
+                {% if tx.description != encrypted_placeholder %}
+                <div class="comment-display comment-display--editable" onclick="startCommentEdit(this)" title="Click to edit">
+                    {{ tx.comment if tx.comment else '(no comment)' }}
+                </div>
+                <div class="comment-edit" style="display: none;">
+                    <textarea class="comment-edit__input form-input form-textarea" rows="2">{{ tx.comment if tx.comment else '' }}</textarea>
+                    <div class="comment-edit__actions">
+                        <button type="button" class="btn btn-sm btn-success" onclick="saveComment(this)">Save</button>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="cancelCommentEdit(this)">Cancel</button>
+                    </div>
+                </div>
+                {% else %}
                 <div class="comment-display">
                     {{ tx.comment if tx.comment else '(no comment)' }}
                 </div>
+                {% endif %}
             </div>
         </div>
         {% endfor %}

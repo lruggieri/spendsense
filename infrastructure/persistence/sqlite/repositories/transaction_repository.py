@@ -581,6 +581,53 @@ class SQLiteTransactionDataSource(TransactionRepository):
 
         return updated
 
+    def update_comment(self, tx_id: str, comment: str) -> bool:
+        """
+        Update only the comment field of a transaction.
+
+        Respects the row's existing encryption state: if the row is already
+        encrypted, the new comment is encrypted before storage.
+
+        Args:
+            tx_id: Transaction ID to update
+            comment: New comment text
+
+        Returns:
+            True if transaction was found and updated, False otherwise
+        """
+        conn = sqlite3.connect(self.db_filepath)
+        cursor = get_logging_cursor(conn)
+
+        try:
+            # Check existing encryption state for this row
+            cursor.execute(
+                "SELECT encryption_version FROM transactions WHERE id = ? AND user_id = ?",
+                (tx_id, self.user_id),
+            )
+            row = cursor.fetchone()
+            if not row:
+                return False
+
+            enc_version = row[0]
+            if enc_version > 0 and self._encryption_key:
+                enc_comment = self._encrypt_value(comment)
+            else:
+                enc_comment = comment
+
+            current_time = datetime.now(timezone.utc)
+            cursor.execute(
+                """
+                UPDATE transactions
+                SET comment = ?, updated_at = ?
+                WHERE id = ? AND user_id = ?
+            """,
+                (enc_comment, self._format_date(current_time), tx_id, self.user_id),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+        finally:
+            conn.close()
+
     def get_transaction_count(self) -> int:
         """
         Get the total number of transactions in the database.

@@ -371,6 +371,32 @@ def update_transaction():
         return jsonify({"success": False, "error": error_msg}), 400
 
 
+@transactions_bp.route("/update-comment", methods=["POST"])
+@login_required
+def update_comment():
+    """Update only the comment field of a transaction (no page reload needed)."""
+    user_settings_service = get_user_settings_service()
+    category_service = get_category_service()
+    tx_service = get_transaction_service(
+        category_service=category_service, user_settings_service=user_settings_service
+    )
+
+    data = request.get_json()
+
+    tx_id = data.get("tx_id", "").strip()
+    comment = data.get("comment", "").strip()
+
+    if not tx_id:
+        return jsonify({"success": False, "error": "Transaction ID is required"}), 400
+
+    success, error_msg = tx_service.update_comment(tx_id, comment)
+
+    if success:
+        return jsonify({"success": True})
+    else:
+        return jsonify({"success": False, "error": error_msg}), 400
+
+
 @transactions_bp.route("/add-transaction", methods=["POST"])
 @login_required
 def add_transaction():

@@ -645,6 +645,75 @@ class TestUpdatedAtField:
         # updated_at should be different from date
         assert updated.updated_at.replace(tzinfo=None) != tx_date
 
+    def test_update_comment_success(self, datasource):
+        """Test updating only the comment field."""
+        tx = Transaction(
+            id="test_comment",
+            date=datetime(2025, 10, 26, 10, 0, 0),
+            amount=1000,
+            description="Test",
+            category="",
+            source="Test",
+            comment="Old comment",
+            currency="JPY",
+        )
+        datasource.add_transaction(tx)
+
+        result = datasource.update_comment("test_comment", "New comment")
+        assert result is True
+
+        updated = datasource.get_all_transactions()[0]
+        assert updated.comment == "New comment"
+
+    def test_update_comment_not_found(self, datasource):
+        """Test updating comment for nonexistent transaction returns False."""
+        result = datasource.update_comment("nonexistent", "test")
+        assert result is False
+
+    def test_update_comment_clears_comment(self, datasource):
+        """Test clearing comment with empty string."""
+        tx = Transaction(
+            id="test_comment_clear",
+            date=datetime(2025, 10, 26, 10, 0, 0),
+            amount=1000,
+            description="Test",
+            category="",
+            source="Test",
+            comment="Has a comment",
+            currency="JPY",
+        )
+        datasource.add_transaction(tx)
+
+        result = datasource.update_comment("test_comment_clear", "")
+        assert result is True
+
+        updated = datasource.get_all_transactions()[0]
+        assert updated.comment == ""
+
+    def test_update_comment_changes_updated_at(self, datasource):
+        """Test that updating a comment updates the updated_at field."""
+        tx_date = datetime(2025, 10, 26, 10, 0, 0)
+        tx = Transaction(
+            id="test_comment_updated_at",
+            date=tx_date,
+            amount=1000,
+            description="Test",
+            category="",
+            source="Test",
+            comment="",
+            currency="JPY",
+        )
+        datasource.add_transaction(tx)
+
+        initial = datasource.get_all_transactions()[0]
+        initial_updated_at = initial.updated_at
+
+        datasource.update_comment("test_comment_updated_at", "New comment")
+
+        updated = datasource.get_all_transactions()[0]
+        assert updated.updated_at is not None
+        assert updated.updated_at > initial_updated_at
+
     def test_add_group_updates_updated_at(self, datasource):
         """Test that adding a group updates the updated_at field."""
         # Add initial transaction
