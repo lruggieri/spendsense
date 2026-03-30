@@ -1,0 +1,5 @@
+{% if tx.description != encrypted_placeholder %}
+<button type="button" class="edit-transaction-btn" onclick="openEditTransactionModal('{{ tx.id }}')" title="Edit transaction">
+    ✏️
+</button>
+{% endif %}

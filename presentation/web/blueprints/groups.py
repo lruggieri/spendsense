@@ -9,6 +9,7 @@ import logging
 from flask import Blueprint, jsonify, make_response, render_template, request
 
 from domain.entities.category_tree import CategoryTree
+from domain.entities.transaction import ENCRYPTED_PLACEHOLDER
 from domain.services.amount_utils import to_major_units_float
 from presentation.web.decorators import login_required
 from presentation.web.utils import (
@@ -137,6 +138,7 @@ def groups():
             currency_symbol=currency_symbol,
             default_currency=default_currency,
             converter=user_settings_service.get_currency_converter(),
+            encrypted_placeholder=ENCRYPTED_PLACEHOLDER,
         )
     )
 

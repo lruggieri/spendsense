@@ -156,9 +156,7 @@
             <div class="transaction-card-header">
                 <div class="transaction-card-header__actions">
                     {% include 'partials/_encryption_badge.html' %}
-                    <button type="button" class="edit-transaction-btn" onclick="openEditTransactionModal('{{ tx.id }}')" title="Edit transaction">
-                        ✏️
-                    </button>
+                    {% include 'partials/_edit_transaction_btn.html' %}
                 </div>
             </div>
             <div class="transaction-info">
