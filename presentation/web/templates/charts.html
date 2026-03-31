@@ -186,16 +186,18 @@
     const toDate = '{{ to_date }}';
     const currencyCode = '{{ currency_code }}';
 
-    // Adjust charts default dates to local timezone (server defaults to current UTC month)
+    // Adjust charts default dates to local timezone (server defaults to current UTC month).
+    // If local month differs from server-rendered month, redirect so the server loads correct data.
     (function() {
         var params = new URLSearchParams(window.location.search);
         if (!params.has('from_date') && !params.has('to_date')) {
-            var form = document.getElementById('charts-filter-form');
-            if (form) {
-                var fromInput = form.querySelector('input[name="from_date"]');
-                if (fromInput) fromInput.value = getLocalFirstDayOfMonth();
-                var toInput = form.querySelector('input[name="to_date"]');
-                if (toInput) toInput.value = getLocalLastDayOfMonth();
+            var localFrom = getLocalFirstDayOfMonth();
+            var localTo = getLocalLastDayOfMonth();
+            if (localFrom !== fromDate || localTo !== toDate) {
+                params.set('from_date', localFrom);
+                params.set('to_date', localTo);
+                window.location.replace(window.location.pathname + '?' + params.toString());
+                return;
             }
         }
     })();
