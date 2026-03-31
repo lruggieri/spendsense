@@ -599,9 +599,9 @@ class SQLiteTransactionDataSource(TransactionRepository):
         cursor = get_logging_cursor(conn)
 
         try:
-            # Check existing encryption state for this row
+            # Check existing encryption state and verify decryptability
             cursor.execute(
-                "SELECT encryption_version FROM transactions WHERE id = ? AND user_id = ?",
+                "SELECT encryption_version, comment FROM transactions WHERE id = ? AND user_id = ?",
                 (tx_id, self.user_id),
             )
             row = cursor.fetchone()
@@ -612,6 +612,12 @@ class SQLiteTransactionDataSource(TransactionRepository):
             if enc_version > 0 and not self._encryption_key:
                 raise ValueError("Encrypted transactions cannot be edited without encryption key")
             if enc_version > 0 and self._encryption_key:
+                # Verify current key can decrypt the row before overwriting
+                try:
+                    if row[1]:
+                        decrypt_field(str(row[1]), self._encryption_key)
+                except (InvalidTag, ValueError, binascii.Error):
+                    raise ValueError("Encrypted transactions cannot be edited: decryption failed")
                 enc_comment = self._encrypt_value(comment)
             else:
                 enc_comment = comment

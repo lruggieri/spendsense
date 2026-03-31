@@ -1075,6 +1075,30 @@ class TestEncryptedTransactions:
         with pytest.raises(ValueError, match="Encrypted"):
             ds_no_key.update_comment("enc_no_key", "should fail")
 
+    def test_update_comment_encrypted_wrong_key_rejected(self, temp_db):
+        """Updating comment on encrypted row with wrong key raises ValueError."""
+        key1 = _generate_test_key()
+        key2 = _generate_test_key()
+        ds = SQLiteTransactionDataSource(temp_db, user_id="test_user", encryption_key=key1)
+
+        tx = Transaction(
+            id="enc_wrong_key",
+            date=datetime(2025, 11, 1, 10, 0, 0),
+            amount=500,
+            description="Secret",
+            category="",
+            source="Test",
+            comment="original comment",
+            currency="JPY",
+        )
+        ds.add_transaction(tx)
+
+        # Open with a different key
+        ds_wrong = SQLiteTransactionDataSource(temp_db, user_id="test_user", encryption_key=key2)
+
+        with pytest.raises(ValueError, match="decryption failed"):
+            ds_wrong.update_comment("enc_wrong_key", "should fail")
+
     def test_mixed_plaintext_and_encrypted(self, temp_db):
         """Read DB with both plaintext (version 0) and encrypted (version 1) rows."""
         # Write plaintext first (no key)
