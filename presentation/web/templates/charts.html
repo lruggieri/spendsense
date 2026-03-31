@@ -194,8 +194,8 @@
             var localFrom = getLocalFirstDayOfMonth();
             var localTo = getLocalLastDayOfMonth();
             if (localFrom !== fromDate || localTo !== toDate) {
-                params.set('from_date', localFrom);
-                params.set('to_date', localTo);
+                params.set('from_date', ensureISODate(localFrom, false));
+                params.set('to_date', ensureISODate(localTo, true));
                 window.location.replace(window.location.pathname + '?' + params.toString());
                 return;
             }
