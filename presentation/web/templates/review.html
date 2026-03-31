@@ -212,7 +212,7 @@
             <div class="comment-section" data-tx-id="{{ tx.id }}">
                 <label class="form-label">Comment</label>
                 {% if tx.description != encrypted_placeholder %}
-                <div class="comment-display comment-display--editable" onclick="startCommentEdit(this)" title="Click to edit">
+                <div class="comment-display comment-display--editable" onclick="startCommentEdit(this)" onkeydown="if(event.key==='Enter')startCommentEdit(this)" tabindex="0" role="button" title="Click to edit">
                     {{ tx.comment if tx.comment else '(no comment)' }}
                 </div>
                 <div class="comment-edit" style="display: none;">
