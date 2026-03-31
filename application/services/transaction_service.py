@@ -22,6 +22,9 @@ from domain.services.amount_utils import to_minor_units
 
 logger = logging.getLogger(__name__)
 
+MAX_DESCRIPTION_LENGTH = 500
+MAX_COMMENT_LENGTH = 200
+
 
 class TransactionService(BaseService):
     """
@@ -219,6 +222,12 @@ class TransactionService(BaseService):
         if not date_str or not amount or not description:
             return False, "Date, amount, and description are required"
 
+        if len(description) > MAX_DESCRIPTION_LENGTH:
+            return False, f"Description must be at most {MAX_DESCRIPTION_LENGTH} characters"
+
+        if len(comment) > MAX_COMMENT_LENGTH:
+            return False, f"Comment must be at most {MAX_COMMENT_LENGTH} characters"
+
         # Set currency to user's default if not provided
         if not currency:
             currency = self._user_settings_service.get_default_currency()
@@ -326,6 +335,12 @@ class TransactionService(BaseService):
         if not date_str or not amount or not description:
             return False, "Date, amount, and description are required"
 
+        if len(description) > MAX_DESCRIPTION_LENGTH:
+            return False, f"Description must be at most {MAX_DESCRIPTION_LENGTH} characters"
+
+        if len(comment) > MAX_COMMENT_LENGTH:
+            return False, f"Comment must be at most {MAX_COMMENT_LENGTH} characters"
+
         # Get existing transaction
         transactions = self._transaction_datasource.get_all_transactions()
         existing_tx = next((tx for tx in transactions if tx.id == tx_id), None)
@@ -386,6 +401,9 @@ class TransactionService(BaseService):
         """
         if not tx_id:
             return False, "Transaction ID is required"
+
+        if len(comment) > MAX_COMMENT_LENGTH:
+            return False, f"Comment must be at most {MAX_COMMENT_LENGTH} characters"
 
         if self._transaction_datasource.update_comment(tx_id, comment):
             return True, ""

@@ -444,6 +444,29 @@ class TestTransactionServiceDDD(unittest.TestCase):
         # Default should be USD from user settings defaults
         self.assertEqual(txs[0].currency, "USD")
 
+    def test_add_new_transaction_description_too_long(self):
+        """Test that adding a transaction with too-long description is rejected."""
+        success, error = self.service.add_new_transaction(
+            date_str="2025-06-15",
+            amount="500",
+            description="x" * 501,
+            currency="JPY",
+        )
+        self.assertFalse(success)
+        self.assertIn("500", error)
+
+    def test_add_new_transaction_comment_too_long(self):
+        """Test that adding a transaction with too-long comment is rejected."""
+        success, error = self.service.add_new_transaction(
+            date_str="2025-06-15",
+            amount="500",
+            description="Valid",
+            comment="x" * 201,
+            currency="JPY",
+        )
+        self.assertFalse(success)
+        self.assertIn("200", error)
+
     # --- update_transaction ---
 
     def test_update_transaction_success(self):
@@ -536,6 +559,34 @@ class TestTransactionServiceDDD(unittest.TestCase):
         self.assertFalse(success)
         self.assertIn("Encrypted", error)
 
+    def test_update_transaction_description_too_long(self):
+        """Test that updating with too-long description is rejected."""
+        self._add_sample_transactions()
+        success, error = self.service.update_transaction(
+            tx_id="tx1",
+            date_str="2025-01-15",
+            amount="1000",
+            description="x" * 501,
+            comment="",
+            currency="JPY",
+        )
+        self.assertFalse(success)
+        self.assertIn("500", error)
+
+    def test_update_transaction_comment_too_long(self):
+        """Test that updating with too-long comment is rejected."""
+        self._add_sample_transactions()
+        success, error = self.service.update_transaction(
+            tx_id="tx1",
+            date_str="2025-01-15",
+            amount="1000",
+            description="Valid",
+            comment="x" * 201,
+            currency="JPY",
+        )
+        self.assertFalse(success)
+        self.assertIn("200", error)
+
     # --- update_comment ---
 
     def test_update_comment_success(self):
@@ -569,6 +620,13 @@ class TestTransactionServiceDDD(unittest.TestCase):
         success, error = self.service.update_comment("", "test")
         self.assertFalse(success)
         self.assertIn("required", error.lower())
+
+    def test_update_comment_too_long(self):
+        """Test that updating with too-long comment is rejected."""
+        self._add_sample_transactions()
+        success, error = self.service.update_comment("tx1", "x" * 201)
+        self.assertFalse(success)
+        self.assertIn("200", error)
 
     # --- assign_category ---
 
