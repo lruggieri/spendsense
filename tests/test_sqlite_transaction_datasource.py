@@ -1026,6 +1026,32 @@ class TestEncryptedTransactions:
         assert retrieved.description == "Updated Encrypted"
         assert retrieved.comment == "new note"
 
+    def test_update_comment_encrypted(self, temp_db):
+        """Update only the comment on an encrypted row, verify it encrypts and decrypts."""
+        key = _generate_test_key()
+        ds = SQLiteTransactionDataSource(temp_db, user_id="test_user", encryption_key=key)
+
+        tx = Transaction(
+            id="enc_comment_1",
+            date=datetime(2025, 11, 1, 10, 0, 0),
+            amount=500,
+            description="Encrypted Tx",
+            category="",
+            source="Test",
+            comment="old comment",
+            currency="JPY",
+        )
+        ds.add_transaction(tx)
+
+        result = ds.update_comment("enc_comment_1", "new encrypted comment")
+        assert result is True
+
+        # Verify it decrypts correctly when read back
+        retrieved = ds.get_all_transactions()[0]
+        assert retrieved.comment == "new encrypted comment"
+        # Description should be unchanged
+        assert retrieved.description == "Encrypted Tx"
+
     def test_mixed_plaintext_and_encrypted(self, temp_db):
         """Read DB with both plaintext (version 0) and encrypted (version 1) rows."""
         # Write plaintext first (no key)
