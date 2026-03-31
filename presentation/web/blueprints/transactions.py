@@ -21,6 +21,7 @@ from flask import (
 )
 
 from domain.entities.category_tree import UNKNOWN_CATEGORY_ID
+from application.services.transaction_service import MAX_COMMENT_LENGTH, MAX_DESCRIPTION_LENGTH
 from domain.entities.transaction import ENCRYPTED_PLACEHOLDER, CategorySource
 from domain.services.amount_utils import to_major_units_float
 from presentation.web.decorators import login_required
@@ -173,6 +174,8 @@ def review():
             default_currency=default_currency,
             converter=converter,
             encrypted_placeholder=ENCRYPTED_PLACEHOLDER,
+            max_description_length=MAX_DESCRIPTION_LENGTH,
+            max_comment_length=MAX_COMMENT_LENGTH,
         )
     )
     logger.debug(f"[REVIEW] render_template() took {(time.time() - t7) * 1000:.2f}ms")
@@ -364,6 +367,32 @@ def update_transaction():
         currency,
         embedding_datasource=classification_service.embedding_datasource,
     )
+
+    if success:
+        return jsonify({"success": True})
+    else:
+        return jsonify({"success": False, "error": error_msg}), 400
+
+
+@transactions_bp.route("/update-comment", methods=["POST"])
+@login_required
+def update_comment():
+    """Update only the comment field of a transaction (no page reload needed)."""
+    user_settings_service = get_user_settings_service()
+    category_service = get_category_service()
+    tx_service = get_transaction_service(
+        category_service=category_service, user_settings_service=user_settings_service
+    )
+
+    data = request.get_json()
+
+    tx_id = data.get("tx_id", "").strip()
+    comment = data.get("comment", "").strip()
+
+    if not tx_id:
+        return jsonify({"success": False, "error": "Transaction ID is required"}), 400
+
+    success, error_msg = tx_service.update_comment(tx_id, comment)
 
     if success:
         return jsonify({"success": True})

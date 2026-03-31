@@ -209,11 +209,24 @@
                 {% endif %}
             </div>
 
-            <div class="comment-section">
+            <div class="comment-section" data-tx-id="{{ tx.id }}">
                 <label class="form-label">Comment</label>
+                {% if tx.description != encrypted_placeholder %}
+                <div class="comment-display comment-display--editable" onclick="startCommentEdit(this)" onkeydown="if(event.key==='Enter')startCommentEdit(this)" tabindex="0" role="button" title="Click to edit">
+                    {{ tx.comment if tx.comment else '(no comment)' }}
+                </div>
+                <div class="comment-edit" style="display: none;">
+                    <textarea class="comment-edit__input form-input form-textarea" rows="2" maxlength="{{ max_comment_length }}">{{ tx.comment if tx.comment else '' }}</textarea>
+                    <div class="comment-edit__actions">
+                        <button type="button" class="btn btn-sm btn-success" onclick="saveComment(this)">Save</button>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="cancelCommentEdit(this)">Cancel</button>
+                    </div>
+                </div>
+                {% else %}
                 <div class="comment-display">
                     {{ tx.comment if tx.comment else '(no comment)' }}
                 </div>
+                {% endif %}
             </div>
         </div>
         {% endfor %}
@@ -280,7 +293,7 @@
             <div class="form-group">
                 <label class="form-label required" for="add-tx-description">Description</label>
                 <div class="autocomplete-wrapper">
-                    <input type="text" id="add-tx-description" class="form-input" placeholder="Transaction description (start typing for suggestions)" required autocomplete="off">
+                    <input type="text" id="add-tx-description" class="form-input" placeholder="Transaction description (start typing for suggestions)" required autocomplete="off" maxlength="{{ max_description_length }}">
                     <div id="autocomplete-suggestions" class="autocomplete-suggestions"></div>
                 </div>
             </div>
@@ -299,7 +312,7 @@
             </div>
             <div class="form-group">
                 <label class="form-label" for="add-tx-comment">Comment</label>
-                <textarea id="add-tx-comment" class="form-input form-textarea" placeholder="Optional comment"></textarea>
+                <textarea id="add-tx-comment" class="form-input form-textarea" placeholder="Optional comment" maxlength="{{ max_comment_length }}"></textarea>
             </div>
             <div id="add-tx-message"></div>
             <div class="filter-actions mt-md">

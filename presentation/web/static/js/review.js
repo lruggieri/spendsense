@@ -1035,6 +1035,74 @@ async function bulkRemoveGroup(groupId, groupName) {
 }
 
 // ========================================
+// INLINE COMMENT EDITING
+// ========================================
+
+function startCommentEdit(displayEl) {
+    const section = displayEl.closest('.comment-section');
+    displayEl.style.display = 'none';
+    const editDiv = section.querySelector('.comment-edit');
+    editDiv.style.display = '';
+    const textarea = section.querySelector('.comment-edit__input');
+    textarea.focus();
+    // Move cursor to end
+    textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
+}
+
+function cancelCommentEdit(btn) {
+    const section = btn.closest('.comment-section');
+    const card = section.closest('.transaction-card');
+    const currentComment = card.getAttribute('data-comment');
+
+    // Reset textarea to current saved value
+    section.querySelector('.comment-edit__input').value = currentComment;
+    section.querySelector('.comment-edit').style.display = 'none';
+    section.querySelector('.comment-display').style.display = '';
+}
+
+function saveComment(btn) {
+    const section = btn.closest('.comment-section');
+    const txId = section.dataset.txId;
+    const textarea = section.querySelector('.comment-edit__input');
+    const newComment = textarea.value.trim();
+
+    const buttons = section.querySelectorAll('.comment-edit__actions button');
+    buttons.forEach(b => b.disabled = true);
+
+    fetch('/update-comment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tx_id: txId, comment: newComment })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const display = section.querySelector('.comment-display');
+            display.textContent = newComment || '(no comment)';
+
+            const card = section.closest('.transaction-card');
+            card.setAttribute('data-comment', newComment);
+
+            textarea.value = newComment;
+
+            section.querySelector('.comment-edit').style.display = 'none';
+            display.style.display = '';
+
+            showToast('Comment updated', 'success');
+        } else {
+            showToast('Error: ' + (data.error || 'Failed to update comment'), 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error updating comment:', error);
+        showToast('Failed to update comment', 'error');
+    })
+    .finally(() => {
+        buttons.forEach(b => b.disabled = false);
+    });
+}
+
+// ========================================
 // PAGE INITIALIZATION
 // ========================================
 

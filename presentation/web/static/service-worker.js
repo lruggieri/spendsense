@@ -1,5 +1,5 @@
-const CACHE_NAME = 'spendsense-v77';
-const RUNTIME_CACHE = 'spendsense-runtime-v77';
+const CACHE_NAME = 'spendsense-v78';
+const RUNTIME_CACHE = 'spendsense-runtime-v78';
 
 // Assets to cache on install (static assets only, no dynamic data pages)
 const PRECACHE_ASSETS = [

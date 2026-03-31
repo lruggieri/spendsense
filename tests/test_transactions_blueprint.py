@@ -315,6 +315,51 @@ class TestTransactionsBlueprint:
         assert data["success"] is False
         assert "Encrypted" in data["error"]
 
+    def test_update_comment_success(self, authenticated_client, mock_services):
+        """POST /update-comment with valid data should return success."""
+        mock_services["tx_service"].update_comment.return_value = (True, "")
+        response = authenticated_client.post(
+            "/update-comment",
+            json={"tx_id": "tx1", "comment": "New comment"},
+        )
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["success"] is True
+
+    def test_update_comment_missing_tx_id(self, authenticated_client, mock_services):
+        """POST /update-comment with empty tx_id should return 400."""
+        response = authenticated_client.post(
+            "/update-comment",
+            json={"tx_id": "", "comment": "test"},
+        )
+        assert response.status_code == 400
+        data = response.get_json()
+        assert data["success"] is False
+        assert "Transaction ID" in data["error"]
+
+    def test_update_comment_not_found(self, authenticated_client, mock_services):
+        """POST /update-comment for nonexistent tx should return 400."""
+        mock_services["tx_service"].update_comment.return_value = (False, "Transaction not found")
+        response = authenticated_client.post(
+            "/update-comment",
+            json={"tx_id": "nonexistent", "comment": "test"},
+        )
+        assert response.status_code == 400
+        data = response.get_json()
+        assert data["success"] is False
+        assert "not found" in data["error"].lower()
+
+    def test_update_comment_empty_clears_comment(self, authenticated_client, mock_services):
+        """POST /update-comment with empty comment should succeed (clears comment)."""
+        mock_services["tx_service"].update_comment.return_value = (True, "")
+        response = authenticated_client.post(
+            "/update-comment",
+            json={"tx_id": "tx1", "comment": ""},
+        )
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["success"] is True
+
     def test_add_transaction_success(self, authenticated_client, mock_services):
         """POST /add-transaction with valid data should return success."""
         mock_services["tx_service"].add_new_transaction.return_value = (True, "")

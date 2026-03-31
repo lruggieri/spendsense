@@ -24,7 +24,7 @@
     position: relative;
 }
 
-/* Comment display (read-only) */
+/* Comment display */
 .comment-display {
     padding: var(--spacing-sm);
     background-color: var(--gray-50);
@@ -32,6 +32,30 @@
     font-size: 0.875rem;
     color: var(--text-secondary);
     min-height: 2rem;
+}
+
+.comment-display--editable {
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
+
+.comment-display--editable:hover {
+    background-color: var(--gray-100);
+}
+
+/* Inline comment editing */
+.comment-edit__input {
+    width: 100%;
+    font-size: 0.875rem;
+    resize: vertical;
+    min-height: 2rem;
+}
+
+.comment-edit__actions {
+    display: flex;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-xs);
+    justify-content: flex-end;
 }
 
 /* Category selection button */

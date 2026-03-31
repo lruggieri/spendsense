@@ -645,6 +645,75 @@ class TestUpdatedAtField:
         # updated_at should be different from date
         assert updated.updated_at.replace(tzinfo=None) != tx_date
 
+    def test_update_comment_success(self, datasource):
+        """Test updating only the comment field."""
+        tx = Transaction(
+            id="test_comment",
+            date=datetime(2025, 10, 26, 10, 0, 0),
+            amount=1000,
+            description="Test",
+            category="",
+            source="Test",
+            comment="Old comment",
+            currency="JPY",
+        )
+        datasource.add_transaction(tx)
+
+        result = datasource.update_comment("test_comment", "New comment")
+        assert result is True
+
+        updated = datasource.get_all_transactions()[0]
+        assert updated.comment == "New comment"
+
+    def test_update_comment_not_found(self, datasource):
+        """Test updating comment for nonexistent transaction returns False."""
+        result = datasource.update_comment("nonexistent", "test")
+        assert result is False
+
+    def test_update_comment_clears_comment(self, datasource):
+        """Test clearing comment with empty string."""
+        tx = Transaction(
+            id="test_comment_clear",
+            date=datetime(2025, 10, 26, 10, 0, 0),
+            amount=1000,
+            description="Test",
+            category="",
+            source="Test",
+            comment="Has a comment",
+            currency="JPY",
+        )
+        datasource.add_transaction(tx)
+
+        result = datasource.update_comment("test_comment_clear", "")
+        assert result is True
+
+        updated = datasource.get_all_transactions()[0]
+        assert updated.comment == ""
+
+    def test_update_comment_changes_updated_at(self, datasource):
+        """Test that updating a comment updates the updated_at field."""
+        tx_date = datetime(2025, 10, 26, 10, 0, 0)
+        tx = Transaction(
+            id="test_comment_updated_at",
+            date=tx_date,
+            amount=1000,
+            description="Test",
+            category="",
+            source="Test",
+            comment="",
+            currency="JPY",
+        )
+        datasource.add_transaction(tx)
+
+        initial = datasource.get_all_transactions()[0]
+        initial_updated_at = initial.updated_at
+
+        datasource.update_comment("test_comment_updated_at", "New comment")
+
+        updated = datasource.get_all_transactions()[0]
+        assert updated.updated_at is not None
+        assert updated.updated_at > initial_updated_at
+
     def test_add_group_updates_updated_at(self, datasource):
         """Test that adding a group updates the updated_at field."""
         # Add initial transaction
@@ -956,6 +1025,79 @@ class TestEncryptedTransactions:
         assert retrieved.amount == 750
         assert retrieved.description == "Updated Encrypted"
         assert retrieved.comment == "new note"
+
+    def test_update_comment_encrypted(self, temp_db):
+        """Update only the comment on an encrypted row, verify it encrypts and decrypts."""
+        key = _generate_test_key()
+        ds = SQLiteTransactionDataSource(temp_db, user_id="test_user", encryption_key=key)
+
+        tx = Transaction(
+            id="enc_comment_1",
+            date=datetime(2025, 11, 1, 10, 0, 0),
+            amount=500,
+            description="Encrypted Tx",
+            category="",
+            source="Test",
+            comment="old comment",
+            currency="JPY",
+        )
+        ds.add_transaction(tx)
+
+        result = ds.update_comment("enc_comment_1", "new encrypted comment")
+        assert result is True
+
+        # Verify it decrypts correctly when read back
+        retrieved = ds.get_all_transactions()[0]
+        assert retrieved.comment == "new encrypted comment"
+        # Description should be unchanged
+        assert retrieved.description == "Encrypted Tx"
+
+    def test_update_comment_encrypted_without_key_rejected(self, temp_db):
+        """Updating comment on encrypted row without encryption key raises ValueError."""
+        key = _generate_test_key()
+        ds_enc = SQLiteTransactionDataSource(temp_db, user_id="test_user", encryption_key=key)
+
+        tx = Transaction(
+            id="enc_no_key",
+            date=datetime(2025, 11, 1, 10, 0, 0),
+            amount=500,
+            description="Encrypted Tx",
+            category="",
+            source="Test",
+            comment="old",
+            currency="JPY",
+        )
+        ds_enc.add_transaction(tx)
+
+        # Open a datasource WITHOUT the encryption key
+        ds_no_key = SQLiteTransactionDataSource(temp_db, user_id="test_user")
+
+        with pytest.raises(ValueError, match="Encrypted"):
+            ds_no_key.update_comment("enc_no_key", "should fail")
+
+    def test_update_comment_encrypted_wrong_key_rejected(self, temp_db):
+        """Updating comment on encrypted row with wrong key raises ValueError."""
+        key1 = _generate_test_key()
+        key2 = _generate_test_key()
+        ds = SQLiteTransactionDataSource(temp_db, user_id="test_user", encryption_key=key1)
+
+        tx = Transaction(
+            id="enc_wrong_key",
+            date=datetime(2025, 11, 1, 10, 0, 0),
+            amount=500,
+            description="Secret",
+            category="",
+            source="Test",
+            comment="original comment",
+            currency="JPY",
+        )
+        ds.add_transaction(tx)
+
+        # Open with a different key
+        ds_wrong = SQLiteTransactionDataSource(temp_db, user_id="test_user", encryption_key=key2)
+
+        with pytest.raises(ValueError, match="decryption failed"):
+            ds_wrong.update_comment("enc_wrong_key", "should fail")
 
     def test_mixed_plaintext_and_encrypted(self, temp_db):
         """Read DB with both plaintext (version 0) and encrypted (version 1) rows."""

@@ -21,7 +21,7 @@ from application.services.category_service import CategoryService
 from application.services.transaction_service import TransactionService
 from application.services.user_settings_service import UserSettingsService
 from domain.entities.category_tree import UNKNOWN_CATEGORY_ID
-from domain.entities.transaction import CategorySource, Transaction
+from domain.entities.transaction import ENCRYPTED_PLACEHOLDER, CategorySource, Transaction
 from infrastructure.persistence.sqlite.repositories.category_repository import (
     SQLiteCategoryDataSource,
 )
@@ -444,6 +444,29 @@ class TestTransactionServiceDDD(unittest.TestCase):
         # Default should be USD from user settings defaults
         self.assertEqual(txs[0].currency, "USD")
 
+    def test_add_new_transaction_description_too_long(self):
+        """Test that adding a transaction with too-long description is rejected."""
+        success, error = self.service.add_new_transaction(
+            date_str="2025-06-15",
+            amount="500",
+            description="x" * 501,
+            currency="JPY",
+        )
+        self.assertFalse(success)
+        self.assertIn("500", error)
+
+    def test_add_new_transaction_comment_too_long(self):
+        """Test that adding a transaction with too-long comment is rejected."""
+        success, error = self.service.add_new_transaction(
+            date_str="2025-06-15",
+            amount="500",
+            description="Valid",
+            comment="x" * 201,
+            currency="JPY",
+        )
+        self.assertFalse(success)
+        self.assertIn("200", error)
+
     # --- update_transaction ---
 
     def test_update_transaction_success(self):
@@ -533,6 +556,91 @@ class TestTransactionServiceDDD(unittest.TestCase):
             comment="",
             currency="JPY",
         )
+        self.assertFalse(success)
+        self.assertIn("Encrypted", error)
+
+    def test_update_transaction_description_too_long(self):
+        """Test that updating with too-long description is rejected."""
+        self._add_sample_transactions()
+        success, error = self.service.update_transaction(
+            tx_id="tx1",
+            date_str="2025-01-15",
+            amount="1000",
+            description="x" * 501,
+            comment="",
+            currency="JPY",
+        )
+        self.assertFalse(success)
+        self.assertIn("500", error)
+
+    def test_update_transaction_comment_too_long(self):
+        """Test that updating with too-long comment is rejected."""
+        self._add_sample_transactions()
+        success, error = self.service.update_transaction(
+            tx_id="tx1",
+            date_str="2025-01-15",
+            amount="1000",
+            description="Valid",
+            comment="x" * 201,
+            currency="JPY",
+        )
+        self.assertFalse(success)
+        self.assertIn("200", error)
+
+    # --- update_comment ---
+
+    def test_update_comment_success(self):
+        """Test updating only the comment field."""
+        self._add_sample_transactions()
+        success, error = self.service.update_comment("tx1", "New comment")
+        self.assertTrue(success)
+        self.assertEqual(error, "")
+
+        # Verify comment was updated
+        all_txs = {tx.id: tx for tx in self.service.get_all_transactions()}
+        self.assertEqual(all_txs["tx1"].comment, "New comment")
+
+    def test_update_comment_not_found(self):
+        """Test updating comment for nonexistent transaction."""
+        success, error = self.service.update_comment("nonexistent", "test")
+        self.assertFalse(success)
+        self.assertIn("not found", error.lower())
+
+    def test_update_comment_empty_string(self):
+        """Test clearing comment with empty string."""
+        self._add_sample_transactions()
+        success, error = self.service.update_comment("tx1", "")
+        self.assertTrue(success)
+
+        all_txs = {tx.id: tx for tx in self.service.get_all_transactions()}
+        self.assertEqual(all_txs["tx1"].comment, "")
+
+    def test_update_comment_missing_tx_id(self):
+        """Test updating comment with empty tx_id."""
+        success, error = self.service.update_comment("", "test")
+        self.assertFalse(success)
+        self.assertIn("required", error.lower())
+
+    def test_update_comment_too_long(self):
+        """Test that updating with too-long comment is rejected."""
+        self._add_sample_transactions()
+        success, error = self.service.update_comment("tx1", "x" * 201)
+        self.assertFalse(success)
+        self.assertIn("200", error)
+
+    def test_update_comment_encrypted_rejected(self):
+        """Test that updating comment on an encrypted transaction without key is rejected."""
+        self._add_sample_transactions()
+        # Mark tx1 as encrypted in the database (service has no encryption key)
+        conn = sqlite3.connect(self.db_path)
+        conn.execute(
+            "UPDATE transactions SET encryption_version = 1 WHERE id = ? AND user_id = ?",
+            ("tx1", USER_ID),
+        )
+        conn.commit()
+        conn.close()
+
+        success, error = self.service.update_comment("tx1", "Should not update")
         self.assertFalse(success)
         self.assertIn("Encrypted", error)
 
