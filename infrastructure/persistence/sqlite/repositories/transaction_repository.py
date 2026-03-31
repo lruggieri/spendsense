@@ -609,6 +609,8 @@ class SQLiteTransactionDataSource(TransactionRepository):
                 return False
 
             enc_version = row[0]
+            if enc_version > 0 and not self._encryption_key:
+                raise ValueError("Encrypted transactions cannot be edited without encryption key")
             if enc_version > 0 and self._encryption_key:
                 enc_comment = self._encrypt_value(comment)
             else:

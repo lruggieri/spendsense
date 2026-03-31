@@ -1052,6 +1052,29 @@ class TestEncryptedTransactions:
         # Description should be unchanged
         assert retrieved.description == "Encrypted Tx"
 
+    def test_update_comment_encrypted_without_key_rejected(self, temp_db):
+        """Updating comment on encrypted row without encryption key raises ValueError."""
+        key = _generate_test_key()
+        ds_enc = SQLiteTransactionDataSource(temp_db, user_id="test_user", encryption_key=key)
+
+        tx = Transaction(
+            id="enc_no_key",
+            date=datetime(2025, 11, 1, 10, 0, 0),
+            amount=500,
+            description="Encrypted Tx",
+            category="",
+            source="Test",
+            comment="old",
+            currency="JPY",
+        )
+        ds_enc.add_transaction(tx)
+
+        # Open a datasource WITHOUT the encryption key
+        ds_no_key = SQLiteTransactionDataSource(temp_db, user_id="test_user")
+
+        with pytest.raises(ValueError, match="Encrypted"):
+            ds_no_key.update_comment("enc_no_key", "should fail")
+
     def test_mixed_plaintext_and_encrypted(self, temp_db):
         """Read DB with both plaintext (version 0) and encrypted (version 1) rows."""
         # Write plaintext first (no key)

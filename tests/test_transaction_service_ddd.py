@@ -21,7 +21,7 @@ from application.services.category_service import CategoryService
 from application.services.transaction_service import TransactionService
 from application.services.user_settings_service import UserSettingsService
 from domain.entities.category_tree import UNKNOWN_CATEGORY_ID
-from domain.entities.transaction import CategorySource, Transaction
+from domain.entities.transaction import ENCRYPTED_PLACEHOLDER, CategorySource, Transaction
 from infrastructure.persistence.sqlite.repositories.category_repository import (
     SQLiteCategoryDataSource,
 )
@@ -627,6 +627,22 @@ class TestTransactionServiceDDD(unittest.TestCase):
         success, error = self.service.update_comment("tx1", "x" * 201)
         self.assertFalse(success)
         self.assertIn("200", error)
+
+    def test_update_comment_encrypted_rejected(self):
+        """Test that updating comment on an encrypted transaction without key is rejected."""
+        self._add_sample_transactions()
+        # Mark tx1 as encrypted in the database (service has no encryption key)
+        conn = sqlite3.connect(self.db_path)
+        conn.execute(
+            "UPDATE transactions SET encryption_version = 1 WHERE id = ? AND user_id = ?",
+            ("tx1", USER_ID),
+        )
+        conn.commit()
+        conn.close()
+
+        success, error = self.service.update_comment("tx1", "Should not update")
+        self.assertFalse(success)
+        self.assertIn("Encrypted", error)
 
     # --- assign_category ---
 

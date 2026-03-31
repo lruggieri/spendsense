@@ -405,8 +405,11 @@ class TransactionService(BaseService):
         if len(comment) > MAX_COMMENT_LENGTH:
             return False, f"Comment must be at most {MAX_COMMENT_LENGTH} characters"
 
-        if self._transaction_datasource.update_comment(tx_id, comment):
-            return True, ""
+        try:
+            if self._transaction_datasource.update_comment(tx_id, comment):
+                return True, ""
+        except ValueError as e:
+            return False, str(e)
 
         return False, "Transaction not found"
 
