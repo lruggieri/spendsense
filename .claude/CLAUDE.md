@@ -18,7 +18,7 @@ SpendSense: an expense tracker that automatically categorizes financial transact
 
 **CRITICAL: Run `make test` after every code change.** All tests must pass before committing, creating PRs, or considering work complete.
 
-**CRITICAL: Write tests for every new feature and bug fix.** Cover the core logic with unit tests before considering the work done. Use real temp SQLite databases for service/repository tests; use `authenticated_client` fixture with mocked service factories for blueprint tests. Target: maintain ≥70% coverage.
+**CRITICAL: Write tests for every new feature and bug fix.** Cover the core logic with unit tests before considering the work done. Use real temp SQLite databases for service/repository tests; use `authenticated_client` fixture with mocked service factories for blueprint tests. Target: maintain ≥80% coverage.
 
 **CRITICAL: Run `make mypy` to check type correctness.** Type errors should be reviewed (full fixing is ongoing work).
 
