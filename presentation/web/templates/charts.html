@@ -186,20 +186,6 @@
     const toDate = '{{ to_date }}';
     const currencyCode = '{{ currency_code }}';
 
-    // Adjust charts default dates to local timezone (server defaults to current UTC month)
-    (function() {
-        var params = new URLSearchParams(window.location.search);
-        if (!params.has('from_date') && !params.has('to_date')) {
-            var form = document.getElementById('charts-filter-form');
-            if (form) {
-                var fromInput = form.querySelector('input[name="from_date"]');
-                if (fromInput) fromInput.value = getLocalFirstDayOfMonth();
-                var toInput = form.querySelector('input[name="to_date"]');
-                if (toInput) toInput.value = getLocalLastDayOfMonth();
-            }
-        }
-    })();
-
     // Helper function to redirect to review page with category filter
     function redirectToReview(categoryId) {
         let url = `/review?category=${categoryId}`;

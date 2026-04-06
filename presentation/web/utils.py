@@ -5,8 +5,10 @@ Contains helper functions used across multiple blueprints.
 """
 
 import logging
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from urllib.parse import parse_qs
+from zoneinfo import ZoneInfo
 
 from flask import g, request
 
@@ -68,6 +70,26 @@ def extract_date_part(date_string):
     if "T" in date_string:
         return date_string.split("T")[0]
     return date_string
+
+
+def get_client_timezone() -> ZoneInfo | None:
+    """Read the IANA timezone from the ``tz`` cookie set by timezone-utils.js.
+
+    Returns ``None`` when the cookie is absent or contains an invalid zone.
+    """
+    tz_name = request.cookies.get("tz")
+    if not tz_name:
+        return None
+    try:
+        return ZoneInfo(tz_name)
+    except (KeyError, Exception):
+        return None
+
+
+def get_client_now() -> datetime:
+    """Return the current time in the client's timezone (from cookie), or UTC."""
+    tz = get_client_timezone() or timezone.utc
+    return datetime.now(tz)
 
 
 # =============================================================================
