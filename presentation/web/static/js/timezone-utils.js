@@ -205,9 +205,28 @@ function initializeDateDisplays() {
     });
 }
 
+/**
+ * Set a cookie with the user's IANA timezone so the server can compute
+ * timezone-aware date defaults without a client-side redirect.
+ */
+function setTimezoneCookie() {
+    try {
+        var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (tz) {
+            document.cookie = 'tz=' + tz + ';path=/;max-age=31536000;SameSite=Lax';
+        }
+    } catch (e) {
+        // Intl not supported — server falls back to UTC
+    }
+}
+
 // Auto-initialize on DOM ready
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeDateDisplays);
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimezoneCookie();
+        initializeDateDisplays();
+    });
 } else {
+    setTimezoneCookie();
     initializeDateDisplays();
 }

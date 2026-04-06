@@ -1,6 +1,8 @@
 """Tests for the main blueprint routes."""
 
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -146,6 +148,21 @@ class TestMainBlueprint:
         response = authenticated_client.get("/charts")
         assert response.status_code == 200
 
+    def test_charts_default_dates_with_tz_cookie(self, authenticated_client, mock_services):
+        """GET /charts with tz cookie uses client timezone for default month."""
+        # Simulate March 31 23:30 UTC — which is April 1 08:30 JST
+        fake_now = datetime(2026, 3, 31, 23, 30, 0, tzinfo=timezone.utc)
+        with patch("presentation.web.utils.datetime") as mock_dt:
+            mock_dt.now.return_value = fake_now.astimezone(ZoneInfo("Asia/Tokyo"))
+            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
+            authenticated_client.set_cookie("tz", "Asia/Tokyo")
+            response = authenticated_client.get("/charts")
+        assert response.status_code == 200
+        html = response.data.decode()
+        # The date inputs should show April (local month), not March (UTC month)
+        assert 'value="2026-04-01"' in html
+        assert 'value="2026-04-30"' in html
+
     def test_charts_custom_dates(self, authenticated_client, mock_services):
         """GET /charts with explicit date range should return 200."""
         response = authenticated_client.get("/charts?from_date=2025-01-01&to_date=2025-12-31")
@@ -182,3 +199,46 @@ class TestMainBlueprint:
         assert "app_version" in data
         assert "ecb_first_date" in data
         assert "ecb_last_date" in data
+
+
+class TestGetClientTimezone:
+    """Tests for get_client_timezone and get_client_now utilities."""
+
+    def test_returns_none_without_cookie(self, app):
+        """No tz cookie should return None."""
+        from presentation.web.utils import get_client_timezone
+
+        with app.test_request_context():
+            assert get_client_timezone() is None
+
+    def test_returns_zoneinfo_with_valid_cookie(self, app):
+        """Valid tz cookie should return matching ZoneInfo."""
+        from presentation.web.utils import get_client_timezone
+
+        with app.test_request_context(headers={"Cookie": "tz=Asia/Tokyo"}):
+            tz = get_client_timezone()
+            assert tz is not None
+            assert str(tz) == "Asia/Tokyo"
+
+    def test_returns_none_with_invalid_cookie(self, app):
+        """Invalid timezone name should return None, not raise."""
+        from presentation.web.utils import get_client_timezone
+
+        with app.test_request_context(headers={"Cookie": "tz=Not/A/Zone"}):
+            assert get_client_timezone() is None
+
+    def test_get_client_now_uses_cookie_timezone(self, app):
+        """get_client_now should return time in the cookie's timezone."""
+        from presentation.web.utils import get_client_now
+
+        with app.test_request_context(headers={"Cookie": "tz=Asia/Tokyo"}):
+            now = get_client_now()
+            assert str(now.tzinfo) == "Asia/Tokyo"
+
+    def test_get_client_now_falls_back_to_utc(self, app):
+        """Without tz cookie, get_client_now should return UTC."""
+        from presentation.web.utils import get_client_now
+
+        with app.test_request_context():
+            now = get_client_now()
+            assert now.tzinfo == timezone.utc

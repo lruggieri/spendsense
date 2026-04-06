@@ -186,22 +186,6 @@
     const toDate = '{{ to_date }}';
     const currencyCode = '{{ currency_code }}';
 
-    // Adjust charts default dates to local timezone (server defaults to current UTC month).
-    // If local month differs from server-rendered month, redirect so the server loads correct data.
-    (function() {
-        var params = new URLSearchParams(window.location.search);
-        if (!params.has('from_date') && !params.has('to_date')) {
-            var localFrom = getLocalFirstDayOfMonth();
-            var localTo = getLocalLastDayOfMonth();
-            if (localFrom !== fromDate || localTo !== toDate) {
-                params.set('from_date', ensureISODate(localFrom, false));
-                params.set('to_date', ensureISODate(localTo, true));
-                window.location.replace(window.location.pathname + '?' + params.toString());
-                return;
-            }
-        }
-    })();
-
     // Helper function to redirect to review page with category filter
     function redirectToReview(categoryId) {
         let url = `/review?category=${categoryId}`;

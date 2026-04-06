@@ -27,6 +27,7 @@ from presentation.web.utils import (
     extract_date_part,
     get_category_service,
     get_classification_service,
+    get_client_now,
     get_transaction_service,
     get_user_settings_service,
     load_and_classify,
@@ -145,13 +146,11 @@ def charts():
     from_date = request.args.get("from_date")
     to_date = request.args.get("to_date")
 
-    # Default to current month if no dates provided
+    # Default to current month in the client's timezone (falls back to UTC)
     if not from_date and not to_date:
-        now = datetime.now(timezone.utc)
-        # First day of current month at 00:00:00 UTC
+        now = get_client_now()
         from_dt = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         from_date = from_dt.isoformat()
-        # Last day of current month at 23:59:59 UTC
         last_day = calendar.monthrange(now.year, now.month)[1]
         to_dt = now.replace(day=last_day, hour=23, minute=59, second=59, microsecond=0)
         to_date = to_dt.isoformat()
@@ -279,14 +278,12 @@ def trends():
     from_date = request.args.get("from_date")
     to_date = request.args.get("to_date")
 
-    # Default to past 12 months if no dates provided
+    # Default to past 12 months in the client's timezone (falls back to UTC)
     if not from_date and not to_date:
-        now = datetime.now(timezone.utc)
-        # 365 days ago at 00:00:00 UTC
+        now = get_client_now()
         twelve_months_ago = now - timedelta(days=365)
         from_dt = twelve_months_ago.replace(hour=0, minute=0, second=0, microsecond=0)
         from_date = from_dt.isoformat()
-        # Today at 23:59:59 UTC
         to_dt = now.replace(hour=23, minute=59, second=59, microsecond=0)
         to_date = to_dt.isoformat()
 

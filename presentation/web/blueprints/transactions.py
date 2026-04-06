@@ -29,6 +29,7 @@ from presentation.web.utils import (
     extract_date_part,
     get_category_service,
     get_classification_service,
+    get_client_now,
     get_group_service,
     get_transaction_service,
     get_user_settings_service,
@@ -68,14 +69,12 @@ def review():
     ).strip()  # Filter by transaction source
     sort_by = request.args.get("sort_by", "date")  # Default to date sorting
 
-    # Default to past 6 months if no dates provided
+    # Default to past 6 months in the client's timezone (falls back to UTC)
     if not from_date and not to_date:
-        now = datetime.now(timezone.utc)
-        # 180 days ago at 00:00:00 UTC
+        now = get_client_now()
         six_months_ago = now - timedelta(days=180)
         from_dt = six_months_ago.replace(hour=0, minute=0, second=0, microsecond=0)
         from_date = from_dt.isoformat()
-        # Today at 23:59:59 UTC
         to_dt = now.replace(hour=23, minute=59, second=59, microsecond=0)
         to_date = to_dt.isoformat()
 
