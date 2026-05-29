@@ -28,7 +28,6 @@ from presentation.web.utils import (
     get_category_service,
     get_classification_service,
     get_client_now,
-    get_fetcher_service,
     get_transaction_service,
     get_user_settings_service,
     load_and_classify,
