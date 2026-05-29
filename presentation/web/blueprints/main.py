@@ -28,6 +28,7 @@ from presentation.web.utils import (
     get_category_service,
     get_classification_service,
     get_client_now,
+    get_fetcher_service,
     get_transaction_service,
     get_user_settings_service,
     load_and_classify,
@@ -360,6 +361,7 @@ def trends():
         category_service=category_service, user_settings_service=user_settings_service
     )
     classification_service = get_classification_service()
+    fetcher_service = get_fetcher_service()
 
     # Load and classify all transactions, then filter
     tx_dict = load_and_classify(tx_service, classification_service)
@@ -396,6 +398,30 @@ def trends():
 
     # Sort months chronologically
     sorted_months = sorted(monthly_data.keys())
+
+    # Build fetcher_id -> group_id and group_id -> latest-version name maps.
+    fetcher_id_to_group = {}
+    group_to_name = {}
+    group_latest_version = {}
+    for fetcher in fetcher_service.get_all_fetchers():
+        group_id = fetcher.group_id or fetcher.id
+        fetcher_id_to_group[fetcher.id] = group_id
+        # Keep the name from the highest version number within each group.
+        if (
+            group_id not in group_latest_version
+            or fetcher.version > group_latest_version[group_id]
+        ):
+            group_latest_version[group_id] = fetcher.version
+            group_to_name[group_id] = fetcher.name
+
+    fetcher_datasets = build_fetcher_usage_datasets(
+        transactions,
+        fetcher_id_to_group,
+        group_to_name,
+        converter,
+        user_currency,
+        sorted_months,
+    )
 
     all_categories = category_service.categories
 
@@ -540,6 +566,7 @@ def trends():
             moving_avg_datasets=moving_avg_datasets,
             monthly_totals=monthly_totals,
             monthly_totals_moving_avg=monthly_totals_moving_avg,
+            fetcher_datasets=fetcher_datasets,
             from_date=from_date_display,
             to_date=to_date_display,
             currency_symbol=currency_symbol,

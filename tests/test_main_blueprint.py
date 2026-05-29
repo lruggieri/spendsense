@@ -36,6 +36,9 @@ def mock_services():
     mock_classification_service = MagicMock()
     mock_classification_service.classify_transactions.return_value = {}
 
+    mock_fetcher_service = MagicMock()
+    mock_fetcher_service.get_all_fetchers.return_value = []
+
     tree_data = {"id": "all", "name": "All", "total": 0, "children": []}
 
     patches = {
@@ -55,6 +58,10 @@ def mock_services():
             "presentation.web.blueprints.main.get_classification_service",
             return_value=mock_classification_service,
         ),
+        "fetcher": patch(
+            "presentation.web.blueprints.main.get_fetcher_service",
+            return_value=mock_fetcher_service,
+        ),
         "tree": patch(
             "presentation.web.blueprints.main.build_category_tree_data",
             return_value=tree_data,
@@ -70,6 +77,7 @@ def mock_services():
         "user_settings_service": mock_user_settings_service,
         "tx_service": mock_tx_service,
         "classification_service": mock_classification_service,
+        "fetcher_service": mock_fetcher_service,
         "tree_data": tree_data,
         "patches": started,
     }
@@ -181,6 +189,40 @@ class TestMainBlueprint:
     def test_trends_default(self, authenticated_client, mock_services):
         """GET /trends without date params should return 200."""
         response = authenticated_client.get("/trends")
+        assert response.status_code == 200
+
+    def test_trends_includes_fetcher_usage(self, authenticated_client, mock_services):
+        """GET /trends builds per-bank fetcher usage datasets without error."""
+        from domain.entities.fetcher import Fetcher
+        from domain.entities.transaction import Transaction
+
+        fetcher = Fetcher(
+            id="f-v1",
+            user_id="test-user",
+            name="My Bank",
+            from_emails=["bank@example.com"],
+            group_id="g-bank",
+            version=1,
+        )
+        mock_services["fetcher_service"].get_all_fetchers.return_value = [fetcher]
+
+        txs = [
+            Transaction(
+                id="t1",
+                date=datetime(2024, 1, 15, tzinfo=timezone.utc),
+                amount=1000,
+                description="d",
+                category="cat",
+                source="src",
+                currency="USD",
+                fetcher_id="f-v1",
+            ),
+        ]
+        mock_services["tx_service"].get_all_transactions_filtered.return_value = txs
+
+        response = authenticated_client.get(
+            "/trends?from_date=2024-01-01&to_date=2024-02-01"
+        )
         assert response.status_code == 200
 
     def test_api_debug_info(self, authenticated_client, mock_services):
