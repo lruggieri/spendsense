@@ -242,3 +242,113 @@ class TestGetClientTimezone:
         with app.test_request_context():
             now = get_client_now()
             assert now.tzinfo == timezone.utc
+
+
+class TestBuildFetcherUsageDatasets:
+    """Unit tests for the build_fetcher_usage_datasets helper."""
+
+    @staticmethod
+    def _tx(tx_id, date_str, amount, fetcher_id, currency="USD"):
+        from domain.entities.transaction import Transaction
+
+        return Transaction(
+            id=tx_id,
+            date=datetime.fromisoformat(date_str),
+            amount=amount,
+            description="desc",
+            category="cat",
+            source="src",
+            currency=currency,
+            fetcher_id=fetcher_id,
+        )
+
+    @staticmethod
+    def _converter():
+        # Identity converter: returns the major-unit amount unchanged.
+        return MagicMock(convert=lambda a, f, t, d=None: a)
+
+    def test_returns_empty_list_for_no_transactions(self):
+        from presentation.web.blueprints.main import build_fetcher_usage_datasets
+
+        result = build_fetcher_usage_datasets([], {}, {}, self._converter(), "USD", [])
+        assert result == []
+
+    def test_groups_by_group_id_across_months(self):
+        from presentation.web.blueprints.main import build_fetcher_usage_datasets
+
+        # USD has 2 minor units, so amount=1000 -> 10.00 major units.
+        txs = [
+            self._tx("t1", "2024-01-15", 1000, "f-v1"),
+            self._tx("t2", "2024-01-20", 2000, "f-v1"),
+            self._tx("t3", "2024-02-10", 500, "f-v1"),
+        ]
+        fetcher_id_to_group = {"f-v1": "g-bank-a"}
+        group_to_name = {"g-bank-a": "Bank A"}
+        months = ["2024-01", "2024-02"]
+
+        result = build_fetcher_usage_datasets(
+            txs, fetcher_id_to_group, group_to_name, self._converter(), "USD", months
+        )
+
+        assert len(result) == 1
+        ds = result[0]
+        assert ds["label"] == "Bank A"
+        assert ds["group_id"] == "g-bank-a"
+        assert ds["count_data"] == [2, 1]
+        assert ds["amount_data"] == [30.0, 5.0]
+
+    def test_unresolvable_and_none_fetcher_go_to_unknown_bucket(self):
+        from presentation.web.blueprints.main import (
+            UNKNOWN_FETCHER_GROUP,
+            UNKNOWN_FETCHER_LABEL,
+            build_fetcher_usage_datasets,
+        )
+
+        txs = [
+            self._tx("t1", "2024-01-15", 1000, None),
+            self._tx("t2", "2024-01-20", 1000, "missing-id"),
+        ]
+        result = build_fetcher_usage_datasets(
+            txs, {}, {}, self._converter(), "USD", ["2024-01"]
+        )
+
+        assert len(result) == 1
+        ds = result[0]
+        assert ds["group_id"] == UNKNOWN_FETCHER_GROUP
+        assert ds["label"] == UNKNOWN_FETCHER_LABEL
+        assert ds["count_data"] == [2]
+        assert ds["amount_data"] == [20.0]
+
+    def test_unknown_bucket_absent_when_all_resolvable(self):
+        from presentation.web.blueprints.main import (
+            UNKNOWN_FETCHER_GROUP,
+            build_fetcher_usage_datasets,
+        )
+
+        txs = [self._tx("t1", "2024-01-15", 1000, "f-v1")]
+        result = build_fetcher_usage_datasets(
+            txs, {"f-v1": "g-a"}, {"g-a": "Bank A"}, self._converter(), "USD", ["2024-01"]
+        )
+
+        assert all(ds["group_id"] != UNKNOWN_FETCHER_GROUP for ds in result)
+
+    def test_named_banks_sorted_then_unknown_last(self):
+        from presentation.web.blueprints.main import (
+            UNKNOWN_FETCHER_GROUP,
+            build_fetcher_usage_datasets,
+        )
+
+        txs = [
+            self._tx("t1", "2024-01-15", 1000, "f-z"),
+            self._tx("t2", "2024-01-15", 1000, "f-a"),
+            self._tx("t3", "2024-01-15", 1000, None),
+        ]
+        fetcher_id_to_group = {"f-z": "g-z", "f-a": "g-a"}
+        group_to_name = {"g-z": "Zebra Bank", "g-a": "Apple Bank"}
+
+        result = build_fetcher_usage_datasets(
+            txs, fetcher_id_to_group, group_to_name, self._converter(), "USD", ["2024-01"]
+        )
+
+        assert [ds["label"] for ds in result[:2]] == ["Apple Bank", "Zebra Bank"]
+        assert result[-1]["group_id"] == UNKNOWN_FETCHER_GROUP

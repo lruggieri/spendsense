@@ -28,6 +28,7 @@ from presentation.web.utils import (
     get_category_service,
     get_classification_service,
     get_client_now,
+    get_fetcher_service,
     get_transaction_service,
     get_user_settings_service,
     load_and_classify,
@@ -37,6 +38,72 @@ from presentation.web.utils import (
 logger = logging.getLogger(__name__)
 
 main_bp = Blueprint("main", __name__)
+
+UNKNOWN_FETCHER_GROUP = "unknown"
+UNKNOWN_FETCHER_LABEL = "Unknown / Manual"
+
+
+def build_fetcher_usage_datasets(
+    transactions,
+    fetcher_id_to_group,
+    group_to_name,
+    converter,
+    user_currency,
+    sorted_months,
+):
+    """Aggregate transactions into per-bank monthly count and amount series.
+
+    Resolves each transaction to its fetcher group_id (bank); transactions whose
+    fetcher_id is missing or unresolvable are bucketed under a single
+    UNKNOWN_FETCHER_GROUP ("Unknown / Manual") line.
+
+    Returns a list of dataset dicts (one per group with transactions):
+        {
+            "label": <bank name | "Unknown / Manual">,
+            "group_id": <group_id | UNKNOWN_FETCHER_GROUP>,
+            "amount_data": [<amount per month, aligned to sorted_months>],
+            "count_data": [<count per month, aligned to sorted_months>],
+        }
+    Named banks are sorted by label; the Unknown bucket (if present) is last.
+    """
+    # {group_key: {month_key: amount}} and {group_key: {month_key: count}}
+    amount_data = defaultdict(lambda: defaultdict(float))
+    count_data = defaultdict(lambda: defaultdict(int))
+
+    for tx in transactions:
+        month_key = tx.date.strftime("%Y-%m")
+        group_key = fetcher_id_to_group.get(tx.fetcher_id) if tx.fetcher_id else None
+        if not group_key:
+            group_key = UNKNOWN_FETCHER_GROUP
+
+        amount_major = to_major_units_float(tx.amount, tx.currency)
+        converted = converter.convert(amount_major, tx.currency, user_currency, tx.date)
+        amount_data[group_key][month_key] += converted
+        count_data[group_key][month_key] += 1
+
+    datasets = []
+    for group_key in amount_data:
+        label = (
+            UNKNOWN_FETCHER_LABEL
+            if group_key == UNKNOWN_FETCHER_GROUP
+            else group_to_name.get(group_key, group_key)
+        )
+        datasets.append(
+            {
+                "label": label,
+                "group_id": group_key,
+                "amount_data": [
+                    round(amount_data[group_key].get(m, 0), 2) for m in sorted_months
+                ],
+                "count_data": [count_data[group_key].get(m, 0) for m in sorted_months],
+            }
+        )
+
+    # Named banks sorted by label; Unknown bucket always last.
+    datasets.sort(
+        key=lambda ds: (ds["group_id"] == UNKNOWN_FETCHER_GROUP, ds["label"].lower())
+    )
+    return datasets
 
 
 @main_bp.route("/privacy-policy")
