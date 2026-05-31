@@ -160,6 +160,11 @@
         <button class="control-btn secondary" data-mode="count" type="button">Count</button>
     </div>
 
+    <div class="control-buttons">
+        <button class="control-btn" type="button" id="fetcherShowAll">Show All Fetchers</button>
+        <button class="control-btn secondary" type="button" id="fetcherHideAll">Hide All Fetchers</button>
+    </div>
+
     <div class="chart-wrapper">
         <canvas id="fetcherUsageChart"></canvas>
     </div>
@@ -1029,6 +1034,16 @@
         document.querySelectorAll('#fetcherUsageToggle .control-btn').forEach(btn => {
             btn.addEventListener('click', () => setFetcherUsageMode(btn.dataset.mode));
         });
+
+        function setAllFetchersHidden(hidden) {
+            fetcherUsageChart.data.datasets.forEach((ds, i) => {
+                fetcherUsageChart.getDatasetMeta(i).hidden = hidden;
+            });
+            fetcherUsageChart.update();
+        }
+
+        document.getElementById('fetcherShowAll').addEventListener('click', () => setAllFetchersHidden(false));
+        document.getElementById('fetcherHideAll').addEventListener('click', () => setAllFetchersHidden(true));
     }
 </script>
 {% endblock %}
