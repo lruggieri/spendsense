@@ -224,6 +224,7 @@ class TestMainBlueprint:
             "/trends?from_date=2024-01-01&to_date=2024-02-01"
         )
         assert response.status_code == 200
+        assert b"My Bank" in response.data
 
     def test_api_debug_info(self, authenticated_client, mock_services):
         """GET /api/debug-info should return JSON with debug information."""

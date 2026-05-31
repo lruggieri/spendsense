@@ -146,6 +146,25 @@
     </div>
 </div>
 
+<!-- Usage by Bank Chart -->
+<div class="card">
+    <h2>Usage by Bank</h2>
+
+    <div class="legend-info">
+        <strong>One line per bank (fetcher).</strong> Toggle between total amount and transaction count.<br>
+        Single-click a legend entry to hide/show that bank.
+    </div>
+
+    <div class="control-buttons" id="fetcherUsageToggle">
+        <button class="control-btn" data-mode="amount" type="button">Amount</button>
+        <button class="control-btn secondary" data-mode="count" type="button">Count</button>
+    </div>
+
+    <div class="chart-wrapper">
+        <canvas id="fetcherUsageChart"></canvas>
+    </div>
+</div>
+
 <!-- Trends Chart -->
 <div class="card">
     <h2>Monthly Expense Trends by Category</h2>
@@ -206,6 +225,7 @@
     const fromDate = '{{ from_date }}';
     const toDate = '{{ to_date }}';
     const currencySymbol = '{{ currency_symbol }}';
+    const fetcherDatasetsRaw = {{ fetcher_datasets | tojson }};
 
     /**
      * Truncate text to a maximum length with ellipsis
@@ -901,5 +921,90 @@
         btn.onclick = () => isolateCategoryMA(rootCat.category_id);
         categoryButtonsMA.appendChild(btn);
     });
+
+    // ---- Usage by Bank chart ----
+    const FETCHER_PALETTE = [
+        '#36A2EB', '#FF6384', '#FFCE56', '#4BC0C0', '#9966FF',
+        '#FF9F40', '#2ECC71', '#E74C3C', '#1ABC9C', '#9B59B6',
+        '#34495E', '#F39C12'
+    ];
+
+    let fetcherUsageMode = 'amount'; // 'amount' | 'count'
+
+    const fetcherCanvas = document.getElementById('fetcherUsageChart');
+    let fetcherUsageChart = null;
+
+    if (fetcherCanvas && fetcherDatasetsRaw.length > 0) {
+        const fetcherChartData = {
+            labels: months,
+            datasets: fetcherDatasetsRaw.map((ds, i) => {
+                const color = FETCHER_PALETTE[i % FETCHER_PALETTE.length];
+                return {
+                    label: ds.label,
+                    data: ds.amount_data,
+                    amountData: ds.amount_data,
+                    countData: ds.count_data,
+                    borderColor: color,
+                    backgroundColor: color,
+                    borderWidth: 2,
+                    tension: 0.1,
+                    pointRadius: 3,
+                    pointHoverRadius: 5
+                };
+            })
+        };
+
+        function fetcherTooltipLabel(context) {
+            if (fetcherUsageMode === 'count') {
+                const n = context.parsed.y;
+                return context.dataset.label + ': ' + n + (n === 1 ? ' transaction' : ' transactions');
+            }
+            return context.dataset.label + ': ' + currencySymbol + Math.round(context.parsed.y).toLocaleString();
+        }
+
+        function fetcherYTick(value) {
+            if (fetcherUsageMode === 'count') {
+                return value.toLocaleString();
+            }
+            return currencySymbol + value.toLocaleString();
+        }
+
+        const ctxFetcher = fetcherCanvas.getContext('2d');
+        fetcherUsageChart = new Chart(ctxFetcher, {
+            type: 'line',
+            data: fetcherChartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: { callbacks: { label: fetcherTooltipLabel } }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: fetcherYTick }
+                    }
+                }
+            }
+        });
+
+        function setFetcherUsageMode(mode) {
+            fetcherUsageMode = mode;
+            fetcherUsageChart.data.datasets.forEach(ds => {
+                ds.data = (mode === 'count') ? ds.countData : ds.amountData;
+            });
+            fetcherUsageChart.update();
+
+            document.querySelectorAll('#fetcherUsageToggle .control-btn').forEach(btn => {
+                btn.classList.toggle('secondary', btn.dataset.mode !== mode);
+            });
+        }
+
+        document.querySelectorAll('#fetcherUsageToggle .control-btn').forEach(btn => {
+            btn.addEventListener('click', () => setFetcherUsageMode(btn.dataset.mode));
+        });
+    }
 </script>
 {% endblock %}
