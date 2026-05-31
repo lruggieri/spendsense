@@ -151,8 +151,8 @@
     <h2>Usage by Fetcher</h2>
 
     <div class="legend-info">
-        <strong>One line per fetcher group.</strong> Toggle between total amount and transaction count.<br>
-        Single-click a legend entry to hide/show that fetcher.
+        <strong>Legend Interactions:</strong> Single-click to toggle just that fetcher. Double-click to isolate that fetcher (hide all others).<br>
+        <strong>Display:</strong> One line per fetcher group. Toggle between total amount and transaction count.
     </div>
 
     <div class="control-buttons" id="fetcherUsageToggle">
@@ -923,6 +923,26 @@
     });
 
     // ---- Usage by Fetcher chart ----
+    /**
+     * Chart.js legend onClick: single-click toggles just the clicked dataset;
+     * double-click isolates it, hiding every other line.
+     */
+    function isolatingLegendOnClick(event, legendItem, legend) {
+        const chart = legend.chart;
+        const index = legendItem.datasetIndex;
+        if (event.native.detail === 2) {
+            // Double-click: show only this line.
+            chart.data.datasets.forEach((ds, i) => {
+                chart.getDatasetMeta(i).hidden = i !== index;
+            });
+        } else {
+            // Single-click: toggle just this one.
+            const meta = chart.getDatasetMeta(index);
+            meta.hidden = !meta.hidden;
+        }
+        chart.update();
+    }
+
     const FETCHER_PALETTE = [
         '#36A2EB', '#FF6384', '#FFCE56', '#4BC0C0', '#9966FF',
         '#FF9F40', '#2ECC71', '#E74C3C', '#1ABC9C', '#9B59B6',
@@ -978,7 +998,7 @@
                 maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
-                    legend: { position: 'top' },
+                    legend: { position: 'top', onClick: isolatingLegendOnClick },
                     tooltip: {
                         // Sort tooltip rows by the active value (amount or count), highest first.
                         itemSort: (a, b) => b.parsed.y - a.parsed.y,
