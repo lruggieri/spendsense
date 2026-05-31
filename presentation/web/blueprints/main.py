@@ -28,6 +28,7 @@ from presentation.web.utils import (
     get_category_service,
     get_classification_service,
     get_client_now,
+    get_fetcher_service,
     get_transaction_service,
     get_user_settings_service,
     load_and_classify,
@@ -37,6 +38,72 @@ from presentation.web.utils import (
 logger = logging.getLogger(__name__)
 
 main_bp = Blueprint("main", __name__)
+
+UNKNOWN_FETCHER_GROUP = "unknown"
+UNKNOWN_FETCHER_LABEL = "Unknown / Manual"
+
+
+def build_fetcher_usage_datasets(
+    transactions,
+    fetcher_id_to_group,
+    group_to_name,
+    converter,
+    user_currency,
+    sorted_months,
+):
+    """Aggregate transactions into per-fetcher-group monthly count and amount series.
+
+    Resolves each transaction to its fetcher group_id; transactions whose
+    fetcher_id is missing or unresolvable are bucketed under a single
+    UNKNOWN_FETCHER_GROUP ("Unknown / Manual") line.
+
+    Returns a list of dataset dicts (one per group with transactions):
+        {
+            "label": <fetcher group name | "Unknown / Manual">,
+            "group_id": <group_id | UNKNOWN_FETCHER_GROUP>,
+            "amount_data": [<amount per month, aligned to sorted_months>],
+            "count_data": [<count per month, aligned to sorted_months>],
+        }
+    Named fetcher groups are sorted by label; the Unknown bucket (if present) is last.
+    """
+    # {group_key: {month_key: amount}} and {group_key: {month_key: count}}
+    amount_data = defaultdict(lambda: defaultdict(float))
+    count_data = defaultdict(lambda: defaultdict(int))
+
+    for tx in transactions:
+        month_key = tx.date.strftime("%Y-%m")
+        group_key = fetcher_id_to_group.get(tx.fetcher_id) if tx.fetcher_id else None
+        if not group_key:
+            group_key = UNKNOWN_FETCHER_GROUP
+
+        amount_major = to_major_units_float(tx.amount, tx.currency)
+        converted = converter.convert(amount_major, tx.currency, user_currency, tx.date)
+        amount_data[group_key][month_key] += converted
+        count_data[group_key][month_key] += 1
+
+    datasets = []
+    for group_key in amount_data:
+        label = (
+            UNKNOWN_FETCHER_LABEL
+            if group_key == UNKNOWN_FETCHER_GROUP
+            else group_to_name.get(group_key, group_key)
+        )
+        datasets.append(
+            {
+                "label": label,
+                "group_id": group_key,
+                "amount_data": [
+                    round(amount_data[group_key].get(m, 0), 2) for m in sorted_months
+                ],
+                "count_data": [count_data[group_key].get(m, 0) for m in sorted_months],
+            }
+        )
+
+    # Named fetcher groups sorted by label; Unknown bucket always last.
+    datasets.sort(
+        key=lambda ds: (ds["group_id"] == UNKNOWN_FETCHER_GROUP, ds["label"].lower())
+    )
+    return datasets
 
 
 @main_bp.route("/privacy-policy")
@@ -294,6 +361,7 @@ def trends():
         category_service=category_service, user_settings_service=user_settings_service
     )
     classification_service = get_classification_service()
+    fetcher_service = get_fetcher_service()
 
     # Load and classify all transactions, then filter
     tx_dict = load_and_classify(tx_service, classification_service)
@@ -330,6 +398,30 @@ def trends():
 
     # Sort months chronologically
     sorted_months = sorted(monthly_data.keys())
+
+    # Build fetcher_id -> group_id and group_id -> latest-version name maps.
+    fetcher_id_to_group = {}
+    group_to_name = {}
+    group_latest_version = {}
+    for fetcher in fetcher_service.get_all_fetchers():
+        group_id = fetcher.group_id or fetcher.id
+        fetcher_id_to_group[fetcher.id] = group_id
+        # Keep the name from the highest version number within each group.
+        if (
+            group_id not in group_latest_version
+            or fetcher.version > group_latest_version[group_id]
+        ):
+            group_latest_version[group_id] = fetcher.version
+            group_to_name[group_id] = fetcher.name
+
+    fetcher_datasets = build_fetcher_usage_datasets(
+        transactions,
+        fetcher_id_to_group,
+        group_to_name,
+        converter,
+        user_currency,
+        sorted_months,
+    )
 
     all_categories = category_service.categories
 
@@ -474,6 +566,7 @@ def trends():
             moving_avg_datasets=moving_avg_datasets,
             monthly_totals=monthly_totals,
             monthly_totals_moving_avg=monthly_totals_moving_avg,
+            fetcher_datasets=fetcher_datasets,
             from_date=from_date_display,
             to_date=to_date_display,
             currency_symbol=currency_symbol,

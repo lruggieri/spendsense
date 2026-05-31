@@ -36,6 +36,9 @@ def mock_services():
     mock_classification_service = MagicMock()
     mock_classification_service.classify_transactions.return_value = {}
 
+    mock_fetcher_service = MagicMock()
+    mock_fetcher_service.get_all_fetchers.return_value = []
+
     tree_data = {"id": "all", "name": "All", "total": 0, "children": []}
 
     patches = {
@@ -55,6 +58,10 @@ def mock_services():
             "presentation.web.blueprints.main.get_classification_service",
             return_value=mock_classification_service,
         ),
+        "fetcher": patch(
+            "presentation.web.blueprints.main.get_fetcher_service",
+            return_value=mock_fetcher_service,
+        ),
         "tree": patch(
             "presentation.web.blueprints.main.build_category_tree_data",
             return_value=tree_data,
@@ -70,6 +77,7 @@ def mock_services():
         "user_settings_service": mock_user_settings_service,
         "tx_service": mock_tx_service,
         "classification_service": mock_classification_service,
+        "fetcher_service": mock_fetcher_service,
         "tree_data": tree_data,
         "patches": started,
     }
@@ -183,6 +191,89 @@ class TestMainBlueprint:
         response = authenticated_client.get("/trends")
         assert response.status_code == 200
 
+    def test_trends_includes_fetcher_usage(self, authenticated_client, mock_services):
+        """GET /trends builds per-bank fetcher usage datasets without error."""
+        from domain.entities.fetcher import Fetcher
+        from domain.entities.transaction import Transaction
+
+        fetcher = Fetcher(
+            id="f-v1",
+            user_id="test-user",
+            name="My Bank",
+            from_emails=["bank@example.com"],
+            group_id="g-bank",
+            version=1,
+        )
+        mock_services["fetcher_service"].get_all_fetchers.return_value = [fetcher]
+
+        txs = [
+            Transaction(
+                id="t1",
+                date=datetime(2024, 1, 15, tzinfo=timezone.utc),
+                amount=1000,
+                description="d",
+                category="cat",
+                source="src",
+                currency="USD",
+                fetcher_id="f-v1",
+            ),
+        ]
+        mock_services["tx_service"].get_all_transactions_filtered.return_value = txs
+
+        response = authenticated_client.get(
+            "/trends?from_date=2024-01-01&to_date=2024-02-01"
+        )
+        assert response.status_code == 200
+        assert b"My Bank" in response.data
+
+    def test_trends_uses_latest_fetcher_version_name(self, authenticated_client, mock_services):
+        """The bank label should come from the latest fetcher version's name."""
+        from domain.entities.fetcher import Fetcher
+        from domain.entities.transaction import Transaction
+
+        # Two versions of the same bank sharing a group_id; v2 was renamed.
+        v1 = Fetcher(
+            id="f-v1",
+            user_id="test-user",
+            name="Old Bank Name",
+            from_emails=["bank@example.com"],
+            group_id="g-bank",
+            version=1,
+        )
+        v2 = Fetcher(
+            id="f-v2",
+            user_id="test-user",
+            name="New Bank Name",
+            from_emails=["bank@example.com"],
+            group_id="g-bank",
+            version=2,
+        )
+        # Return them oldest-first to ensure the loop picks by version, not order.
+        mock_services["fetcher_service"].get_all_fetchers.return_value = [v1, v2]
+
+        # A transaction fetched by the OLD version still resolves to the group,
+        # and must display the latest (v2) name.
+        txs = [
+            Transaction(
+                id="t1",
+                date=datetime(2024, 1, 15, tzinfo=timezone.utc),
+                amount=1000,
+                description="d",
+                category="cat",
+                source="src",
+                currency="USD",
+                fetcher_id="f-v1",
+            ),
+        ]
+        mock_services["tx_service"].get_all_transactions_filtered.return_value = txs
+
+        response = authenticated_client.get(
+            "/trends?from_date=2024-01-01&to_date=2024-02-01"
+        )
+        assert response.status_code == 200
+        assert b"New Bank Name" in response.data
+        assert b"Old Bank Name" not in response.data
+
     def test_api_debug_info(self, authenticated_client, mock_services):
         """GET /api/debug-info should return JSON with debug information."""
         with patch(
@@ -242,3 +333,113 @@ class TestGetClientTimezone:
         with app.test_request_context():
             now = get_client_now()
             assert now.tzinfo == timezone.utc
+
+
+class TestBuildFetcherUsageDatasets:
+    """Unit tests for the build_fetcher_usage_datasets helper."""
+
+    @staticmethod
+    def _tx(tx_id, date_str, amount, fetcher_id, currency="USD"):
+        from domain.entities.transaction import Transaction
+
+        return Transaction(
+            id=tx_id,
+            date=datetime.fromisoformat(date_str),
+            amount=amount,
+            description="desc",
+            category="cat",
+            source="src",
+            currency=currency,
+            fetcher_id=fetcher_id,
+        )
+
+    @staticmethod
+    def _converter():
+        # Identity converter: returns the major-unit amount unchanged.
+        return MagicMock(convert=lambda a, f, t, d=None: a)
+
+    def test_returns_empty_list_for_no_transactions(self):
+        from presentation.web.blueprints.main import build_fetcher_usage_datasets
+
+        result = build_fetcher_usage_datasets([], {}, {}, self._converter(), "USD", [])
+        assert result == []
+
+    def test_groups_by_group_id_across_months(self):
+        from presentation.web.blueprints.main import build_fetcher_usage_datasets
+
+        # USD has 2 minor units, so amount=1000 -> 10.00 major units.
+        txs = [
+            self._tx("t1", "2024-01-15", 1000, "f-v1"),
+            self._tx("t2", "2024-01-20", 2000, "f-v1"),
+            self._tx("t3", "2024-02-10", 500, "f-v1"),
+        ]
+        fetcher_id_to_group = {"f-v1": "g-bank-a"}
+        group_to_name = {"g-bank-a": "Bank A"}
+        months = ["2024-01", "2024-02"]
+
+        result = build_fetcher_usage_datasets(
+            txs, fetcher_id_to_group, group_to_name, self._converter(), "USD", months
+        )
+
+        assert len(result) == 1
+        ds = result[0]
+        assert ds["label"] == "Bank A"
+        assert ds["group_id"] == "g-bank-a"
+        assert ds["count_data"] == [2, 1]
+        assert ds["amount_data"] == [30.0, 5.0]
+
+    def test_unresolvable_and_none_fetcher_go_to_unknown_bucket(self):
+        from presentation.web.blueprints.main import (
+            UNKNOWN_FETCHER_GROUP,
+            UNKNOWN_FETCHER_LABEL,
+            build_fetcher_usage_datasets,
+        )
+
+        txs = [
+            self._tx("t1", "2024-01-15", 1000, None),
+            self._tx("t2", "2024-01-20", 1000, "missing-id"),
+        ]
+        result = build_fetcher_usage_datasets(
+            txs, {}, {}, self._converter(), "USD", ["2024-01"]
+        )
+
+        assert len(result) == 1
+        ds = result[0]
+        assert ds["group_id"] == UNKNOWN_FETCHER_GROUP
+        assert ds["label"] == UNKNOWN_FETCHER_LABEL
+        assert ds["count_data"] == [2]
+        assert ds["amount_data"] == [20.0]
+
+    def test_unknown_bucket_absent_when_all_resolvable(self):
+        from presentation.web.blueprints.main import (
+            UNKNOWN_FETCHER_GROUP,
+            build_fetcher_usage_datasets,
+        )
+
+        txs = [self._tx("t1", "2024-01-15", 1000, "f-v1")]
+        result = build_fetcher_usage_datasets(
+            txs, {"f-v1": "g-a"}, {"g-a": "Bank A"}, self._converter(), "USD", ["2024-01"]
+        )
+
+        assert all(ds["group_id"] != UNKNOWN_FETCHER_GROUP for ds in result)
+
+    def test_named_banks_sorted_then_unknown_last(self):
+        from presentation.web.blueprints.main import (
+            UNKNOWN_FETCHER_GROUP,
+            build_fetcher_usage_datasets,
+        )
+
+        txs = [
+            self._tx("t1", "2024-01-15", 1000, "f-z"),
+            self._tx("t2", "2024-01-15", 1000, "f-a"),
+            self._tx("t3", "2024-01-15", 1000, None),
+        ]
+        fetcher_id_to_group = {"f-z": "g-z", "f-a": "g-a"}
+        group_to_name = {"g-z": "Zebra Bank", "g-a": "Apple Bank"}
+
+        result = build_fetcher_usage_datasets(
+            txs, fetcher_id_to_group, group_to_name, self._converter(), "USD", ["2024-01"]
+        )
+
+        assert [ds["label"] for ds in result[:2]] == ["Apple Bank", "Zebra Bank"]
+        assert result[-1]["group_id"] == UNKNOWN_FETCHER_GROUP

@@ -146,6 +146,30 @@
     </div>
 </div>
 
+<!-- Usage by Fetcher Chart -->
+<div class="card">
+    <h2>Usage by Fetcher</h2>
+
+    <div class="legend-info">
+        <strong>Legend Interactions:</strong> Single-click to toggle just that fetcher. Double-click to isolate that fetcher (hide all others).<br>
+        <strong>Display:</strong> One line per fetcher group. Toggle between total amount and transaction count.
+    </div>
+
+    <div class="control-buttons" id="fetcherUsageToggle">
+        <button class="control-btn" data-mode="amount" type="button">Amount</button>
+        <button class="control-btn secondary" data-mode="count" type="button">Count</button>
+    </div>
+
+    <div class="control-buttons">
+        <button class="control-btn" type="button" id="fetcherShowAll">Show All Fetchers</button>
+        <button class="control-btn secondary" type="button" id="fetcherHideAll">Hide All Fetchers</button>
+    </div>
+
+    <div class="chart-wrapper">
+        <canvas id="fetcherUsageChart"></canvas>
+    </div>
+</div>
+
 <!-- Trends Chart -->
 <div class="card">
     <h2>Monthly Expense Trends by Category</h2>
@@ -206,6 +230,7 @@
     const fromDate = '{{ from_date }}';
     const toDate = '{{ to_date }}';
     const currencySymbol = '{{ currency_symbol }}';
+    const fetcherDatasetsRaw = {{ fetcher_datasets | tojson }};
 
     /**
      * Truncate text to a maximum length with ellipsis
@@ -901,5 +926,124 @@
         btn.onclick = () => isolateCategoryMA(rootCat.category_id);
         categoryButtonsMA.appendChild(btn);
     });
+
+    // ---- Usage by Fetcher chart ----
+    /**
+     * Chart.js legend onClick: single-click toggles just the clicked dataset;
+     * double-click isolates it, hiding every other line.
+     */
+    function isolatingLegendOnClick(event, legendItem, legend) {
+        const chart = legend.chart;
+        const index = legendItem.datasetIndex;
+        if (event.native.detail === 2) {
+            // Double-click: show only this line.
+            chart.data.datasets.forEach((ds, i) => {
+                chart.getDatasetMeta(i).hidden = i !== index;
+            });
+        } else {
+            // Single-click: toggle just this one.
+            const meta = chart.getDatasetMeta(index);
+            meta.hidden = !meta.hidden;
+        }
+        chart.update();
+    }
+
+    const FETCHER_PALETTE = [
+        '#36A2EB', '#FF6384', '#FFCE56', '#4BC0C0', '#9966FF',
+        '#FF9F40', '#2ECC71', '#E74C3C', '#1ABC9C', '#9B59B6',
+        '#34495E', '#F39C12'
+    ];
+
+    let fetcherUsageMode = 'amount'; // 'amount' | 'count'
+
+    const fetcherCanvas = document.getElementById('fetcherUsageChart');
+    let fetcherUsageChart = null;
+
+    if (fetcherCanvas && fetcherDatasetsRaw.length > 0) {
+        const fetcherChartData = {
+            labels: months,
+            datasets: fetcherDatasetsRaw.map((ds, i) => {
+                const color = FETCHER_PALETTE[i % FETCHER_PALETTE.length];
+                return {
+                    label: ds.label,
+                    data: ds.amount_data,
+                    amountData: ds.amount_data,
+                    countData: ds.count_data,
+                    borderColor: color,
+                    backgroundColor: color,
+                    borderWidth: 2,
+                    tension: 0.1,
+                    pointRadius: 3,
+                    pointHoverRadius: 5
+                };
+            })
+        };
+
+        function fetcherTooltipLabel(context) {
+            if (fetcherUsageMode === 'count') {
+                const n = context.parsed.y;
+                return context.dataset.label + ': ' + n + (n === 1 ? ' transaction' : ' transactions');
+            }
+            return context.dataset.label + ': ' + currencySymbol + Math.round(context.parsed.y).toLocaleString();
+        }
+
+        function fetcherYTick(value) {
+            if (fetcherUsageMode === 'count') {
+                return value.toLocaleString();
+            }
+            return currencySymbol + value.toLocaleString();
+        }
+
+        const ctxFetcher = fetcherCanvas.getContext('2d');
+        fetcherUsageChart = new Chart(ctxFetcher, {
+            type: 'line',
+            data: fetcherChartData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top', onClick: isolatingLegendOnClick },
+                    tooltip: {
+                        // Sort tooltip rows by the active value (amount or count), highest first.
+                        itemSort: (a, b) => b.parsed.y - a.parsed.y,
+                        callbacks: { label: fetcherTooltipLabel }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: fetcherYTick }
+                    }
+                }
+            }
+        });
+
+        function setFetcherUsageMode(mode) {
+            fetcherUsageMode = mode;
+            fetcherUsageChart.data.datasets.forEach(ds => {
+                ds.data = (mode === 'count') ? ds.countData : ds.amountData;
+            });
+            fetcherUsageChart.update();
+
+            document.querySelectorAll('#fetcherUsageToggle .control-btn').forEach(btn => {
+                btn.classList.toggle('secondary', btn.dataset.mode !== mode);
+            });
+        }
+
+        document.querySelectorAll('#fetcherUsageToggle .control-btn').forEach(btn => {
+            btn.addEventListener('click', () => setFetcherUsageMode(btn.dataset.mode));
+        });
+
+        function setAllFetchersHidden(hidden) {
+            fetcherUsageChart.data.datasets.forEach((ds, i) => {
+                fetcherUsageChart.getDatasetMeta(i).hidden = hidden;
+            });
+            fetcherUsageChart.update();
+        }
+
+        document.getElementById('fetcherShowAll').addEventListener('click', () => setAllFetchersHidden(false));
+        document.getElementById('fetcherHideAll').addEventListener('click', () => setAllFetchersHidden(true));
+    }
 </script>
 {% endblock %}
