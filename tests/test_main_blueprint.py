@@ -226,6 +226,54 @@ class TestMainBlueprint:
         assert response.status_code == 200
         assert b"My Bank" in response.data
 
+    def test_trends_uses_latest_fetcher_version_name(self, authenticated_client, mock_services):
+        """The bank label should come from the latest fetcher version's name."""
+        from domain.entities.fetcher import Fetcher
+        from domain.entities.transaction import Transaction
+
+        # Two versions of the same bank sharing a group_id; v2 was renamed.
+        v1 = Fetcher(
+            id="f-v1",
+            user_id="test-user",
+            name="Old Bank Name",
+            from_emails=["bank@example.com"],
+            group_id="g-bank",
+            version=1,
+        )
+        v2 = Fetcher(
+            id="f-v2",
+            user_id="test-user",
+            name="New Bank Name",
+            from_emails=["bank@example.com"],
+            group_id="g-bank",
+            version=2,
+        )
+        # Return them oldest-first to ensure the loop picks by version, not order.
+        mock_services["fetcher_service"].get_all_fetchers.return_value = [v1, v2]
+
+        # A transaction fetched by the OLD version still resolves to the group,
+        # and must display the latest (v2) name.
+        txs = [
+            Transaction(
+                id="t1",
+                date=datetime(2024, 1, 15, tzinfo=timezone.utc),
+                amount=1000,
+                description="d",
+                category="cat",
+                source="src",
+                currency="USD",
+                fetcher_id="f-v1",
+            ),
+        ]
+        mock_services["tx_service"].get_all_transactions_filtered.return_value = txs
+
+        response = authenticated_client.get(
+            "/trends?from_date=2024-01-01&to_date=2024-02-01"
+        )
+        assert response.status_code == 200
+        assert b"New Bank Name" in response.data
+        assert b"Old Bank Name" not in response.data
+
     def test_api_debug_info(self, authenticated_client, mock_services):
         """GET /api/debug-info should return JSON with debug information."""
         with patch(
