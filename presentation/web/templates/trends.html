@@ -979,7 +979,11 @@
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
                     legend: { position: 'top' },
-                    tooltip: { callbacks: { label: fetcherTooltipLabel } }
+                    tooltip: {
+                        // Sort tooltip rows by the active value (amount or count), highest first.
+                        itemSort: (a, b) => b.parsed.y - a.parsed.y,
+                        callbacks: { label: fetcherTooltipLabel }
+                    }
                 },
                 scales: {
                     y: {
