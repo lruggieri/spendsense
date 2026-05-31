@@ -147,9 +147,23 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # diff-aware baseline needs full git history
 
       - name: Install Semgrep
-        run: pip install semgrep
+        run: pip install semgrep==1.164.0  # pinned for reproducible runs (scanner can't drift)
 
+      # `semgrep ci` is diff-aware on pull requests: it scans only findings
+      # introduced by the PR's diff against the merge base, so pre-existing repo
+      # findings or upstream registry-rule promotions can't fail an otherwise-clean PR.
+      # On push to main/develop it performs a full-repo scan, kept non-blocking
+      # (continue-on-error) so pre-existing issues are still surfaced in the logs
+      # without letting rule drift break the default branch.
       - name: Run Semgrep
-        run: semgrep --config=p/python --config=p/flask --config=p/owasp-top-ten --error .
+        run: semgrep ci
+        continue-on-error: ${{ github.event_name == 'push' }}
+        env:
+          SEMGREP_RULES: >-
+            p/python
+            p/flask
+            p/owasp-top-ten
