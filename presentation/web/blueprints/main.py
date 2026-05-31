@@ -51,20 +51,20 @@ def build_fetcher_usage_datasets(
     user_currency,
     sorted_months,
 ):
-    """Aggregate transactions into per-bank monthly count and amount series.
+    """Aggregate transactions into per-fetcher-group monthly count and amount series.
 
-    Resolves each transaction to its fetcher group_id (bank); transactions whose
+    Resolves each transaction to its fetcher group_id; transactions whose
     fetcher_id is missing or unresolvable are bucketed under a single
     UNKNOWN_FETCHER_GROUP ("Unknown / Manual") line.
 
     Returns a list of dataset dicts (one per group with transactions):
         {
-            "label": <bank name | "Unknown / Manual">,
+            "label": <fetcher group name | "Unknown / Manual">,
             "group_id": <group_id | UNKNOWN_FETCHER_GROUP>,
             "amount_data": [<amount per month, aligned to sorted_months>],
             "count_data": [<count per month, aligned to sorted_months>],
         }
-    Named banks are sorted by label; the Unknown bucket (if present) is last.
+    Named fetcher groups are sorted by label; the Unknown bucket (if present) is last.
     """
     # {group_key: {month_key: amount}} and {group_key: {month_key: count}}
     amount_data = defaultdict(lambda: defaultdict(float))
@@ -99,7 +99,7 @@ def build_fetcher_usage_datasets(
             }
         )
 
-    # Named banks sorted by label; Unknown bucket always last.
+    # Named fetcher groups sorted by label; Unknown bucket always last.
     datasets.sort(
         key=lambda ds: (ds["group_id"] == UNKNOWN_FETCHER_GROUP, ds["label"].lower())
     )
