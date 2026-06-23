@@ -374,6 +374,7 @@
      */
     parseAmount(amountStr) {
       if (!amountStr) return '';
+      const isNegative = amountStr.trimStart().startsWith('-');
       // Remove currency symbols and spaces
       let s = amountStr.replace(/[^\d.,]/g, '');
       if (!s) return '';
@@ -417,7 +418,7 @@
       if (normalized.includes('.')) {
         normalized = normalized.replace(/\.?0+$/, '');
       }
-      return normalized;
+      return isNegative ? '-' + normalized : normalized;
     },
 
     /**
