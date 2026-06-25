@@ -275,6 +275,8 @@ class EncryptionService:
         if not wrapped:
             return None
         salt_b64 = self._encryption_repo.get_prf_salt(user_id, key_id)
+        if salt_b64 is None:
+            raise ValueError("missing salt for wrapped DEK")
         kek = hkdf_derive_kek(raw_key, base64.b64decode(salt_b64))
         dek = unwrap_key(wrapped, kek)
         return base64.b64encode(dek).decode("ascii")
