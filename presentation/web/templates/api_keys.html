@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}MCP API Keys{% endblock %}
+{% block page_title %}MCP API Keys{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h2>MCP API Keys</h2>
+    <p class="info-note">API keys let LLM clients (like Claude Code) access your SpendSense data remotely.</p>
+  </div>
+
+  <div id="no-dek-warning" class="info-note" style="display:none">
+    ⚠️ Encryption is enabled. You must unlock your encryption key before creating a new API key — the server needs to wrap your DEK. Please navigate to the main page first to unlock.
+  </div>
+
+  <section>
+    <h3>Create new key</h3>
+    <div class="form-group">
+      <label for="key-label">Label</label>
+      <input id="key-label" type="text" class="form-control" placeholder="e.g. laptop-claude-code" maxlength="80">
+    </div>
+    <div class="form-group">
+      <label for="key-scope">Scope</label>
+      <select id="key-scope" class="form-control">
+        <option value="read">read — list/query only</option>
+        <option value="readwrite">readwrite — read + add/update</option>
+      </select>
+    </div>
+    <button id="btn-create" class="btn btn-primary">Generate key</button>
+  </section>
+
+  <div id="new-key-box" class="card" style="display:none; margin-top:1rem">
+    <p><strong>New key (copy it now — it will not be shown again):</strong></p>
+    <code id="new-key-value" style="word-break:break-all; user-select:all"></code>
+    <button class="btn btn-secondary" id="btn-copy" style="margin-top:.5rem">Copy</button>
+  </div>
+
+  <section style="margin-top:1.5rem">
+    <h3>Existing keys</h3>
+    <div id="keys-list">Loading…</div>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/api-key-manager.js') }}"></script>
+{% endblock %}

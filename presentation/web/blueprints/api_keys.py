@@ -14,7 +14,7 @@ api_keys_bp = Blueprint("api_keys", __name__)
 @api_keys_bp.route("/settings/api-keys")
 @login_required
 def api_keys_page():
-    return render_template("settings/api_keys.html")
+    return render_template("api_keys.html")
 
 
 @api_keys_bp.route("/api/mcp-keys", methods=["GET"])
