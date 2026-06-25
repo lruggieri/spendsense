@@ -15,6 +15,7 @@ from domain.repositories.manual_assignment_repository import ManualAssignmentRep
 from domain.repositories.regexp_repository import RegexpRepository
 from domain.repositories.session_repository import SessionRepository
 from domain.repositories.transaction_repository import TransactionRepository
+from domain.repositories.mcp_api_key_repository import MCPApiKeyRepository
 from domain.repositories.user_settings_repository import UserSettingsRepository
 from infrastructure.persistence.factory import DataSourceFactory
 from infrastructure.persistence.sqlite.repositories.category_repository import (
@@ -34,6 +35,9 @@ from infrastructure.persistence.sqlite.repositories.manual_assignment_repository
     SQLiteManualAssignmentDataSource,
 )
 from infrastructure.persistence.sqlite.repositories.regexp_repository import SQLiteRegexpDataSource
+from infrastructure.persistence.sqlite.repositories.mcp_api_key_repository import (
+    SQLiteMCPApiKeyRepository,
+)
 from infrastructure.persistence.sqlite.repositories.session_repository import (
     SQLiteSessionDataSource,
 )
@@ -129,3 +133,9 @@ class SQLiteDataSourceFactory(DataSourceFactory):
         if "encryption" not in self._cache:
             self._cache["encryption"] = SQLiteEncryptionRepository(self.db_path)
         return self._cache["encryption"]
+
+    def get_mcp_api_key_datasource(self) -> MCPApiKeyRepository:
+        """Get cached or create new SQLite MCP API key datasource."""
+        if "mcp_api_key" not in self._cache:
+            self._cache["mcp_api_key"] = SQLiteMCPApiKeyRepository(self.db_path)
+        return self._cache["mcp_api_key"]
