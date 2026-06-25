@@ -74,11 +74,11 @@ format: ## Format code with black (requires black)
 	$(PYTHON) -m pip install black
 	$(PYTHON) -m black domain/ application/ infrastructure/ presentation/ tests/
 
-run: ## Run the Flask application (development mode)
-	$(PYTHON) -m presentation.web.app
+run: ## Run the application (development mode, ASGI)
+	$(PYTHON) -m uvicorn presentation.asgi:app --reload --port 5000
 
-run-prod: ## Run the Flask application (production mode with gunicorn)
-	gunicorn -w 4 -b 0.0.0.0:5000 presentation.web.app:app
+run-prod: ## Run the application (production mode with gunicorn + UvicornWorker)
+	gunicorn -k uvicorn.workers.UvicornWorker -w 4 -b 0.0.0.0:5000 presentation.asgi:app
 
 db-backup: ## Backup the database
 	@mkdir -p backups
