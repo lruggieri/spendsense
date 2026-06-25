@@ -8,6 +8,7 @@ Stores manual category assignments in a SQLite database with table structure:
 """
 
 import sqlite3
+from infrastructure.persistence.sqlite.connection import get_connection
 from typing import Dict, Optional
 
 from domain.repositories.manual_assignment_repository import ManualAssignmentRepository
@@ -31,7 +32,7 @@ class SQLiteManualAssignmentDataSource(ManualAssignmentRepository):
 
     def _ensure_db_exists(self):
         """Create database and manual_assignments table if they don't exist."""
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         cursor.execute("""
@@ -57,7 +58,7 @@ class SQLiteManualAssignmentDataSource(ManualAssignmentRepository):
         Returns:
             Dict[str, str]: A dictionary mapping transaction IDs to category IDs
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         cursor.execute(
@@ -79,7 +80,7 @@ class SQLiteManualAssignmentDataSource(ManualAssignmentRepository):
         Note:
             If assignment already exists, it will be updated
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -104,7 +105,7 @@ class SQLiteManualAssignmentDataSource(ManualAssignmentRepository):
         Returns:
             True if assignment was removed, False if it didn't exist
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -132,7 +133,7 @@ class SQLiteManualAssignmentDataSource(ManualAssignmentRepository):
         if not assignments:
             return 0
 
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -161,7 +162,7 @@ class SQLiteManualAssignmentDataSource(ManualAssignmentRepository):
         Returns:
             Category ID if assignment exists, None otherwise
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         cursor.execute(
@@ -183,7 +184,7 @@ class SQLiteManualAssignmentDataSource(ManualAssignmentRepository):
         Returns:
             True if assignment exists, False otherwise
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         cursor.execute(
@@ -202,7 +203,7 @@ class SQLiteManualAssignmentDataSource(ManualAssignmentRepository):
         Returns:
             Set of transaction IDs
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         cursor.execute("SELECT tx_id FROM manual_assignments WHERE user_id = ?", (self.user_id,))
@@ -218,7 +219,7 @@ class SQLiteManualAssignmentDataSource(ManualAssignmentRepository):
         Returns:
             Number of assignments
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         cursor.execute("SELECT COUNT(*) FROM manual_assignments WHERE user_id = ?", (self.user_id,))
@@ -237,7 +238,7 @@ class SQLiteManualAssignmentDataSource(ManualAssignmentRepository):
         Returns:
             Dictionary mapping transaction IDs to category ID
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         cursor.execute(
@@ -260,7 +261,7 @@ class SQLiteManualAssignmentDataSource(ManualAssignmentRepository):
         Returns:
             Number of assignments removed
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         try:
