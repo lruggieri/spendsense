@@ -7,6 +7,7 @@ and database columns (like 'display_language').
 
 import json
 import sqlite3
+from infrastructure.persistence.sqlite.connection import get_connection
 from datetime import datetime, timezone
 from typing import Tuple
 
@@ -32,7 +33,7 @@ class SQLiteUserSettingsDataSource(UserSettingsRepository):
 
     def _ensure_table_exists(self):
         """Create user_settings table if it doesn't exist."""
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         cursor.execute("""
@@ -128,7 +129,7 @@ class SQLiteUserSettingsDataSource(UserSettingsRepository):
         Returns:
             UserSettings entity with current or default values
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         cursor.execute(
@@ -159,7 +160,7 @@ class SQLiteUserSettingsDataSource(UserSettingsRepository):
         Returns:
             Tuple of (success: bool, error_message: str)
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -228,7 +229,7 @@ class SQLiteUserSettingsDataSource(UserSettingsRepository):
         Returns:
             List of datetime objects representing when LLM calls were made
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         cursor.execute(
@@ -261,7 +262,7 @@ class SQLiteUserSettingsDataSource(UserSettingsRepository):
         Returns:
             True if update was successful, False otherwise
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:

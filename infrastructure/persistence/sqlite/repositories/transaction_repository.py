@@ -22,6 +22,7 @@ import binascii
 import json
 import logging
 import sqlite3
+from infrastructure.persistence.sqlite.connection import get_connection
 import unicodedata
 from datetime import datetime, timezone
 from typing import List, Optional, Set, Tuple
@@ -55,7 +56,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
 
     def _ensure_db_exists(self):
         """Create database and transactions table if they don't exist."""
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         cursor.execute("""
@@ -227,7 +228,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         Returns:
             List of all Transaction objects
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         cursor.execute(
@@ -259,7 +260,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         if self.transaction_exists(transaction.id):
             return
 
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -319,7 +320,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         if not new_transactions:
             return 0
 
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -375,7 +376,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         Returns:
             True if transaction exists, False otherwise
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         cursor.execute(
@@ -393,7 +394,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         Returns:
             Set of all transaction IDs
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         cursor.execute("SELECT id FROM transactions WHERE user_id = ?", (self.user_id,))
@@ -412,7 +413,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         Returns:
             Set of all mail IDs (excluding None values)
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         if source:
@@ -444,7 +445,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         if not candidate_ids:
             return set()
 
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -473,7 +474,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         Returns:
             List of transactions from that source
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         cursor.execute(
@@ -498,7 +499,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         Returns:
             List of unique source names, sorted alphabetically
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         cursor.execute(
@@ -542,7 +543,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         Note:
             Sets updated_at to current UTC time
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -595,7 +596,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         Returns:
             True if transaction was found and updated, False otherwise
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -643,7 +644,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         Returns:
             Total transaction count
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         cursor.execute("SELECT COUNT(*) FROM transactions WHERE user_id = ?", (self.user_id,))
@@ -659,7 +660,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         Returns:
             Date of the last transaction, or None if no transactions exist
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         cursor.execute(
@@ -693,7 +694,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         Returns:
             List of transactions within the date range
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         query = "SELECT id, date, amount, description, source, comment, groups, updated_at, mail_id, currency, created_at, fetcher_id, encryption_version FROM transactions WHERE user_id = ?"
@@ -730,7 +731,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         Note:
             Updates updated_at to current UTC time
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -792,7 +793,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         Note:
             Updates updated_at to current UTC time
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -857,7 +858,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         if not tx_ids:
             return 0
 
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -926,7 +927,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         if not tx_ids:
             return 0
 
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -988,7 +989,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         Returns:
             List of transactions that have this group
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -1026,7 +1027,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         if not self._encryption_key:
             return 0
 
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
         migrated = 0
         batch_size = 100
@@ -1079,7 +1080,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         if not self._encryption_key:
             return 0
 
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
         migrated = 0
         batch_size = 100
@@ -1142,7 +1143,7 @@ class SQLiteTransactionDataSource(TransactionRepository):
         Note:
             Updates updated_at to current UTC time for each updated transaction
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         try:

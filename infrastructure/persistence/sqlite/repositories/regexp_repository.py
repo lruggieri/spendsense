@@ -4,6 +4,7 @@ SQLite datasource for regex patterns.
 
 import logging
 import sqlite3
+from infrastructure.persistence.sqlite.connection import get_connection
 from typing import List, Optional, Tuple
 
 from domain.entities.regexp import Regexp
@@ -34,7 +35,7 @@ class SQLiteRegexpDataSource(RegexpRepository):
         Returns:
             List of Regexp objects
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -73,7 +74,7 @@ class SQLiteRegexpDataSource(RegexpRepository):
         Returns:
             Regexp object or None if not found
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -111,7 +112,7 @@ class SQLiteRegexpDataSource(RegexpRepository):
         Returns:
             List of Regexp objects
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -150,7 +151,7 @@ class SQLiteRegexpDataSource(RegexpRepository):
         Note:
             This method is equivalent to get_all_regexps() but kept for backward compatibility.
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -202,7 +203,7 @@ class SQLiteRegexpDataSource(RegexpRepository):
         Returns:
             True if successful, False otherwise
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -248,7 +249,7 @@ class SQLiteRegexpDataSource(RegexpRepository):
 
         Note: order_index is NOT updated here - use reorder_regexps() for that
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -304,7 +305,7 @@ class SQLiteRegexpDataSource(RegexpRepository):
         Returns:
             True if successful, False otherwise
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -337,7 +338,7 @@ class SQLiteRegexpDataSource(RegexpRepository):
         Returns:
             True if successful, False otherwise
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -369,7 +370,7 @@ class SQLiteRegexpDataSource(RegexpRepository):
         Returns:
             Maximum order_index, or 0 if no patterns exist
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
