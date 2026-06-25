@@ -34,7 +34,7 @@ def list_keys():
 @login_required
 def create_key():
     user_id = request.user_id  # type: ignore[attr-defined]
-    data = request.get_json(force=True) or {}
+    data = request.get_json() or {}
     scope = data.get("scope", "read")
     label = data.get("label", "")
     expires_at = data.get("expires_at", None)
@@ -60,7 +60,7 @@ def create_key():
 @login_required
 def revoke_key():
     user_id = request.user_id  # type: ignore[attr-defined]
-    data = request.get_json(force=True) or {}
+    data = request.get_json() or {}
     key_id = data.get("key_id")
     if not key_id:
         return jsonify({"error": "key_id required"}), 400
