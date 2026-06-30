@@ -75,7 +75,7 @@ format: ## Format code with black (requires black)
 	$(PYTHON) -m black domain/ application/ infrastructure/ presentation/ tests/
 
 run: ## Run the application (development mode, ASGI)
-	$(PYTHON) -m uvicorn presentation.asgi:app --reload --port 5000
+	$(PYTHON) -m uvicorn presentation.asgi:app --reload --port $${FLASK_PORT:-5000}
 
 run-prod: ## Run the application (production mode with gunicorn + UvicornWorker)
 	gunicorn -k uvicorn.workers.UvicornWorker -w 4 -b 0.0.0.0:5000 presentation.asgi:app
