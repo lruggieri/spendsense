@@ -15,5 +15,5 @@ def test_asgi_imports_expected_symbols():
     assert "WsgiToAsgi" in src
     assert "Mount" in src
     assert "streamable_http_app" in src
-    assert 'Mount("/mcp"' in src
+    assert "mcp_app.routes" in src
     assert 'Mount("/"' in src

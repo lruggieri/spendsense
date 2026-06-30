@@ -12,13 +12,14 @@ from starlette.routing import Mount
 from presentation.web.app import app as flask_app
 from presentation.mcp_server.server import mcp
 
-# /mcp MUST precede the "/" catch-all or Flask swallows MCP requests.
+# FastMCP registers its routes at /mcp and /.well-known/... internally.
+# Include them directly at the top level — sub-mounting would double the path to /mcp/mcp.
 mcp_app = mcp.streamable_http_app()
 
 app = Starlette(
     routes=[
-        Mount("/mcp", app=mcp_app),
+        *mcp_app.routes,
         Mount("/", app=WsgiToAsgi(flask_app)),
     ],
-    lifespan=getattr(mcp_app, "lifespan", None),
+    lifespan=mcp_app.router.lifespan_context,
 )
