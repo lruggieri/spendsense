@@ -25,6 +25,9 @@ class _Dispatcher:
     """Route to FastMCP (preserving its full middleware stack) or Flask by path."""
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "lifespan":
+            await mcp_app(scope, receive, send)
+            return
         if scope["type"] in ("http", "websocket"):
             path: str = scope.get("path", "")
             if path in _mcp_paths or any(path.startswith(p + "/") for p in _mcp_paths):

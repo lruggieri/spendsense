@@ -16,3 +16,4 @@ def test_asgi_imports_expected_symbols():
     assert "streamable_http_app" in src
     assert "_Dispatcher" in src
     assert "mcp_app" in src
+    assert "lifespan" in src
