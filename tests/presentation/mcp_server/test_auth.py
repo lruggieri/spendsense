@@ -11,7 +11,7 @@ from infrastructure.crypto.encryption import generate_dek
 def _make_key(scope, encrypted, monkeypatch):
     fd, path = tempfile.mkstemp(suffix=".db")
     os.close(fd)
-    import presentation.mcp.auth as auth
+    import presentation.mcp_server.auth as auth
     monkeypatch.setattr(auth, "_db_path", lambda: path)
     svc = auth._encryption_service()
     dek_b64 = base64.b64encode(generate_dek()).decode("ascii") if encrypted else None
@@ -33,7 +33,7 @@ def test_verify_token_valid_and_invalid(monkeypatch):
 
 
 def test_require_write_rejects_read():
-    import presentation.mcp.auth as auth
+    import presentation.mcp_server.auth as auth
     with pytest.raises(Exception):
         auth.require_write("read")
     auth.require_write("readwrite")  # should not raise

@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 
 from mcp.server.fastmcp.exceptions import ToolError
 
-from presentation.mcp.auth import get_tool_context, require_write
+from presentation.mcp_server.auth import get_tool_context, require_write
 
 
 def register(mcp) -> None:

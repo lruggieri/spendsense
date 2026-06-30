@@ -15,8 +15,8 @@ from infrastructure.persistence.sqlite.repositories.encryption_repository import
 from infrastructure.persistence.sqlite.repositories.mcp_api_key_repository import (
     SQLiteMCPApiKeyRepository,
 )
-from presentation.mcp.context import MCPServices, build_services
-from presentation.mcp.ratelimit import RateLimiter
+from presentation.mcp_server.context import MCPServices, build_services
+from presentation.mcp_server.ratelimit import RateLimiter
 
 
 def _db_path() -> str:

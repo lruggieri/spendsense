@@ -1,7 +1,7 @@
 """MCP tool: read-only user settings."""
 from typing import Any, Dict
 
-from presentation.mcp.auth import get_tool_context
+from presentation.mcp_server.auth import get_tool_context
 
 
 def register(mcp) -> None:

@@ -5,7 +5,7 @@ import tempfile
 
 import pytest
 
-from presentation.mcp.context import build_services
+from presentation.mcp_server.context import build_services
 
 
 def make_db() -> str:

@@ -1,4 +1,4 @@
-from presentation.mcp.ratelimit import RateLimiter
+from presentation.mcp_server.ratelimit import RateLimiter
 
 
 def test_allows_under_limit_then_blocks():

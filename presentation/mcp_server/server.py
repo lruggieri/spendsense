@@ -4,7 +4,7 @@ import os
 from mcp.server.fastmcp import FastMCP
 from mcp.server.auth.settings import AuthSettings
 
-from presentation.mcp.auth import SpendSenseTokenVerifier
+from presentation.mcp_server.auth import SpendSenseTokenVerifier
 
 
 def _base_url() -> str:
@@ -23,7 +23,7 @@ def create_mcp_app() -> FastMCP:
         auth=auth,
         stateless_http=True,
     )
-    from presentation.mcp.tools import register_all
+    from presentation.mcp_server.tools import register_all
     register_all(mcp)
     return mcp
 

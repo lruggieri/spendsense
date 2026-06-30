@@ -10,7 +10,7 @@ def test_expected_tools_registered():
     orig_cwd = os.getcwd()
     try:
         os.chdir("/tmp")
-        from presentation.mcp.server import mcp
+        from presentation.mcp_server.server import mcp
         import asyncio
 
         tools = asyncio.run(mcp.list_tools())

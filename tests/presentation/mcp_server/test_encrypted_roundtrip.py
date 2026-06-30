@@ -3,9 +3,9 @@ import base64
 import sqlite3
 
 from infrastructure.crypto.encryption import generate_dek
-from presentation.mcp.context import build_services
-from presentation.mcp.tools.transactions import _list_transactions, _get_transaction
-from tests.presentation.mcp.tools.conftest import make_db
+from presentation.mcp_server.context import build_services
+from presentation.mcp_server.tools.transactions import _list_transactions, _get_transaction
+from tests.presentation.mcp_server.tools.conftest import make_db
 
 
 def test_encrypted_write_then_decrypted_read():

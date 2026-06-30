@@ -2,7 +2,7 @@ import os
 import sqlite3
 import tempfile
 
-from presentation.mcp.context import build_services
+from presentation.mcp_server.context import build_services
 
 
 def _make_db() -> str:

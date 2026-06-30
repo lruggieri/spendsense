@@ -2,7 +2,7 @@
 
 
 def register_all(mcp) -> None:
-    from presentation.mcp.tools import transactions, categories, patterns, groups, settings
+    from presentation.mcp_server.tools import transactions, categories, patterns, groups, settings
     transactions.register(mcp)
     categories.register(mcp)
     patterns.register(mcp)

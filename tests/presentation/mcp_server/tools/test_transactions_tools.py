@@ -1,4 +1,4 @@
-from presentation.mcp.tools import transactions as tx
+from presentation.mcp_server.tools import transactions as tx
 
 
 def test_add_and_list(svcs_and_path):
