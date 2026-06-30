@@ -11,6 +11,7 @@ from application.services.group_service import GroupService
 from application.services.pattern_service import PatternService
 from application.services.transaction_service import TransactionService
 from application.services.user_settings_service import UserSettingsService
+from domain.services.embedding_similarity_calculator import EmbeddingSimilarityCalculator
 from infrastructure.persistence.sqlite.factory import SQLiteDataSourceFactory
 
 
@@ -43,13 +44,24 @@ def build_services(db_path: str, user_id: str, dek_b64: Optional[str]) -> MCPSer
         db_path=db_path,
     )
     embedding_ds = factory.get_embedding_datasource()
+    try:
+        from presentation.web.extensions import get_sentence_model
+        loaded_model = get_sentence_model()
+    except Exception:
+        loaded_model = None
+    similarity_calc = (
+        EmbeddingSimilarityCalculator(model=loaded_model, embedding_datasource=embedding_ds)
+        if loaded_model is not None and embedding_ds is not None
+        else None
+    )
     classification = ClassificationService(
         user_id,
         factory.get_manual_assignment_datasource(),
         factory.get_regexp_datasource(),
         embedding_ds,
         db_path=db_path,
-        skip_similarity=embedding_ds is None,
+        similarity_calculator=similarity_calc,
+        skip_similarity=similarity_calc is None,
     )
     group = GroupService(
         user_id, factory.get_group_datasource(), transaction, db_path=db_path
