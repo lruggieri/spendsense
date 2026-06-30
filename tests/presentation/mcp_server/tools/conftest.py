@@ -2,6 +2,7 @@
 import os
 import sqlite3
 import tempfile
+from unittest.mock import patch
 
 import pytest
 
@@ -44,5 +45,9 @@ def make_db() -> str:
 @pytest.fixture
 def svcs_and_path():
     path = make_db()
-    yield build_services(path, "u@x.com", None), path
+    with patch(
+        "infrastructure.persistence.sqlite.factory.SQLiteDataSourceFactory.get_embedding_datasource",
+        return_value=None,
+    ):
+        yield build_services(path, "u@x.com", None), path
     os.remove(path)

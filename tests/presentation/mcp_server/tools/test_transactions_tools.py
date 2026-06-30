@@ -1,4 +1,4 @@
-from presentation.mcp_server.tools import transactions as tx
+from presentation.mcp_server.tools.transactions import _classified, _serialize
 
 
 def test_add_and_list(svcs_and_path):
@@ -7,7 +7,7 @@ def test_add_and_list(svcs_and_path):
         "2026-06-25", "1500", "Coffee", "", "", "JPY"
     )
     assert ok, result
-    rows = tx._list_transactions(svcs, page=0)
+    rows = [_serialize(t) for t in _classified(svcs).values()]
     assert any(r["description"] == "Coffee" for r in rows)
 
 
@@ -17,25 +17,6 @@ def test_get_transaction(svcs_and_path):
         "2026-06-25", "900", "Lunch", "", "", "JPY"
     )
     assert ok
-    row = tx._get_transaction(svcs, tx_id)
+    tx_dict = _classified(svcs)
+    row = _serialize(tx_dict[tx_id]) if tx_id in tx_dict else None
     assert row is not None and row["id"] == tx_id
-
-
-def _list_transactions(svcs, page=0):
-    txs = svcs.transaction.get_all_transactions_filtered()
-    start = page * 50
-    return [_ser(t) for t in txs[start: start + 50]]
-
-
-def _get_transaction(svcs, tx_id):
-    t = svcs.transaction.get_transaction_by_id(tx_id)
-    return _ser(t) if t else None
-
-
-def _ser(t):
-    return {
-        "id": t.id,
-        "description": t.description,
-        "date": t.date,
-        "amount": t.amount,
-    }

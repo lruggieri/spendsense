@@ -9,6 +9,7 @@ _PAGE = 50
 
 
 def _serialize(tx) -> Dict[str, Any]:
+    src = tx.category_source
     return {
         "id": tx.id,
         "date": tx.date,
@@ -17,20 +18,22 @@ def _serialize(tx) -> Dict[str, Any]:
         "source": tx.source,
         "comment": tx.comment,
         "currency": getattr(tx, "currency", "JPY"),
-        "category_id": getattr(tx, "category_id", None),
-        "category_source": str(getattr(tx, "category_source", None)),
+        "category_id": tx.category,
+        "category_source": src.value if src is not None else None,
         "groups": list(getattr(tx, "groups", []) or []),
     }
 
 
-def _list_transactions(svcs, page: int = 0) -> List[Dict[str, Any]]:
-    txs = svcs.transaction.get_all_transactions_filtered()
-    start = page * _PAGE
-    return [_serialize(t) for t in txs[start: start + _PAGE]]
+def _classified(svcs) -> Dict[str, Any]:
+    """Load all transactions and apply the full classification pipeline."""
+    tx_dict = {tx.id: tx for tx in svcs.transaction.get_all_transactions()}
+    svcs.classification.classify_transactions(tx_dict)
+    return tx_dict
 
 
 def _get_transaction(svcs, tx_id: str) -> Optional[Dict[str, Any]]:
-    t = svcs.transaction.get_transaction_by_id(tx_id)
+    tx_dict = _classified(svcs)
+    t = tx_dict.get(tx_id)
     return _serialize(t) if t else None
 
 
@@ -44,8 +47,12 @@ def register(mcp) -> None:
     ) -> List[Dict[str, Any]]:
         """List transactions, optionally filtered. Results are paginated (50/page)."""
         svcs, _ = get_tool_context()
+        tx_dict = _classified(svcs)
         txs = svcs.transaction.get_all_transactions_filtered(
-            category_id=category_id, from_date=from_date, to_date=to_date
+            category_id=category_id,
+            from_date=from_date,
+            to_date=to_date,
+            transactions=list(tx_dict.values()),
         )
         start = page * _PAGE
         return [_serialize(t) for t in txs[start: start + _PAGE]]

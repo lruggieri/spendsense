@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from application.services.category_service import CategoryService
+from application.services.classification_service import ClassificationService
 from application.services.group_service import GroupService
 from application.services.pattern_service import PatternService
 from application.services.transaction_service import TransactionService
@@ -17,6 +18,7 @@ from infrastructure.persistence.sqlite.factory import SQLiteDataSourceFactory
 class MCPServices:
     transaction: TransactionService
     category: CategoryService
+    classification: ClassificationService
     pattern: PatternService
     group: GroupService
     user_settings: UserSettingsService
@@ -40,7 +42,16 @@ def build_services(db_path: str, user_id: str, dek_b64: Optional[str]) -> MCPSer
         user_settings,
         db_path=db_path,
     )
+    embedding_ds = factory.get_embedding_datasource()
+    classification = ClassificationService(
+        user_id,
+        factory.get_manual_assignment_datasource(),
+        factory.get_regexp_datasource(),
+        embedding_ds,
+        db_path=db_path,
+        skip_similarity=embedding_ds is None,
+    )
     group = GroupService(
         user_id, factory.get_group_datasource(), transaction, db_path=db_path
     )
-    return MCPServices(transaction, category, pattern, group, user_settings)
+    return MCPServices(transaction, category, classification, pattern, group, user_settings)
