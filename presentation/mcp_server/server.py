@@ -22,6 +22,7 @@ def create_mcp_app() -> FastMCP:
         token_verifier=SpendSenseTokenVerifier(),
         auth=auth,
         stateless_http=True,
+        streamable_http_path="/",
     )
     from presentation.mcp_server.tools import register_all
     register_all(mcp)

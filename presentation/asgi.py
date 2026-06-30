@@ -13,7 +13,7 @@ from presentation.web.app import app as flask_app
 from presentation.mcp_server.server import mcp
 
 # /mcp MUST precede the "/" catch-all or Flask swallows MCP requests.
-mcp_app = mcp.streamable_http_app(mount_path="/")
+mcp_app = mcp.streamable_http_app()
 
 app = Starlette(
     routes=[
