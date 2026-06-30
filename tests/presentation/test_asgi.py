@@ -13,7 +13,6 @@ def test_asgi_imports_expected_symbols():
     """The ASGI entrypoint must import the required symbols."""
     src = pathlib.Path("presentation/asgi.py").read_text()
     assert "WsgiToAsgi" in src
-    assert "Mount" in src
     assert "streamable_http_app" in src
-    assert "mcp_app.routes" in src
-    assert 'Mount("/"' in src
+    assert "_Dispatcher" in src
+    assert "mcp_app" in src

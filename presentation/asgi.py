@@ -6,20 +6,31 @@ or:
     uvicorn presentation.asgi:app
 """
 from asgiref.wsgi import WsgiToAsgi
-from starlette.applications import Starlette
-from starlette.routing import Mount
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from presentation.web.app import app as flask_app
 from presentation.mcp_server.server import mcp
 
-# FastMCP registers its routes at /mcp and /.well-known/... internally.
-# Include them directly at the top level — sub-mounting would double the path to /mcp/mcp.
 mcp_app = mcp.streamable_http_app()
 
-app = Starlette(
-    routes=[
-        *mcp_app.routes,
-        Mount("/", app=WsgiToAsgi(flask_app)),
-    ],
-    lifespan=mcp_app.router.lifespan_context,
+# Collect the exact paths FastMCP registered (e.g. "/mcp", "/.well-known/...")
+_mcp_paths = frozenset(
+    r.path for r in mcp_app.routes if hasattr(r, "path")
 )
+
+_flask_asgi: ASGIApp = WsgiToAsgi(flask_app)
+
+
+class _Dispatcher:
+    """Route to FastMCP (preserving its full middleware stack) or Flask by path."""
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] in ("http", "websocket"):
+            path: str = scope.get("path", "")
+            if path in _mcp_paths or any(path.startswith(p + "/") for p in _mcp_paths):
+                await mcp_app(scope, receive, send)
+                return
+        await _flask_asgi(scope, receive, send)
+
+
+app = _Dispatcher()
