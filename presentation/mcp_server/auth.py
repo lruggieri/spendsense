@@ -63,6 +63,9 @@ def get_tool_context() -> "tuple[MCPServices, str]":
     scope = token_obj.scopes[0] if token_obj.scopes else "read"
     if not _rate_limiter.check(hash_token(raw), time.monotonic()):
         raise ToolError("rate limit exceeded, retry shortly")
-    dek = _encryption_service().unwrap_dek_for_api_key(raw)
+    try:
+        dek = _encryption_service().unwrap_dek_for_api_key(raw)
+    except ValueError as e:
+        raise ToolError(f"unauthorized: {e}") from e
     services = build_services(_db_path(), user_id, dek)
     return services, scope

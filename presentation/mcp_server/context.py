@@ -2,6 +2,7 @@
 
 Reuses the framework-agnostic application/infrastructure layers directly — does NOT
 use presentation/web/utils.py (that reads Flask g/request)."""
+import logging
 from dataclasses import dataclass
 from typing import Optional
 
@@ -13,6 +14,8 @@ from application.services.transaction_service import TransactionService
 from application.services.user_settings_service import UserSettingsService
 from domain.services.embedding_similarity_calculator import EmbeddingSimilarityCalculator
 from infrastructure.persistence.sqlite.factory import SQLiteDataSourceFactory
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -47,8 +50,17 @@ def build_services(db_path: str, user_id: str, dek_b64: Optional[str]) -> MCPSer
     try:
         from presentation.web.extensions import get_sentence_model
         loaded_model = get_sentence_model()
-    except Exception:
+    except ImportError:
+        logger.warning(
+            "presentation.web.extensions unavailable; MCP falling back to "
+            "manual/regex-only classification (skip_similarity=True)"
+        )
         loaded_model = None
+    if loaded_model is None:
+        logger.warning(
+            "no pre-loaded sentence model available; MCP falling back to "
+            "manual/regex-only classification (skip_similarity=True)"
+        )
     similarity_calc = (
         EmbeddingSimilarityCalculator(model=loaded_model, embedding_datasource=embedding_ds)
         if loaded_model is not None and embedding_ds is not None
