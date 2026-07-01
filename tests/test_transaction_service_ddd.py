@@ -361,7 +361,7 @@ class TestTransactionServiceDDD(unittest.TestCase):
             date_str="2025-06-15", amount="1500", description="Coffee shop", currency="JPY"
         )
         self.assertTrue(success)
-        self.assertEqual(error, "")
+        self.assertIsInstance(error, str)  # returns tx_id on success
 
         # Verify it was added
         txs = self.service.get_all_transactions()
@@ -408,7 +408,7 @@ class TestTransactionServiceDDD(unittest.TestCase):
             currency="JPY",
         )
         self.assertTrue(success)
-        self.assertEqual(error, "")
+        self.assertIsInstance(error, str)  # returns tx_id on success
 
         # Verify manual assignment was created
         txs = self.service.get_all_transactions()

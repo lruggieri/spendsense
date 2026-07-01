@@ -3,6 +3,7 @@ SQLite datasource for groups.
 """
 
 import sqlite3
+from infrastructure.persistence.sqlite.connection import get_connection
 from typing import List, Optional
 
 from domain.entities.group import Group
@@ -31,7 +32,7 @@ class SQLiteGroupDataSource(GroupRepository):
         Returns:
             List of Group objects
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -65,7 +66,7 @@ class SQLiteGroupDataSource(GroupRepository):
         Returns:
             Group object if found, None otherwise
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -94,7 +95,7 @@ class SQLiteGroupDataSource(GroupRepository):
         Args:
             group: Group object to create
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -125,7 +126,7 @@ class SQLiteGroupDataSource(GroupRepository):
             sqlite_transaction_datasource.remove_group_from_all_transactions()
             before calling this method if cascade is needed.
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -175,7 +176,7 @@ class SQLiteGroupDataSource(GroupRepository):
         # Add WHERE clause parameters
         params.extend([group_id, self.user_id])
 
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:

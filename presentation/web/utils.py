@@ -320,6 +320,7 @@ def get_encryption_service() -> EncryptionService:
         session_datasource=get_session_datasource(),
         encryption_key=encryption_key,
         embedding_datasource=factory.get_embedding_datasource(),
+        mcp_api_key_datasource=factory.get_mcp_api_key_datasource(),
     )
 
 

@@ -5,6 +5,7 @@ SQLite datasource for fetcher configurations.
 import json
 import logging
 import sqlite3
+from infrastructure.persistence.sqlite.connection import get_connection
 from datetime import datetime, timezone
 from typing import List, Optional
 
@@ -36,7 +37,7 @@ class SQLiteFetcherDataSource(FetcherRepository):
         Returns:
             List of Fetcher entities (all versions)
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -72,7 +73,7 @@ class SQLiteFetcherDataSource(FetcherRepository):
         Returns:
             List of enabled Fetcher entities (one per group)
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -110,7 +111,7 @@ class SQLiteFetcherDataSource(FetcherRepository):
         Returns:
             Fetcher entity or None if not found
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -139,7 +140,7 @@ class SQLiteFetcherDataSource(FetcherRepository):
         Returns:
             List of enabled Fetcher entities
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -177,7 +178,7 @@ class SQLiteFetcherDataSource(FetcherRepository):
         Returns:
             List of Fetcher entities ordered by version descending
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -210,7 +211,7 @@ class SQLiteFetcherDataSource(FetcherRepository):
         Returns:
             The enabled Fetcher version or None if no enabled version
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -244,7 +245,7 @@ class SQLiteFetcherDataSource(FetcherRepository):
         Returns:
             True if successful, False otherwise
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -321,7 +322,7 @@ class SQLiteFetcherDataSource(FetcherRepository):
         Returns:
             True if successful, False otherwise
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -387,7 +388,7 @@ class SQLiteFetcherDataSource(FetcherRepository):
         Returns:
             The newly created Fetcher entity or None if failed
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -487,7 +488,7 @@ class SQLiteFetcherDataSource(FetcherRepository):
         Returns:
             New enabled status (True/False) or None if failed
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -552,7 +553,7 @@ class SQLiteFetcherDataSource(FetcherRepository):
         Returns:
             True if successful, False otherwise
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:

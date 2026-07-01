@@ -154,6 +154,13 @@ class TransactionService(BaseService):
 
         return sorted(filtered_txs, key=lambda tx: tx.date, reverse=True)
 
+    def get_transaction_by_id(self, tx_id: str) -> Optional[Transaction]:
+        """Return a single transaction by id, or None."""
+        for t in self._transaction_datasource.get_all_transactions():
+            if t.id == tx_id:
+                return t
+        return None
+
     def get_transaction_sources(self) -> List[str]:
         """
         Get all distinct transaction sources for the current user.
@@ -292,7 +299,7 @@ class TransactionService(BaseService):
             except Exception as e:
                 return False, f"Failed to save manual assignment: {str(e)}"
 
-        return True, ""
+        return True, tx_id
 
     def add_transactions_batch(self, transactions: List[Transaction]) -> int:
         """
