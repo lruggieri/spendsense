@@ -300,3 +300,190 @@ class EncryptionService:
         assert self._mcp_api_key_repo is not None
         self._encryption_repo.delete_wrapped_dek(user_id, key_id)
         return self._mcp_api_key_repo.revoke(user_id, key_id)
+
+    # =========================================================================
+    # OAuth 2.1 DEK bridge (code / access token / refresh token envelopes)
+    # =========================================================================
+    #
+    # The `encryption_keys` table is reused as a generic envelope store: each
+    # OAuth secret (authorization code, access token, refresh token) acts as
+    # the "raw key" input to hkdf_derive_kek, exactly like an MCP API key does
+    # in create_mcp_api_key/unwrap_dek_for_api_key above. credential_id
+    # prefixes keep the envelope kinds from colliding:
+    #   oauthcode:{code_id}       - authorization code envelope
+    #   oauthat:{grant_id}        - access token envelope
+    #   oauthrt:{grant_id}        - refresh token envelope
+    #   oauthrt:{grant_id}:prev   - previous refresh token envelope (rotation grace)
+
+    def oauth_wrap_dek_for_code(
+        self, user_id: str, code: str, code_id: str, dek_b64: str
+    ) -> None:
+        """Wrap the DEK under a KEK derived from the raw authorization code."""
+        from infrastructure.crypto.encryption import hkdf_derive_kek, wrap_key
+
+        salt = os.urandom(16)
+        kek = hkdf_derive_kek(code, salt)
+        wrapped = wrap_key(base64.b64decode(dek_b64), kek)
+        self._encryption_repo.store_wrapped_dek(
+            user_id,
+            f"oauthcode:{code_id}",
+            wrapped,
+            base64.b64encode(salt).decode("ascii"),
+            wrapper_type="oauth_code",
+        )
+
+    def oauth_unwrap_dek_for_code(
+        self, user_id: str, code: str, code_id: str
+    ) -> Optional[str]:
+        """Unwrap the DEK using the raw authorization code, or None if no envelope exists."""
+        from infrastructure.crypto.encryption import hkdf_derive_kek, unwrap_key
+
+        cid = f"oauthcode:{code_id}"
+        wrapped = self._encryption_repo.get_wrapped_dek(user_id, cid)
+        if not wrapped:
+            return None
+        salt_b64 = self._encryption_repo.get_prf_salt(user_id, cid)
+        assert salt_b64 is not None
+        salt = base64.b64decode(salt_b64)
+        dek = unwrap_key(wrapped, hkdf_derive_kek(code, salt))
+        return base64.b64encode(dek).decode("ascii")
+
+    def oauth_create_token_envelopes(
+        self,
+        user_id: str,
+        grant_id: str,
+        access_token: str,
+        refresh_token: str,
+        dek_b64: str,
+    ) -> tuple[str, str]:
+        """Wrap the DEK under both the access token and refresh token secrets.
+
+        Returns:
+            (at_salt_b64, rt_salt_b64) - the caller stores these on the grant row.
+        """
+        from infrastructure.crypto.encryption import hkdf_derive_kek, wrap_key
+
+        dek = base64.b64decode(dek_b64)
+
+        at_salt = os.urandom(16)
+        at_kek = hkdf_derive_kek(access_token, at_salt)
+        at_wrapped = wrap_key(dek, at_kek)
+        at_salt_b64 = base64.b64encode(at_salt).decode("ascii")
+        self._encryption_repo.store_wrapped_dek(
+            user_id, f"oauthat:{grant_id}", at_wrapped, at_salt_b64, wrapper_type="oauth_at"
+        )
+
+        rt_salt = os.urandom(16)
+        rt_kek = hkdf_derive_kek(refresh_token, rt_salt)
+        rt_wrapped = wrap_key(dek, rt_kek)
+        rt_salt_b64 = base64.b64encode(rt_salt).decode("ascii")
+        self._encryption_repo.store_wrapped_dek(
+            user_id, f"oauthrt:{grant_id}", rt_wrapped, rt_salt_b64, wrapper_type="oauth_rt"
+        )
+
+        return at_salt_b64, rt_salt_b64
+
+    def oauth_unwrap_dek_for_access_token(
+        self, user_id: str, grant_id: str, access_token: str, at_salt_b64: str
+    ) -> Optional[str]:
+        """Unwrap the DEK using the access token and its salt (passed in, not re-read from
+        the DB, to avoid an extra query on the hot request path)."""
+        from infrastructure.crypto.encryption import hkdf_derive_kek, unwrap_key
+
+        wrapped = self._encryption_repo.get_wrapped_dek(user_id, f"oauthat:{grant_id}")
+        if not wrapped:
+            return None
+        kek = hkdf_derive_kek(access_token, base64.b64decode(at_salt_b64))
+        dek = unwrap_key(wrapped, kek)
+        return base64.b64encode(dek).decode("ascii")
+
+    def oauth_unwrap_dek_for_refresh_token(
+        self, user_id: str, grant_id: str, refresh_token: str, rt_salt_b64: str
+    ) -> Optional[str]:
+        """Unwrap the DEK using the refresh token and its salt (passed in, not re-read from
+        the DB, to avoid an extra query on the hot request path)."""
+        from infrastructure.crypto.encryption import hkdf_derive_kek, unwrap_key
+
+        wrapped = self._encryption_repo.get_wrapped_dek(user_id, f"oauthrt:{grant_id}")
+        if not wrapped:
+            return None
+        kek = hkdf_derive_kek(refresh_token, base64.b64decode(rt_salt_b64))
+        dek = unwrap_key(wrapped, kek)
+        return base64.b64encode(dek).decode("ascii")
+
+    def oauth_delete_code_envelope(self, user_id: str, code_id: str) -> None:
+        """Delete the authorization code envelope (called once the code is consumed)."""
+        self._encryption_repo.delete_wrapped_dek(user_id, f"oauthcode:{code_id}")
+
+    def oauth_delete_grant_envelopes(self, user_id: str, grant_id: str) -> None:
+        """Delete all envelopes (access, refresh, previous-refresh) for a grant."""
+        self._encryption_repo.delete_wrapped_dek(user_id, f"oauthat:{grant_id}")
+        self._encryption_repo.delete_wrapped_dek(user_id, f"oauthrt:{grant_id}")
+        self._encryption_repo.delete_wrapped_dek(user_id, f"oauthrt:{grant_id}:prev")
+
+    def oauth_rewrap_for_rotation(
+        self,
+        user_id: str,
+        grant_id: str,
+        new_at: str,
+        new_rt: str,
+        dek_b64: str,
+        keep_prev_rt: Optional[str] = None,
+    ) -> tuple[str, str]:
+        """Rotate access/refresh token envelopes to new secrets.
+
+        If `keep_prev_rt` (the outgoing raw refresh token) is given, the
+        current `oauthrt:{grant_id}` envelope - already wrapped under that
+        old refresh token - is preserved verbatim under
+        `oauthrt:{grant_id}:prev` (a reuse-detection grace window) before
+        being replaced. `keep_prev_rt` itself is only used to select this
+        code path; the envelope being moved is already wrapped under it, so
+        no re-wrap is needed for the "prev" copy.
+
+        Returns:
+            (new_at_salt_b64, new_rt_salt_b64)
+        """
+        from infrastructure.crypto.encryption import hkdf_derive_kek, wrap_key
+
+        dek = base64.b64decode(dek_b64)
+
+        # Access token envelope: delete old, store new.
+        self._encryption_repo.delete_wrapped_dek(user_id, f"oauthat:{grant_id}")
+        new_at_salt = os.urandom(16)
+        new_at_kek = hkdf_derive_kek(new_at, new_at_salt)
+        new_at_wrapped = wrap_key(dek, new_at_kek)
+        new_at_salt_b64 = base64.b64encode(new_at_salt).decode("ascii")
+        self._encryption_repo.store_wrapped_dek(
+            user_id, f"oauthat:{grant_id}", new_at_wrapped, new_at_salt_b64, wrapper_type="oauth_at"
+        )
+
+        if keep_prev_rt is not None:
+            # Copy the current rt envelope (still wrapped under the old RT) to
+            # the ":prev" slot verbatim, before it is deleted below.
+            current_rt_wrapped = self._encryption_repo.get_wrapped_dek(
+                user_id, f"oauthrt:{grant_id}"
+            )
+            current_rt_salt_b64 = self._encryption_repo.get_prf_salt(
+                user_id, f"oauthrt:{grant_id}"
+            )
+            if current_rt_wrapped is not None and current_rt_salt_b64 is not None:
+                self._encryption_repo.delete_wrapped_dek(user_id, f"oauthrt:{grant_id}:prev")
+                self._encryption_repo.store_wrapped_dek(
+                    user_id,
+                    f"oauthrt:{grant_id}:prev",
+                    current_rt_wrapped,
+                    current_rt_salt_b64,
+                    wrapper_type="oauth_rt_prev",
+                )
+
+        # Refresh token envelope: delete old, store new.
+        self._encryption_repo.delete_wrapped_dek(user_id, f"oauthrt:{grant_id}")
+        new_rt_salt = os.urandom(16)
+        new_rt_kek = hkdf_derive_kek(new_rt, new_rt_salt)
+        new_rt_wrapped = wrap_key(dek, new_rt_kek)
+        new_rt_salt_b64 = base64.b64encode(new_rt_salt).decode("ascii")
+        self._encryption_repo.store_wrapped_dek(
+            user_id, f"oauthrt:{grant_id}", new_rt_wrapped, new_rt_salt_b64, wrapper_type="oauth_rt"
+        )
+
+        return new_at_salt_b64, new_rt_salt_b64
