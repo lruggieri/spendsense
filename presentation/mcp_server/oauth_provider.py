@@ -157,13 +157,26 @@ class SpendSenseOAuthProvider(OAuthAuthorizationServerProvider):
         )
 
     # =========================================================================
-    # Stubs — implemented by a later task (6: access-token verification).
-    # Kept here only so this class is concrete/importable; do not implement
-    # real logic in this task.
+    # Access-token verification + revoke (implemented this task) — unifies
+    # OAuth grants with legacy, manually-created API keys via
+    # `OAuthService.resolve_access`/`revoke`.
     # =========================================================================
 
     async def load_access_token(self, token: str) -> Optional[AccessToken]:
-        raise NotImplementedError
+        resolved = self._service.resolve_access(token)
+        if resolved is None:
+            return None
+        return AccessToken(
+            token=token,
+            # client_id is the *OAuth client's* id, not the SpendSense user -
+            # for an OAuth token that's the grant; a legacy API key has no
+            # OAuth client, so it falls back to the user id (matching the
+            # pre-existing legacy verifier in presentation/mcp_server/auth.py).
+            client_id=resolved.get("grant_id") or resolved["user_id"],
+            scopes=[resolved["scope"]],
+            expires_at=None,
+            resource=None,
+        )
 
     async def revoke_token(self, token: Any) -> None:
-        raise NotImplementedError
+        self._service.revoke(token.token)

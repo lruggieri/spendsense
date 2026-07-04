@@ -26,6 +26,9 @@ from infrastructure.persistence.sqlite.repositories.oauth_client_repository impo
 from infrastructure.persistence.sqlite.repositories.oauth_grant_repository import (
     SQLiteOAuthGrantRepository,
 )
+from infrastructure.persistence.sqlite.repositories.mcp_api_key_repository import (
+    SQLiteMCPApiKeyRepository,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +56,11 @@ class OAuthService:
         self._authorization_repo = SQLiteOAuthAuthorizationRepository(db_path)
         self._grant_repo = SQLiteOAuthGrantRepository(db_path)
         self._encryption = EncryptionService(
-            encryption_repo=SQLiteEncryptionRepository(db_path)
+            encryption_repo=SQLiteEncryptionRepository(db_path),
+            # Needed so resolve_access()/unwrap_dek() can fall back to the
+            # legacy manually-created API key path (resolve_mcp_api_key /
+            # unwrap_dek_for_api_key) alongside OAuth grants.
+            mcp_api_key_datasource=SQLiteMCPApiKeyRepository(db_path),
         )
         # Serializes refresh() end-to-end (read -> DEK unwrap -> re-wrap ->
         # rotate). See refresh()'s docstring for why rotate()'s SQL-level
@@ -219,24 +226,61 @@ class OAuthService:
         }
 
     # =========================================================================
-    # Access-token resolution (minimal helpers used by the DEK bridge; the
-    # full provider-facing `load_access_token` is completed in a later task)
+    # Access-token resolution (unifies OAuth grants with legacy,
+    # manually-created API keys, so both auth paths keep working side by
+    # side) + revoke
     # =========================================================================
 
     def resolve_access(self, access_token: str) -> Optional[dict]:
-        """Resolve a raw access token to its grant row, or None if invalid/expired/revoked."""
+        """Resolve a raw access token to identity + scope.
+
+        Tries the OAuth grant first (by `at_hash`, unexpired, unrevoked); if
+        that doesn't resolve, falls back to a legacy manually-created API
+        key. Returns None if neither resolves.
+
+        Returns:
+            The full grant row plus `"kind": "oauth"` for an OAuth access
+            token (so `grant_id`/`at_salt` remain available to `unwrap_dek`
+            and callers), or `{"user_id", "scope", "key_id", "encrypted",
+            "kind": "apikey"}` for a legacy API key, or None.
+        """
         row = self._grant_repo.get_by_at_hash(hash_token(access_token))
-        if row is None:
-            return None
-        if self._now() >= datetime.fromisoformat(row["at_expires_at"]):
-            return None
-        return row
+        if row is not None:
+            if self._now() >= datetime.fromisoformat(row["at_expires_at"]):
+                return None
+            return {**row, "kind": "oauth"}
+        legacy = self._encryption.resolve_mcp_api_key(access_token)
+        if legacy is not None:
+            return {**legacy, "kind": "apikey"}
+        return None
 
     def unwrap_dek(self, access_token: str, resolved: dict) -> Optional[str]:
         """Return the base64 DEK bridged via this access token, or None if unencrypted."""
+        if resolved.get("kind") == "apikey":
+            return self._encryption.unwrap_dek_for_api_key(access_token)
         return self._encryption.oauth_unwrap_dek_for_access_token(
             resolved["user_id"], resolved["grant_id"], access_token, resolved["at_salt"]
         )
+
+    def revoke(self, raw_token: str) -> None:
+        """Revoke the OAuth grant behind a raw access or refresh token.
+
+        Looks the token up by `at_hash` first, then `rt_hash` (a caller may
+        hand back either an access or a refresh token per the SDK's
+        `revoke_token` contract), revokes the grant, and deletes its DEK
+        envelopes. A legacy API key (or any other unrecognized token) has no
+        grant/envelopes to revoke via this path, so this is a no-op rather
+        than an error - matching the SDK's "invalid or already revoked
+        tokens are silently ignored" contract.
+        """
+        token_hash = hash_token(raw_token)
+        grant = self._grant_repo.get_by_at_hash(token_hash)
+        if grant is None:
+            grant = self._grant_repo.get_by_rt_hash(token_hash)
+        if grant is None:
+            return
+        self._grant_repo.revoke_by_grant_id(grant["grant_id"])
+        self._encryption.oauth_delete_grant_envelopes(grant["user_id"], grant["grant_id"])
 
     # =========================================================================
     # Refresh-token rotation

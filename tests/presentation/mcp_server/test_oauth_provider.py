@@ -307,3 +307,79 @@ def test_concurrent_refresh_of_same_rt_never_yields_two_live_pairs():
         assert svc.unwrap_dek(live_result["access_token"], live_resolved) == dek
     finally:
         os.remove(path)
+
+
+# =============================================================================
+# load_access_token / revoke_token (Task 6): unifies OAuth grants + legacy
+# manually-created API keys.
+# =============================================================================
+
+
+def test_load_access_token_resolves_oauth_grant(provider):
+    import asyncio
+    svc = provider.service
+    pending = {"client_id": "cid", "scopes": ["read"], "code_challenge": "c",
+               "redirect_uri": "http://localhost:9/callback",
+               "redirect_uri_provided_explicitly": True, "resource": None}
+    raw_code = svc.issue_code("u@x", pending, None)
+    result = svc.exchange_code("cid", raw_code)
+
+    at = asyncio.run(provider.load_access_token(result["access_token"]))
+    assert at is not None
+    assert at.token == result["access_token"]
+    assert at.scopes == ["read"]
+    grant = svc.resolve_access(result["access_token"])
+    assert at.client_id == grant["grant_id"]
+
+
+def test_load_access_token_resolves_legacy_api_key(provider):
+    import asyncio, base64
+    from infrastructure.crypto.encryption import generate_dek
+
+    svc = provider.service
+    dek_b64 = base64.b64encode(generate_dek()).decode("ascii")
+    raw = svc._encryption.create_mcp_api_key("u@x", "readwrite", "laptop", None, dek_b64)
+
+    at = asyncio.run(provider.load_access_token(raw))
+    assert at is not None
+    assert at.token == raw
+    assert at.scopes == ["readwrite"]
+    # Legacy keys have no OAuth client - falls back to the SpendSense user id.
+    assert at.client_id == "u@x"
+
+
+def test_load_access_token_garbage_returns_none(provider):
+    import asyncio
+    assert asyncio.run(provider.load_access_token("totally-bogus-token")) is None
+
+
+def test_revoke_token_kills_the_oauth_grant(provider):
+    import asyncio
+    from mcp.server.auth.provider import AccessToken
+
+    svc = provider.service
+    pending = {"client_id": "cid", "scopes": ["read"], "code_challenge": "c",
+               "redirect_uri": "http://localhost:9/callback",
+               "redirect_uri_provided_explicitly": True, "resource": None}
+    raw_code = svc.issue_code("u@x", pending, None)
+    result = svc.exchange_code("cid", raw_code)
+
+    token_obj = AccessToken(token=result["access_token"], client_id="cid", scopes=["read"])
+    asyncio.run(provider.revoke_token(token_obj))
+
+    assert svc.resolve_access(result["access_token"]) is None
+
+
+def test_revoke_token_is_a_noop_for_legacy_api_key(provider):
+    import asyncio, base64
+    from infrastructure.crypto.encryption import generate_dek
+    from mcp.server.auth.provider import AccessToken
+
+    svc = provider.service
+    dek_b64 = base64.b64encode(generate_dek()).decode("ascii")
+    raw = svc._encryption.create_mcp_api_key("u@x", "read", "laptop", None, dek_b64)
+
+    token_obj = AccessToken(token=raw, client_id="u@x", scopes=["read"])
+    asyncio.run(provider.revoke_token(token_obj))  # must not raise
+
+    assert svc.resolve_access(raw) is not None
