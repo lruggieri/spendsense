@@ -34,6 +34,9 @@ class OAuthAuthorizationRepository(ABC):
     @abstractmethod
     def delete_code(self, code_hash: str) -> None: ...
 
+    @abstractmethod
+    def consume_code(self, code_hash: str) -> Optional[dict]: ...
+
 
 class OAuthGrantRepository(ABC):
     @abstractmethod

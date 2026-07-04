@@ -150,17 +150,28 @@ class OAuthService:
 
         Bridges the DEK (if the account is encrypted) from the code's
         envelope to new envelopes keyed on the minted access/refresh tokens,
-        then deletes the code and its envelope so it cannot be replayed.
+        then deletes the code's envelope so it cannot be replayed.
+
+        The code row itself is claimed atomically via `consume_code` (a single
+        `DELETE ... RETURNING` statement) *before* any DEK unwrap or token
+        minting happens. This closes a TOCTOU race where two concurrent
+        exchanges of the same code could both pass a read-then-delete check
+        and mint two independent, valid token pairs from one single-use code.
 
         Returns:
             Dict with `access_token`, `refresh_token`, `scope`, `expires_in`,
-            or None if the code is invalid/expired/mismatched-client.
+            or None if the code is invalid/expired/mismatched-client/already
+            consumed.
         """
-        row = self.get_code(client_id, raw_code)
+        code_id = hash_token(raw_code)
+        row = self._authorization_repo.consume_code(code_id)
         if row is None:
             return None
+        if row["client_id"] != client_id:
+            return None
+        if self._now() >= datetime.fromisoformat(row["expires_at"]):
+            return None
 
-        code_id = hash_token(raw_code)
         user_id = row["user_id"]
         dek_b64 = self._encryption.oauth_unwrap_dek_for_code(user_id, raw_code, code_id)
 
@@ -193,7 +204,6 @@ class OAuthService:
             now.isoformat(),
         )
 
-        self._authorization_repo.delete_code(code_id)
         self._encryption.oauth_delete_code_envelope(user_id, code_id)
 
         return {

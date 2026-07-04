@@ -25,6 +25,23 @@ def test_pending_and_code_roundtrip(db):
     assert r.get_code("h")["user_id"] == "u@x"
     r.delete_code("h"); assert r.get_code("h") is None
 
+def test_consume_code_is_atomic_single_use(db):
+    r = SQLiteOAuthAuthorizationRepository(db)
+    r.create_code("h2", "cid", "u@x", '["read"]', "chal", "http://localhost:1/callback", 1, None, "t1")
+    # First claim returns the full row and removes it.
+    claimed = r.consume_code("h2")
+    assert claimed is not None
+    assert claimed["code_hash"] == "h2"
+    assert claimed["client_id"] == "cid"
+    assert claimed["user_id"] == "u@x"
+    assert r.get_code("h2") is None
+    # Second claim on the same hash finds nothing (already consumed).
+    assert r.consume_code("h2") is None
+
+def test_consume_code_unknown_hash_returns_none(db):
+    r = SQLiteOAuthAuthorizationRepository(db)
+    assert r.consume_code("does-not-exist") is None
+
 def test_grant_create_lookup_rotate_revoke(db):
     r = SQLiteOAuthGrantRepository(db)
     r.create("g1","u@x","cid","read","ath","ats","t9","rth","rts","t9","t0")

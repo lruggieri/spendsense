@@ -140,3 +140,25 @@ class SQLiteOAuthAuthorizationRepository(OAuthAuthorizationRepository):
             conn.commit()
         finally:
             conn.close()
+
+    def consume_code(self, code_hash: str) -> Optional[dict]:
+        """Atomically claim and remove a code row in a single statement.
+
+        Uses `DELETE ... RETURNING` so the read-and-invalidate happens as one
+        indivisible operation: two concurrent callers racing on the same
+        `code_hash` cannot both observe a row, since only one `DELETE` can
+        match it. Returns the deleted row (same shape as `get_code`), or
+        `None` if no row matched (already consumed, or never existed).
+        """
+        conn = get_connection(self.db_filepath)
+        try:
+            row = conn.execute(
+                "DELETE FROM oauth_codes WHERE code_hash = ? "
+                "RETURNING code_hash, client_id, user_id, scopes, code_challenge, "
+                "redirect_uri, redirect_uri_explicit, resource, expires_at",
+                (code_hash,),
+            ).fetchone()
+            conn.commit()
+            return self._code_row_to_dict(row) if row else None
+        finally:
+            conn.close()

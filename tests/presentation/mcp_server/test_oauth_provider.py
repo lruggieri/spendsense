@@ -72,3 +72,69 @@ def test_exchange_unknown_code_raises_invalid_grant(provider):
     )
     with pytest.raises(TokenError):
         asyncio.run(provider.exchange_authorization_code(ci, fake_ac))
+
+def test_replaying_a_consumed_code_raises_invalid_grant_not_assertion_error(provider):
+    """Regression test for the TOCTOU race: a code must be single-use.
+
+    Exchanging the same authorization code twice must never crash with an
+    uncaught AssertionError from the DEK-unwrap path (which happened when a
+    second read-then-delete exchange found the code row but its envelope had
+    already been deleted by the first exchange). The second attempt must
+    cleanly raise TokenError(invalid_grant), exactly like an unknown code.
+    """
+    from mcp.server.auth.provider import TokenError
+    import base64, os as _os
+
+    svc = provider.service
+    dek = base64.b64encode(_os.urandom(32)).decode()
+    pending = {"client_id": "cid", "scopes": ["read"], "code_challenge": "chal",
+               "redirect_uri": "http://localhost:9/callback",
+               "redirect_uri_provided_explicitly": True, "resource": None}
+    raw_code = svc.issue_code("u@x", pending, dek)
+    ci = OAuthClientInformationFull(client_id="cid", redirect_uris=["http://localhost:9/callback"])
+    ac = asyncio.run(provider.load_authorization_code(ci, raw_code))
+    assert ac is not None
+
+    # First exchange succeeds and consumes the code.
+    tok = asyncio.run(provider.exchange_authorization_code(ci, ac))
+    assert tok.access_token and tok.refresh_token
+
+    # Replaying the same code must fail cleanly (invalid_grant), not crash.
+    with pytest.raises(TokenError):
+        asyncio.run(provider.exchange_authorization_code(ci, ac))
+
+def test_concurrent_exchange_of_same_code_only_one_winner():
+    """Two threads racing exchange_code() on the SAME code: exactly one wins.
+
+    This exercises the atomic consume_code() DELETE...RETURNING claim
+    directly against OAuthService (bypassing the async provider layer, since
+    threads need a synchronous call). Before the fix, both threads could
+    pass a read-then-delete check and mint two independent token pairs.
+    """
+    import threading
+    from application.services.oauth_service import OAuthService
+
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        svc = OAuthService(db_path=path)
+        pending = {"client_id": "cid", "scopes": ["read"], "code_challenge": "chal",
+                   "redirect_uri": "http://localhost:9/callback",
+                   "redirect_uri_provided_explicitly": True, "resource": None}
+        raw_code = svc.issue_code("u@x", pending, None)
+
+        results = [None, None]
+
+        def worker(i):
+            results[i] = svc.exchange_code("cid", raw_code)
+
+        t1 = threading.Thread(target=worker, args=(0,))
+        t2 = threading.Thread(target=worker, args=(1,))
+        t1.start(); t2.start()
+        t1.join(); t2.join()
+
+        non_none = [r for r in results if r is not None]
+        assert len(non_none) == 1
+        assert results.count(None) == 1
+    finally:
+        os.remove(path)
