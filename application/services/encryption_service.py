@@ -12,6 +12,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
 
+from application.services.utils import parse_date
 from domain.repositories.embedding_repository import EmbeddingRepository
 from domain.repositories.encryption_repository import EncryptionRepository
 from domain.repositories.mcp_api_key_repository import MCPApiKeyRepository
@@ -206,6 +207,10 @@ class EncryptionService:
 
         Returns:
             Raw API key string (shown once — caller must relay to the user).
+
+        Raises:
+            ValueError: If scope is invalid, or expires_at is not a valid
+                'YYYY-MM-DD' or ISO 8601 date string.
         """
         from infrastructure.crypto.encryption import (
             generate_api_key,
@@ -217,6 +222,10 @@ class EncryptionService:
         assert self._mcp_api_key_repo is not None
         if scope not in ("read", "readwrite"):
             raise ValueError("scope must be 'read' or 'readwrite'")
+        if expires_at is not None:
+            # Normalize to a UTC ISO timestamp so the lexical comparison in
+            # resolve_mcp_api_key stays valid regardless of the input format/offset.
+            expires_at = parse_date(expires_at).isoformat()
         raw = generate_api_key()
         key_id = str(uuid.uuid4())
         self._mcp_api_key_repo.create(

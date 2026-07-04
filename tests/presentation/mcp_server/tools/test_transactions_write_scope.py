@@ -54,3 +54,40 @@ def test_update_transaction_comment_rejects_read_scope(tools):
     with patch.object(transactions, "get_tool_context", return_value=(svcs, "read")):
         with pytest.raises(ToolError, match="read-only"):
             registered["update_transaction_comment"](tx_id=tx["id"], comment="edited")
+
+
+def test_assign_transaction_category_rejects_unknown_transaction(tools):
+    registered, svcs = tools
+    ok, _, category_id = svcs.category.create_category("Food")
+    assert ok
+    with patch.object(transactions, "get_tool_context", return_value=(svcs, "readwrite")):
+        with pytest.raises(ToolError, match="transaction"):
+            registered["assign_transaction_category"](
+                tx_id="nonexistent", category_id=category_id
+            )
+
+
+def test_assign_transaction_category_rejects_unknown_category(tools):
+    registered, svcs = tools
+    with patch.object(transactions, "get_tool_context", return_value=(svcs, "readwrite")):
+        tx = registered["add_transaction"](
+            date="2026-06-25", amount="500", description="Lunch"
+        )
+        with pytest.raises(ToolError, match="category"):
+            registered["assign_transaction_category"](
+                tx_id=tx["id"], category_id="nonexistent"
+            )
+
+
+def test_assign_transaction_category_succeeds(tools):
+    registered, svcs = tools
+    ok, _, category_id = svcs.category.create_category("Food")
+    assert ok
+    with patch.object(transactions, "get_tool_context", return_value=(svcs, "readwrite")):
+        tx = registered["add_transaction"](
+            date="2026-06-25", amount="500", description="Lunch"
+        )
+        result = registered["assign_transaction_category"](
+            tx_id=tx["id"], category_id=category_id
+        )
+    assert result is True

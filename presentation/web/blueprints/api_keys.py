@@ -48,6 +48,8 @@ def create_key():
     svc = get_encryption_service()
     try:
         raw = svc.create_mcp_api_key(user_id, scope, label, expires_at, dek_b64)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
     except Exception as exc:
         logger.error("Failed to create MCP API key for user %s: %s", user_id, type(exc).__name__)
         return jsonify({"error": "could not create key"}), 500

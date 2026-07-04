@@ -123,5 +123,9 @@ def register(mcp) -> None:
         """Manually assign a category to a transaction. Requires readwrite scope."""
         svcs, scope = get_tool_context()
         require_write(scope)
+        if svcs.transaction.get_transaction_by_id(tx_id) is None:
+            raise ToolError(f"transaction {tx_id!r} not found")
+        if category_id not in svcs.category.categories:
+            raise ToolError(f"category {category_id!r} not found")
         svcs.transaction.assign_category(tx_id, category_id)
         return True

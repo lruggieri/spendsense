@@ -174,6 +174,19 @@ class TestTransactionServiceDDD(unittest.TestCase):
         result = self.service.get_all_transactions()
         self.assertEqual(len(result), 3)
 
+    # --- get_transaction_by_id ---
+
+    def test_get_transaction_by_id_found(self):
+        self._add_sample_transactions()
+        result = self.service.get_transaction_by_id("tx2")
+        self.assertIsNotNone(result)
+        self.assertEqual(result.id, "tx2")
+
+    def test_get_transaction_by_id_not_found(self):
+        self._add_sample_transactions()
+        result = self.service.get_transaction_by_id("nonexistent")
+        self.assertIsNone(result)
+
     # --- get_all_transactions_filtered ---
 
     def test_filter_by_category(self):
