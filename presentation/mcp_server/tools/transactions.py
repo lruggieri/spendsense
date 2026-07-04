@@ -43,6 +43,7 @@ def register(mcp) -> None:
         category_id: Optional[str] = None,
         from_date: Optional[str] = None,
         to_date: Optional[str] = None,
+        group_id: Optional[str] = None,
         page: int = 0,
     ) -> List[Dict[str, Any]]:
         """List transactions, optionally filtered. Results are paginated (50/page)."""
@@ -52,6 +53,7 @@ def register(mcp) -> None:
             category_id=category_id,
             from_date=from_date,
             to_date=to_date,
+            group_id=group_id,
             transactions=list(tx_dict.values()),
         )
         start = page * _PAGE

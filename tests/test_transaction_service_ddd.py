@@ -235,6 +235,21 @@ class TestTransactionServiceDDD(unittest.TestCase):
         result = self.service.get_all_transactions_filtered(transaction_source="Sony Bank")
         self.assertEqual(len(result), 2)
 
+    def test_filter_by_group(self):
+        """Test filtering by group_id."""
+        self._add_sample_transactions()
+        self.tx_ds.add_group_to_transaction("tx1", "grp1")
+
+        result = self.service.get_all_transactions_filtered(group_id="grp1")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].id, "tx1")
+
+    def test_filter_by_group_no_match(self):
+        """Test filtering by a group_id no transaction belongs to returns nothing."""
+        self._add_sample_transactions()
+        result = self.service.get_all_transactions_filtered(group_id="nonexistent-group")
+        self.assertEqual(len(result), 0)
+
     def test_filter_by_unknown_category(self):
         """Test filtering by UNKNOWN category shows uncategorized transactions."""
         self._add_sample_transactions()
