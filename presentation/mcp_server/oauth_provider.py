@@ -168,11 +168,16 @@ class SpendSenseOAuthProvider(OAuthAuthorizationServerProvider):
             return None
         return AccessToken(
             token=token,
-            # client_id is the *OAuth client's* id, not the SpendSense user -
-            # for an OAuth token that's the grant; a legacy API key has no
-            # OAuth client, so it falls back to the user id (matching the
-            # pre-existing legacy verifier in presentation/mcp_server/auth.py).
-            client_id=resolved.get("grant_id") or resolved["user_id"],
+            # client_id is the *registered OAuth client's* id (the same value
+            # used everywhere else as client_id, e.g. the SDK's /revoke
+            # handler authorizes a revocation by checking this against the
+            # client authenticated on the request) - not the SpendSense user
+            # and not the grant_id (a fresh, per-authorization identifier
+            # minted on every code exchange, so it can never match a stable
+            # client id). A legacy API key has no OAuth client, so it falls
+            # back to the user id (matching the pre-existing legacy verifier
+            # in presentation/mcp_server/auth.py).
+            client_id=resolved.get("client_id") or resolved["user_id"],
             scopes=[resolved["scope"]],
             expires_at=None,
             resource=None,

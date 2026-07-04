@@ -329,7 +329,60 @@ def test_load_access_token_resolves_oauth_grant(provider):
     assert at.token == result["access_token"]
     assert at.scopes == ["read"]
     grant = svc.resolve_access(result["access_token"])
-    assert at.client_id == grant["grant_id"]
+    # client_id must be the registered OAuth client's id ("cid"), NOT the
+    # grant_id (a fresh, per-authorization identifier minted on every code
+    # exchange) - see test_load_access_token_client_id_matches_registered_client
+    # below for the full regression test against the SDK's /revoke semantics.
+    assert at.client_id == "cid"
+    assert at.client_id != grant["grant_id"]
+
+
+def test_load_access_token_client_id_matches_registered_client(provider):
+    """Regression test: client_id must be the registered OAuth client's id.
+
+    Before the fix, `load_access_token` set `AccessToken.client_id` to the
+    grant_id - a fresh, random identifier minted per authorization-code
+    exchange - instead of the actual registered OAuth client id. This meant
+    the MCP SDK's own /revoke handler (which authorizes a revocation by
+    checking `token.client_id == client.client_id`, where `client` is the
+    OAuth client authenticated on the revocation request) could never match
+    for any real OAuth-issued token, silently no-oping revocation for every
+    legitimate client.
+
+    This test goes through the full register -> authorize -> code-exchange
+    path (rather than constructing AccessToken by hand) and asserts the
+    resulting client_id equals the registered client's own client_id -
+    exactly the comparison the SDK's /revoke handler performs.
+    """
+    import asyncio
+    from mcp.shared.auth import OAuthClientInformationFull
+
+    svc = provider.service
+    registered_client = OAuthClientInformationFull(
+        client_id="cid", redirect_uris=["http://localhost:9/callback"]
+    )
+    asyncio.run(provider.register_client(registered_client))
+
+    pending = {"client_id": "cid", "scopes": ["read"], "code_challenge": "c",
+               "redirect_uri": "http://localhost:9/callback",
+               "redirect_uri_provided_explicitly": True, "resource": None}
+    raw_code = svc.issue_code("u@x", pending, None)
+    ac = asyncio.run(provider.load_authorization_code(registered_client, raw_code))
+    tok = asyncio.run(provider.exchange_authorization_code(registered_client, ac))
+
+    at = asyncio.run(provider.load_access_token(tok.access_token))
+    assert at is not None
+
+    grant = svc.resolve_access(tok.access_token)
+    assert at.client_id == registered_client.client_id
+    assert at.client_id != grant["grant_id"]
+    assert at.client_id != "u@x"
+
+    # Mirrors the SDK's /revoke handler comparison exactly (see
+    # mcp/server/auth/handlers/revoke.py): the client authenticated on the
+    # revocation request must match the token's client_id for revocation to
+    # proceed.
+    assert at.client_id == registered_client.client_id
 
 
 def test_load_access_token_resolves_legacy_api_key(provider):
