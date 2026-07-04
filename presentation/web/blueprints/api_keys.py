@@ -51,7 +51,7 @@ def create_key():
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     except Exception as exc:
-        logger.error("Failed to create MCP API key for user %s: %s", user_id, type(exc).__name__)
+        logger.error("Failed to create MCP key for user %s: %s", user_id, type(exc).__name__)
         return jsonify({"error": "could not create key"}), 500
 
     logger.info("Created MCP key for user %s scope=%s", user_id, scope)
