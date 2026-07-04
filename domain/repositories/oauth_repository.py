@@ -54,7 +54,23 @@ class OAuthGrantRepository(ABC):
     @abstractmethod
     def rotate(self, grant_id: str, at_hash: str, at_salt: str, at_expires_at: str,
                rt_hash: str, rt_salt: str, rt_expires_at: str,
-               prev_rt_hash: str, prev_rt_expires_at: str) -> None: ...
+               prev_rt_hash: str, prev_rt_expires_at: str) -> bool:
+        """Atomically rotate a grant's access/refresh token pair.
+
+        `prev_rt_hash` must be the `rt_hash` value the caller observed when it
+        read the grant row (i.e. the refresh token hash being rotated away
+        from). This doubles as an optimistic-concurrency guard: the UPDATE
+        only applies if the row's *current* `rt_hash` still equals
+        `prev_rt_hash` at write time. If a concurrent `rotate()` already won
+        the race and changed `rt_hash`, this call matches zero rows and
+        returns False so the caller can discard its freshly minted (but now
+        orphaned) token pair instead of returning it as valid.
+
+        Returns:
+            True if the row was updated, False if a concurrent rotation had
+            already moved the row out from under this call.
+        """
+        ...
 
     @abstractmethod
     def revoke_by_grant_id(self, grant_id: str) -> None: ...

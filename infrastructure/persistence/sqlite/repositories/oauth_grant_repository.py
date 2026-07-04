@@ -116,19 +116,28 @@ class SQLiteOAuthGrantRepository(OAuthGrantRepository):
 
     def rotate(self, grant_id: str, at_hash: str, at_salt: str, at_expires_at: str,
                rt_hash: str, rt_salt: str, rt_expires_at: str,
-               prev_rt_hash: str, prev_rt_expires_at: str) -> None:
+               prev_rt_hash: str, prev_rt_expires_at: str) -> bool:
+        """Single atomic UPDATE, guarded by `rt_hash = prev_rt_hash` (see the
+        docstring on the abstract method for why `prev_rt_hash` doubles as an
+        optimistic-concurrency check). This is the serialization point for
+        concurrent refreshes: only the first of two racing callers that
+        observed the same current `rt_hash` can have its UPDATE match a row;
+        the second's WHERE clause no longer matches (the row was already
+        moved on) and it updates zero rows.
+        """
         conn = get_connection(self.db_filepath)
         try:
-            conn.execute(
+            cursor = conn.execute(
                 "UPDATE oauth_grants SET "
                 "at_hash = ?, at_salt = ?, at_expires_at = ?, "
                 "rt_hash = ?, rt_salt = ?, rt_expires_at = ?, "
                 "prev_rt_hash = ?, prev_rt_expires_at = ? "
-                "WHERE grant_id = ?",
+                "WHERE grant_id = ? AND rt_hash = ?",
                 (at_hash, at_salt, at_expires_at, rt_hash, rt_salt, rt_expires_at,
-                 prev_rt_hash, prev_rt_expires_at, grant_id),
+                 prev_rt_hash, prev_rt_expires_at, grant_id, prev_rt_hash),
             )
             conn.commit()
+            return cursor.rowcount == 1
         finally:
             conn.close()
 

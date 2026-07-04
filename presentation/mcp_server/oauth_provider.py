@@ -119,15 +119,22 @@ class SpendSenseOAuthProvider(OAuthAuthorizationServerProvider):
         )
 
     # =========================================================================
-    # Stubs — implemented by later tasks (5: refresh rotation, 6:
-    # access-token verification). Kept here only so this class is
-    # concrete/importable; do not implement real logic in this task.
+    # Refresh-token rotation (implemented this task)
     # =========================================================================
 
     async def load_refresh_token(
         self, client: OAuthClientInformationFull, refresh_token: str
     ) -> Optional[RefreshToken]:
-        raise NotImplementedError
+        assert client.client_id is not None
+        row = self._service.resolve_refresh(client.client_id, refresh_token)
+        if row is None:
+            return None
+        return RefreshToken(
+            token=refresh_token,
+            client_id=row["client_id"],
+            scopes=row["scope"].split() if row["scope"] else [],
+            expires_at=int(_iso_to_epoch(row["rt_expires_at"])),
+        )
 
     async def exchange_refresh_token(
         self,
@@ -135,7 +142,25 @@ class SpendSenseOAuthProvider(OAuthAuthorizationServerProvider):
         refresh_token: Any,
         scopes: list,
     ) -> OAuthToken:
-        raise NotImplementedError
+        assert client.client_id is not None
+        result = self._service.refresh(client.client_id, refresh_token.token, scopes)
+        if result is None:
+            raise TokenError(
+                "invalid_grant", "Refresh token is invalid, expired, or already used"
+            )
+        return OAuthToken(
+            access_token=result["access_token"],
+            token_type="Bearer",
+            expires_in=result["expires_in"],
+            scope=result["scope"],
+            refresh_token=result["refresh_token"],
+        )
+
+    # =========================================================================
+    # Stubs — implemented by a later task (6: access-token verification).
+    # Kept here only so this class is concrete/importable; do not implement
+    # real logic in this task.
+    # =========================================================================
 
     async def load_access_token(self, token: str) -> Optional[AccessToken]:
         raise NotImplementedError

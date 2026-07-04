@@ -411,6 +411,30 @@ class EncryptionService:
         dek = unwrap_key(wrapped, kek)
         return base64.b64encode(dek).decode("ascii")
 
+    def oauth_unwrap_dek_for_prev_refresh_token(
+        self, user_id: str, grant_id: str, refresh_token: str
+    ) -> Optional[str]:
+        """Unwrap the DEK from the `:prev` (just-rotated-away) refresh token envelope.
+
+        Unlike `oauth_unwrap_dek_for_refresh_token`, the salt is read from the
+        envelope store rather than passed in - the grants table only tracks
+        the *current* `rt_salt`, not the previous one, so there is no salt
+        for the caller to hand us. This is only used during the short
+        rotation grace window, off the hot path, so the extra lookup is fine.
+        """
+        from infrastructure.crypto.encryption import hkdf_derive_kek, unwrap_key
+
+        cid = f"oauthrt:{grant_id}:prev"
+        wrapped = self._encryption_repo.get_wrapped_dek(user_id, cid)
+        if not wrapped:
+            return None
+        salt_b64 = self._encryption_repo.get_prf_salt(user_id, cid)
+        if salt_b64 is None:
+            return None
+        kek = hkdf_derive_kek(refresh_token, base64.b64decode(salt_b64))
+        dek = unwrap_key(wrapped, kek)
+        return base64.b64encode(dek).decode("ascii")
+
     def oauth_delete_code_envelope(self, user_id: str, code_id: str) -> None:
         """Delete the authorization code envelope (called once the code is consumed)."""
         self._encryption_repo.delete_wrapped_dek(user_id, f"oauthcode:{code_id}")

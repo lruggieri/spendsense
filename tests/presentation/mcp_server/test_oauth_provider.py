@@ -138,3 +138,172 @@ def test_concurrent_exchange_of_same_code_only_one_winner():
         assert results.count(None) == 1
     finally:
         os.remove(path)
+
+def test_refresh_rotates_and_preserves_dek(provider):
+    import base64, os, asyncio
+    from mcp.shared.auth import OAuthClientInformationFull
+    svc = provider.service
+    dek = base64.b64encode(os.urandom(32)).decode()
+    pending = {"client_id":"cid","scopes":["read"],"code_challenge":"c","redirect_uri":"http://localhost:9/callback","redirect_uri_provided_explicitly":True,"resource":None}
+    ci = OAuthClientInformationFull(client_id="cid", redirect_uris=["http://localhost:9/callback"])
+    raw_code = svc.issue_code("u@x", pending, dek)
+    ac = asyncio.run(provider.load_authorization_code(ci, raw_code))
+    tok1 = asyncio.run(provider.exchange_authorization_code(ci, ac))
+    rt1 = tok1.refresh_token
+    rtobj = asyncio.run(provider.load_refresh_token(ci, rt1))
+    tok2 = asyncio.run(provider.exchange_refresh_token(ci, rtobj, ["read"]))
+    assert tok2.access_token != tok1.access_token and tok2.refresh_token != rt1
+    r2 = svc.resolve_access(tok2.access_token)
+    assert svc.unwrap_dek(tok2.access_token, r2) == dek        # DEK preserved across rotation
+    # grace: old RT still resolves briefly
+    assert asyncio.run(provider.load_refresh_token(ci, rt1)) is not None
+    # old AT no longer valid
+    assert svc.resolve_access(tok1.access_token) is None
+
+def test_refresh_unknown_token_raises_invalid_grant(provider):
+    import asyncio
+    from mcp.server.auth.provider import RefreshToken, TokenError
+    ci = OAuthClientInformationFull(client_id="cid", redirect_uris=["http://localhost:9/callback"])
+    assert asyncio.run(provider.load_refresh_token(ci, "bogus-rt")) is None
+    fake = RefreshToken(token="bogus-rt", client_id="cid", scopes=["read"])
+    with pytest.raises(TokenError):
+        asyncio.run(provider.exchange_refresh_token(ci, fake, ["read"]))
+
+def test_refresh_rejects_wrong_client(provider):
+    import base64, os, asyncio
+    svc = provider.service
+    pending = {"client_id":"cid","scopes":["read"],"code_challenge":"c","redirect_uri":"http://localhost:9/callback","redirect_uri_provided_explicitly":True,"resource":None}
+    ci = OAuthClientInformationFull(client_id="cid", redirect_uris=["http://localhost:9/callback"])
+    raw_code = svc.issue_code("u@x", pending, None)
+    ac = asyncio.run(provider.load_authorization_code(ci, raw_code))
+    tok1 = asyncio.run(provider.exchange_authorization_code(ci, ac))
+
+    other_ci = OAuthClientInformationFull(client_id="other", redirect_uris=["http://localhost:9/callback"])
+    assert asyncio.run(provider.load_refresh_token(other_ci, tok1.refresh_token)) is None
+    assert svc.refresh("other", tok1.refresh_token, ["read"]) is None
+
+def test_refresh_revoked_grant_refuses(provider):
+    import asyncio
+    svc = provider.service
+    pending = {"client_id":"cid","scopes":["read"],"code_challenge":"c","redirect_uri":"http://localhost:9/callback","redirect_uri_provided_explicitly":True,"resource":None}
+    ci = OAuthClientInformationFull(client_id="cid", redirect_uris=["http://localhost:9/callback"])
+    raw_code = svc.issue_code("u@x", pending, None)
+    ac = asyncio.run(provider.load_authorization_code(ci, raw_code))
+    tok1 = asyncio.run(provider.exchange_authorization_code(ci, ac))
+
+    resolved = svc.resolve_access(tok1.access_token)
+    svc._grant_repo.revoke_by_grant_id(resolved["grant_id"])
+
+    assert svc.refresh("cid", tok1.refresh_token, ["read"]) is None
+    assert asyncio.run(provider.load_refresh_token(ci, tok1.refresh_token)) is None
+
+def test_refresh_expired_rt_refuses(provider, monkeypatch):
+    import asyncio
+    from datetime import datetime, timedelta, timezone
+    svc = provider.service
+    pending = {"client_id":"cid","scopes":["read"],"code_challenge":"c","redirect_uri":"http://localhost:9/callback","redirect_uri_provided_explicitly":True,"resource":None}
+    ci = OAuthClientInformationFull(client_id="cid", redirect_uris=["http://localhost:9/callback"])
+    raw_code = svc.issue_code("u@x", pending, None)
+    ac = asyncio.run(provider.load_authorization_code(ci, raw_code))
+    tok1 = asyncio.run(provider.exchange_authorization_code(ci, ac))
+
+    monkeypatch.setattr(svc, "_now", lambda: datetime.now(timezone.utc) + timedelta(days=31))
+    assert svc.refresh("cid", tok1.refresh_token, ["read"]) is None
+
+def test_sequential_refresh_with_same_rt_yields_exactly_one_success_then_grace_success(provider):
+    """Two refresh() calls presenting the SAME refresh token, one after another.
+
+    The first call rotates the grant. The second call reuses the very same
+    (now just-rotated-away) refresh token - this is the grace-window retry
+    scenario the plan calls out explicitly, and must succeed cleanly rather
+    than hard-failing. Critically, once the second (grace) rotation lands,
+    the first call's access token must no longer be valid - there must never
+    be two independently-valid token pairs alive for the same grant.
+    """
+    import base64, os, asyncio
+    svc = provider.service
+    dek = base64.b64encode(os.urandom(32)).decode()
+    pending = {"client_id":"cid","scopes":["read"],"code_challenge":"c","redirect_uri":"http://localhost:9/callback","redirect_uri_provided_explicitly":True,"resource":None}
+    ci = OAuthClientInformationFull(client_id="cid", redirect_uris=["http://localhost:9/callback"])
+    raw_code = svc.issue_code("u@x", pending, dek)
+    ac = asyncio.run(provider.load_authorization_code(ci, raw_code))
+    tok0 = asyncio.run(provider.exchange_authorization_code(ci, ac))
+    rt0 = tok0.refresh_token
+
+    result1 = svc.refresh("cid", rt0, ["read"])
+    assert result1 is not None
+
+    # Retry with the SAME original RT (grace window, RT_GRACE_SECONDS=30s).
+    result2 = svc.refresh("cid", rt0, ["read"])
+    assert result2 is not None
+    assert result2["access_token"] != result1["access_token"]
+    assert result2["refresh_token"] != result1["refresh_token"]
+
+    # Exactly one access token is live at a time: the second rotation must
+    # have invalidated the first's.
+    assert svc.resolve_access(result1["access_token"]) is None
+    r2 = svc.resolve_access(result2["access_token"])
+    assert r2 is not None
+    assert svc.unwrap_dek(result2["access_token"], r2) == dek
+
+    # A third attempt with the now-doubly-stale original RT must fail: it
+    # is neither the current rt_hash nor the current prev_rt_hash anymore.
+    assert svc.refresh("cid", rt0, ["read"]) is None
+
+def test_concurrent_refresh_of_same_rt_never_yields_two_live_pairs():
+    """Two threads racing refresh() on the SAME refresh token.
+
+    Exercises OAuthService's internal serialization (the `_refresh_lock`
+    plus `rotate()`'s SQL-level compare-and-swap) directly, the same way
+    `test_concurrent_exchange_of_same_code_only_one_winner` exercises code
+    exchange. Both calls may legitimately succeed (the loser is honored as a
+    grace-window retry of the just-rotated-away RT, per the plan), but the
+    outcome must never be a crash, and at no point may two independently
+    resolvable access tokens both unwrap the DEK from the same original RT -
+    only the most-recently-rotated pair may ever be live.
+    """
+    import base64, os as _os, threading
+    from application.services.oauth_service import OAuthService
+
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        svc = OAuthService(db_path=path)
+        dek = base64.b64encode(_os.urandom(32)).decode()
+        pending = {"client_id": "cid", "scopes": ["read"], "code_challenge": "chal",
+                   "redirect_uri": "http://localhost:9/callback",
+                   "redirect_uri_provided_explicitly": True, "resource": None}
+        raw_code = svc.issue_code("u@x", pending, dek)
+        tok0 = svc.exchange_code("cid", raw_code)
+        assert tok0 is not None
+        rt0 = tok0["refresh_token"]
+
+        results = [None, None]
+
+        def worker(i):
+            results[i] = svc.refresh("cid", rt0, ["read"])
+
+        t1 = threading.Thread(target=worker, args=(0,))
+        t2 = threading.Thread(target=worker, args=(1,))
+        t1.start(); t2.start()
+        t1.join(); t2.join()
+
+        # No crash, and never a totally-silent double failure.
+        assert results.count(None) < 2
+
+        resolvable = []
+        for r in results:
+            if r is None:
+                continue
+            resolved = svc.resolve_access(r["access_token"])
+            if resolved is not None:
+                resolvable.append((r, resolved))
+
+        # At most one of the two returned pairs may still be resolvable -
+        # whichever rotation landed last. The other, if it "succeeded" at
+        # the service layer, must already be dead.
+        assert len(resolvable) == 1
+        live_result, live_resolved = resolvable[0]
+        assert svc.unwrap_dek(live_result["access_token"], live_resolved) == dek
+    finally:
+        os.remove(path)

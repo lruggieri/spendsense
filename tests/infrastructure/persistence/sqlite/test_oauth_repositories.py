@@ -47,7 +47,7 @@ def test_grant_create_lookup_rotate_revoke(db):
     r.create("g1","u@x","cid","read","ath","ats","t9","rth","rts","t9","t0")
     assert r.get_by_at_hash("ath")["user_id"] == "u@x"
     assert r.get_by_rt_hash("rth")["grant_id"] == "g1"
-    r.rotate("g1","ath2","ats2","t9","rth2","rts2","t9","rth","t_grace")
+    assert r.rotate("g1","ath2","ats2","t9","rth2","rts2","t9","rth","t_grace") is True
     assert r.get_by_at_hash("ath") is None
     assert r.get_by_at_hash("ath2")["grant_id"] == "g1"
     # old RT still resolvable within grace via prev_rt_hash
@@ -55,3 +55,28 @@ def test_grant_create_lookup_rotate_revoke(db):
     assert r.get_by_rt_hash("rth2")["grant_id"] == "g1"
     r.revoke_by_grant_id("g1")
     assert r.get_by_at_hash("ath2") is None
+
+def test_rotate_is_a_compare_and_swap_on_rt_hash(db):
+    """rotate()'s WHERE clause guards on the rt_hash the caller observed.
+
+    This is the serialization primitive two concurrent refreshes rely on: if
+    a caller's view of the grant's current rt_hash (passed as prev_rt_hash)
+    is already stale by the time its UPDATE runs, the statement must match
+    zero rows and leave the row untouched - never silently overwrite
+    whatever the other, faster caller already wrote.
+    """
+    r = SQLiteOAuthGrantRepository(db)
+    r.create("g2", "u@x", "cid", "read", "ath", "ats", "t9", "rth", "rts", "t9", "t0")
+
+    # First rotation observes the true current rt_hash ("rth") -> succeeds.
+    assert r.rotate("g2", "ath2", "ats2", "t9", "rth2", "rts2", "t9", "rth", "t_grace") is True
+
+    # A second caller that *also* thought the current rt_hash was still
+    # "rth" (e.g. it read the row before the first rotation committed) now
+    # tries to rotate using that stale value. It must fail (False), and the
+    # row must be exactly what the winner wrote - not a hybrid/corrupted mix.
+    assert r.rotate("g2", "ath3", "ats3", "t9", "rth3", "rts3", "t9", "rth", "t_grace2") is False
+    row = r.get_by_at_hash("ath2")
+    assert row is not None and row["grant_id"] == "g2"
+    assert r.get_by_at_hash("ath3") is None
+    assert r.get_by_rt_hash("rth3") is None

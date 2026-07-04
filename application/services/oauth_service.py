@@ -8,6 +8,7 @@ verification to this same class.
 import json
 import logging
 import secrets
+import threading
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
@@ -54,6 +55,10 @@ class OAuthService:
         self._encryption = EncryptionService(
             encryption_repo=SQLiteEncryptionRepository(db_path)
         )
+        # Serializes refresh() end-to-end (read -> DEK unwrap -> re-wrap ->
+        # rotate). See refresh()'s docstring for why rotate()'s SQL-level
+        # compare-and-swap alone is not enough.
+        self._refresh_lock = threading.Lock()
 
     def _now(self) -> datetime:
         return datetime.now(timezone.utc)
@@ -232,3 +237,173 @@ class OAuthService:
         return self._encryption.oauth_unwrap_dek_for_access_token(
             resolved["user_id"], resolved["grant_id"], access_token, resolved["at_salt"]
         )
+
+    # =========================================================================
+    # Refresh-token rotation
+    # =========================================================================
+
+    def resolve_refresh(self, client_id: str, raw_rt: str) -> Optional[dict]:
+        """Read-only resolve of a raw refresh token to its grant row.
+
+        Used by the provider's `load_refresh_token` to validate the token
+        (existence, client ownership, expiry) *before* the SDK decides
+        whether to call `refresh()` to perform the actual rotation. Does not
+        mutate anything, so it is safe to call speculatively and is not
+        covered by `_refresh_lock`.
+
+        If the presented token is the just-rotated-away RT still inside its
+        grace window, the returned dict's `rt_expires_at` is overridden with
+        the grace expiry (`prev_rt_expires_at`) rather than the current RT's
+        expiry, so callers report the presented token's own expiry.
+
+        Returns:
+            The grant row (dict), or None if unknown/expired/wrong client.
+        """
+        rt_hash = hash_token(raw_rt)
+        grant = self._grant_repo.get_by_rt_hash(rt_hash)
+        if grant is None:
+            return None
+        if grant["client_id"] != client_id:
+            return None
+
+        now = self._now()
+        if rt_hash == grant["rt_hash"]:
+            if now >= datetime.fromisoformat(grant["rt_expires_at"]):
+                return None
+            return grant
+        if grant["prev_rt_hash"] is not None and rt_hash == grant["prev_rt_hash"]:
+            if grant["prev_rt_expires_at"] is None:
+                return None
+            if now >= datetime.fromisoformat(grant["prev_rt_expires_at"]):
+                return None
+            return {**grant, "rt_expires_at": grant["prev_rt_expires_at"]}
+        return None
+
+    def refresh(
+        self, client_id: str, raw_rt: str, scopes: Optional[List[str]]
+    ) -> Optional[dict]:
+        """Exchange a valid refresh token for a new access/refresh token pair.
+
+        Rotates the grant's tokens and re-wraps the DEK (if the account is
+        encrypted) under the new secrets, preserving the outgoing refresh
+        token's envelope under a `:prev` slot so a request that presents the
+        just-rotated-away RT within `RT_GRACE_SECONDS` still resolves instead
+        of hard-failing (e.g. a client retrying after a lost response).
+
+        Concurrency (two layers, see the class-level threading.Lock and
+        `rotate()`'s docstring):
+
+        1. `_refresh_lock` serializes this method's entire read -> DEK-unwrap
+           -> re-wrap -> rotate sequence per-process. This matters because
+           the DEK re-wrap (`oauth_rewrap_for_rotation`) writes envelope rows
+           in the encryption-key store keyed only by `grant_id` - it has no
+           compare-and-swap of its own. Without the lock, two truly
+           concurrent calls could interleave their envelope writes (e.g.
+           caller A's "preserve current envelope as :prev" step reading
+           caller B's already-rewritten envelope instead of the original),
+           leaving a grant row whose `at_salt`/`rt_salt` no longer match what
+           is actually stored in the envelope the winner needs to unwrap -
+           breaking DEK recovery even for the winning, "successful" caller.
+           Serializing avoids this entirely: at most one refresh is ever
+           minting/re-wrapping tokens for a given grant at a time, in this
+           process.
+        2. `_grant_repo.rotate()` is additionally a SQL-level compare-and-swap
+           (`WHERE rt_hash = <the rt_hash this call observed>`) on the grants
+           table itself. This is what actually determines whether a token
+           pair is "live" - it protects correctness even across multiple
+           processes sharing one SQLite file (where the in-process lock in
+           (1) provides no guarantee), and it is what a second, *sequential*
+           call in the retry-with-the-just-rotated-away-RT scenario relies on
+           to be treated as a legitimate next rotation rather than a race.
+
+        With (1) in place, a truly concurrent pair of calls on the same RT
+        degrades into the same well-defined sequential case the plan
+        describes: one completes first and wins; the second acquires the
+        lock next, re-reads the row, finds its RT hash now matches
+        `prev_rt_hash` (with grace still open), and is honored as a
+        legitimate refresh of the just-rotated-away RT - it mints its own
+        new, chained pair rather than failing or corrupting anything.
+        `rotate()`'s CAS is kept regardless (defense in depth for
+        multi-process deployments and to make illegal states like "row
+        changed underneath us" fail closed rather than silently succeed).
+
+        Returns:
+            Dict with `access_token`, `refresh_token`, `scope`, `expires_in`,
+            or None if the refresh token is invalid/expired/revoked, belongs
+            to a different client, or lost a concurrent rotation race.
+        """
+        with self._refresh_lock:
+            rt_hash = hash_token(raw_rt)
+            grant = self._grant_repo.get_by_rt_hash(rt_hash)
+            if grant is None:
+                return None
+            if grant["client_id"] != client_id:
+                return None
+
+            now = self._now()
+            using_prev = False
+            if rt_hash == grant["rt_hash"]:
+                if now >= datetime.fromisoformat(grant["rt_expires_at"]):
+                    return None
+            elif grant["prev_rt_hash"] is not None and rt_hash == grant["prev_rt_hash"]:
+                if grant["prev_rt_expires_at"] is None:
+                    return None
+                if now >= datetime.fromisoformat(grant["prev_rt_expires_at"]):
+                    return None
+                using_prev = True
+            else:
+                # get_by_rt_hash only matches rt_hash/prev_rt_hash, so this is
+                # unreachable in practice - kept as a defensive fallback.
+                return None
+
+            user_id = grant["user_id"]
+            grant_id = grant["grant_id"]
+            if using_prev:
+                dek_b64 = self._encryption.oauth_unwrap_dek_for_prev_refresh_token(
+                    user_id, grant_id, raw_rt
+                )
+            else:
+                dek_b64 = self._encryption.oauth_unwrap_dek_for_refresh_token(
+                    user_id, grant_id, raw_rt, grant["rt_salt"]
+                )
+
+            access_token = secrets.token_urlsafe(32)
+            refresh_token = secrets.token_urlsafe(32)
+            at_expires_at = now + timedelta(seconds=AT_TTL_SECONDS)
+            rt_expires_at = now + timedelta(seconds=RT_TTL_SECONDS)
+            grace_expires_at = now + timedelta(seconds=RT_GRACE_SECONDS)
+
+            at_salt_b64, rt_salt_b64 = "", ""
+            if dek_b64:
+                at_salt_b64, rt_salt_b64 = self._encryption.oauth_rewrap_for_rotation(
+                    user_id, grant_id, access_token, refresh_token, dek_b64,
+                    keep_prev_rt=raw_rt,
+                )
+
+            rotated = self._grant_repo.rotate(
+                grant_id,
+                hash_token(access_token),
+                at_salt_b64,
+                at_expires_at.isoformat(),
+                hash_token(refresh_token),
+                rt_salt_b64,
+                rt_expires_at.isoformat(),
+                grant["rt_hash"],
+                grace_expires_at.isoformat(),
+            )
+            if not rotated:
+                # Lost a concurrent rotation race (e.g. a different process
+                # also holding the grants-table row): our new envelopes (if
+                # any) were written but are now unreachable via any rt/at
+                # hash stored on the grant row, so they're inert - discard
+                # our pair rather than returning tokens that can never
+                # resolve.
+                return None
+
+            scope = " ".join(scopes) if scopes else grant["scope"]
+            return {
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "scope": scope,
+                "expires_in": AT_TTL_SECONDS,
+            }
