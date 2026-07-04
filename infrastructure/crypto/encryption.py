@@ -6,10 +6,17 @@ for envelope encryption of Data Encryption Keys (DEKs).
 """
 
 import base64
+import hashlib
 import os
+import secrets
 
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.keywrap import aes_key_unwrap, aes_key_wrap
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+
+API_KEY_PREFIX = "ssk_"
+_KEK_INFO = b"spendsense-mcp-dek-wrap"
 
 
 def generate_dek() -> bytes:
@@ -81,3 +88,20 @@ def unwrap_key(wrapped_dek: bytes, kek: bytes) -> bytes:
         Unwrapped 256-bit DEK.
     """
     return aes_key_unwrap(kek, wrapped_dek)
+
+
+def generate_api_key() -> str:
+    """Generate a new MCP API key string: 'ssk_' + base64url(32 random bytes)."""
+    raw = secrets.token_bytes(32)
+    return API_KEY_PREFIX + base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
+
+
+def hash_token(raw_key: str) -> str:
+    """SHA-256 hex digest of the full key string, for auth lookup."""
+    return hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
+
+
+def hkdf_derive_kek(raw_key: str, salt: bytes) -> bytes:
+    """Derive a 256-bit KEK from the raw key via HKDF-SHA256 (domain-separated from auth hash)."""
+    hkdf = HKDF(algorithm=hashes.SHA256(), length=32, salt=salt, info=_KEK_INFO)
+    return hkdf.derive(raw_key.encode("utf-8"))

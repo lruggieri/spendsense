@@ -16,6 +16,7 @@ from presentation.web.blueprints.patterns import patterns_bp
 from presentation.web.blueprints.settings import settings_bp
 from presentation.web.blueprints.transactions import transactions_bp
 from presentation.web.blueprints.webauthn import webauthn_bp
+from presentation.web.blueprints.api_keys import api_keys_bp
 
 
 def register_blueprints(app):
@@ -36,3 +37,4 @@ def register_blueprints(app):
     app.register_blueprint(settings_bp)
     app.register_blueprint(onboarding_bp)
     app.register_blueprint(webauthn_bp)
+    app.register_blueprint(api_keys_bp)

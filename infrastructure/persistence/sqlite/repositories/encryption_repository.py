@@ -7,6 +7,7 @@ Manages two tables:
 """
 
 import sqlite3
+from infrastructure.persistence.sqlite.connection import get_connection
 from datetime import datetime, timezone
 from typing import List, Optional
 
@@ -23,7 +24,7 @@ class SQLiteEncryptionRepository(EncryptionRepository):
 
     def _ensure_table_exists(self):
         """Create encryption_keys and webauthn_credentials tables if they don't exist."""
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         cursor.execute("""
@@ -71,7 +72,7 @@ class SQLiteEncryptionRepository(EncryptionRepository):
         wrapper_type: str = "prf",
     ) -> None:
         """Store a wrapped DEK for a user/credential pair."""
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -88,7 +89,7 @@ class SQLiteEncryptionRepository(EncryptionRepository):
 
     def get_wrapped_dek(self, user_id: str, credential_id: str) -> Optional[bytes]:
         """Get the wrapped DEK for a specific user/credential pair."""
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         conn.row_factory = sqlite3.Row
         cursor = get_logging_cursor(conn)
 
@@ -106,7 +107,7 @@ class SQLiteEncryptionRepository(EncryptionRepository):
 
     def get_wrapped_deks_for_user(self, user_id: str) -> List[dict]:
         """Get all wrapped DEKs for a user."""
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         conn.row_factory = sqlite3.Row
         cursor = get_logging_cursor(conn)
 
@@ -124,7 +125,7 @@ class SQLiteEncryptionRepository(EncryptionRepository):
 
     def delete_wrapped_dek(self, user_id: str, credential_id: str) -> None:
         """Delete a wrapped DEK for a user/credential pair."""
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         cursor.execute(
@@ -139,7 +140,7 @@ class SQLiteEncryptionRepository(EncryptionRepository):
 
     def get_prf_salt(self, user_id: str, credential_id: str) -> Optional[str]:
         """Get the PRF salt for a user/credential pair."""
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         conn.row_factory = sqlite3.Row
         cursor = get_logging_cursor(conn)
 
@@ -168,7 +169,7 @@ class SQLiteEncryptionRepository(EncryptionRepository):
         device_name: Optional[str] = None,
     ) -> None:
         """Store a WebAuthn credential."""
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -186,7 +187,7 @@ class SQLiteEncryptionRepository(EncryptionRepository):
 
     def get_credential(self, credential_id: str) -> Optional[dict]:
         """Get a WebAuthn credential by credential_id."""
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         conn.row_factory = sqlite3.Row
         cursor = get_logging_cursor(conn)
 
@@ -204,7 +205,7 @@ class SQLiteEncryptionRepository(EncryptionRepository):
 
     def get_credentials_for_user(self, user_id: str) -> List[dict]:
         """Get all WebAuthn credentials for a user."""
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         conn.row_factory = sqlite3.Row
         cursor = get_logging_cursor(conn)
 
@@ -222,7 +223,7 @@ class SQLiteEncryptionRepository(EncryptionRepository):
 
     def update_sign_count(self, credential_id: str, sign_count: int) -> None:
         """Update the sign count for a credential after authentication."""
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         cursor.execute(
@@ -237,7 +238,7 @@ class SQLiteEncryptionRepository(EncryptionRepository):
 
     def delete_credential(self, credential_id: str) -> None:
         """Delete a WebAuthn credential."""
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         cursor.execute(

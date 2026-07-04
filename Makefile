@@ -24,8 +24,8 @@ test: ## Run all tests (Python + JS)
 test-js: ## Run JS unit tests (FetcherEngine, parseAmount, etc.)
 	npx vitest run
 
-test-coverage: ## Run tests with coverage report (minimum 70%)
-	$(PYTHON) -m pytest tests/ --cov=domain --cov=application --cov=infrastructure --cov=presentation --cov-report=html --cov-report=term --cov-report=xml --cov-fail-under=70
+test-coverage: ## Run tests with coverage report (minimum 80%)
+	$(PYTHON) -m pytest tests/ --cov=domain --cov=application --cov=infrastructure --cov=presentation --cov-report=html --cov-report=term --cov-report=xml --cov-fail-under=80
 
 test-specific: ## Run specific test file (usage: make test-specific FILE=test_classifier.py)
 	$(PYTHON) -m pytest tests/$(FILE) -v
@@ -74,11 +74,11 @@ format: ## Format code with black (requires black)
 	$(PYTHON) -m pip install black
 	$(PYTHON) -m black domain/ application/ infrastructure/ presentation/ tests/
 
-run: ## Run the Flask application (development mode)
-	$(PYTHON) -m presentation.web.app
+run: ## Run the application (development mode, ASGI)
+	$(PYTHON) -m dotenv run -- sh -c '$(PYTHON) -m uvicorn presentation.asgi:app --reload --port $${FLASK_PORT:-5000}'
 
-run-prod: ## Run the Flask application (production mode with gunicorn)
-	gunicorn -w 4 -b 0.0.0.0:5000 presentation.web.app:app
+run-prod: ## Run the application (production mode with gunicorn + UvicornWorker)
+	gunicorn -k uvicorn.workers.UvicornWorker -w 4 -b 0.0.0.0:5000 presentation.asgi:app
 
 db-backup: ## Backup the database
 	@mkdir -p backups

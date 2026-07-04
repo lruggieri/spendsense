@@ -174,6 +174,19 @@ class TestTransactionServiceDDD(unittest.TestCase):
         result = self.service.get_all_transactions()
         self.assertEqual(len(result), 3)
 
+    # --- get_transaction_by_id ---
+
+    def test_get_transaction_by_id_found(self):
+        self._add_sample_transactions()
+        result = self.service.get_transaction_by_id("tx2")
+        self.assertIsNotNone(result)
+        self.assertEqual(result.id, "tx2")
+
+    def test_get_transaction_by_id_not_found(self):
+        self._add_sample_transactions()
+        result = self.service.get_transaction_by_id("nonexistent")
+        self.assertIsNone(result)
+
     # --- get_all_transactions_filtered ---
 
     def test_filter_by_category(self):
@@ -234,6 +247,21 @@ class TestTransactionServiceDDD(unittest.TestCase):
         self._add_sample_transactions()
         result = self.service.get_all_transactions_filtered(transaction_source="Sony Bank")
         self.assertEqual(len(result), 2)
+
+    def test_filter_by_group(self):
+        """Test filtering by group_id."""
+        self._add_sample_transactions()
+        self.tx_ds.add_group_to_transaction("tx1", "grp1")
+
+        result = self.service.get_all_transactions_filtered(group_id="grp1")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].id, "tx1")
+
+    def test_filter_by_group_no_match(self):
+        """Test filtering by a group_id no transaction belongs to returns nothing."""
+        self._add_sample_transactions()
+        result = self.service.get_all_transactions_filtered(group_id="nonexistent-group")
+        self.assertEqual(len(result), 0)
 
     def test_filter_by_unknown_category(self):
         """Test filtering by UNKNOWN category shows uncategorized transactions."""
@@ -361,7 +389,7 @@ class TestTransactionServiceDDD(unittest.TestCase):
             date_str="2025-06-15", amount="1500", description="Coffee shop", currency="JPY"
         )
         self.assertTrue(success)
-        self.assertEqual(error, "")
+        self.assertIsInstance(error, str)  # returns tx_id on success
 
         # Verify it was added
         txs = self.service.get_all_transactions()
@@ -408,7 +436,7 @@ class TestTransactionServiceDDD(unittest.TestCase):
             currency="JPY",
         )
         self.assertTrue(success)
-        self.assertEqual(error, "")
+        self.assertIsInstance(error, str)  # returns tx_id on success
 
         # Verify manual assignment was created
         txs = self.service.get_all_transactions()

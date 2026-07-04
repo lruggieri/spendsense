@@ -3,6 +3,7 @@ SQLite datasource for embeddings.
 """
 
 import sqlite3
+from infrastructure.persistence.sqlite.connection import get_connection
 from datetime import datetime, timezone
 from typing import Dict, List, Tuple
 
@@ -29,7 +30,7 @@ class SQLiteEmbeddingDataSource(EmbeddingRepository):
 
     def _ensure_table_exists(self):
         """Create embeddings table if it doesn't exist."""
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -81,7 +82,7 @@ class SQLiteEmbeddingDataSource(EmbeddingRepository):
         if not transactions:
             return {}, []
 
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         cached = {}
@@ -144,7 +145,7 @@ class SQLiteEmbeddingDataSource(EmbeddingRepository):
         if not embeddings:
             return
 
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         now = datetime.now(timezone.utc).isoformat()
@@ -191,7 +192,7 @@ class SQLiteEmbeddingDataSource(EmbeddingRepository):
         Returns:
             True if embedding was deleted, False if it didn't exist
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -216,7 +217,7 @@ class SQLiteEmbeddingDataSource(EmbeddingRepository):
         Returns:
             Number of embeddings deleted
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -236,7 +237,7 @@ class SQLiteEmbeddingDataSource(EmbeddingRepository):
         Returns:
             Dictionary with cache statistics
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:

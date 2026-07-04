@@ -13,6 +13,7 @@ import json
 import logging
 import secrets
 import sqlite3
+from infrastructure.persistence.sqlite.connection import get_connection
 from datetime import datetime, timezone
 from typing import Dict, Optional
 
@@ -38,7 +39,7 @@ class SQLiteSessionDataSource(SessionRepository):
 
     def _ensure_table_exists(self):
         """Create sessions table if it doesn't exist."""
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         cursor.execute("""
@@ -104,7 +105,7 @@ class SQLiteSessionDataSource(SessionRepository):
 
         profile_json = json.dumps(user_profile)
 
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -137,7 +138,7 @@ class SQLiteSessionDataSource(SessionRepository):
         Returns:
             Session object or None if not found/expired
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         cursor.execute(
@@ -184,7 +185,7 @@ class SQLiteSessionDataSource(SessionRepository):
         Returns:
             True if session was deleted, False otherwise
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -206,7 +207,7 @@ class SQLiteSessionDataSource(SessionRepository):
         Returns:
             Number of sessions deleted
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -225,7 +226,7 @@ class SQLiteSessionDataSource(SessionRepository):
         Returns:
             Number of sessions deleted
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -251,7 +252,7 @@ class SQLiteSessionDataSource(SessionRepository):
         Returns:
             True if updated, False otherwise
         """
-        conn = sqlite3.connect(self.db_filepath)
+        conn = get_connection(self.db_filepath)
         cursor = get_logging_cursor(conn)
 
         try:

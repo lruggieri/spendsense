@@ -54,4 +54,4 @@ USER appuser
 
 # Run the application with Gunicorn from project root
 WORKDIR /app
-CMD ["gunicorn", "--bind", "0.0.0.0:5678", "--workers", "4", "--timeout", "120", "presentation.web.app:app"]
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:5678", "--workers", "4", "--timeout", "120", "presentation.asgi:app"]

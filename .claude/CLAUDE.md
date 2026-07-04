@@ -28,6 +28,7 @@ make mypy                              # Run type checker (errors are tracked, n
 make test-verbose                      # Detailed output
 make test-fast                         # Stop on first failure
 make test-specific FILE=test_file.py   # Run specific test
+make test-coverage                     # Coverage report, fails under 80%
 make check                             # Run tests + mypy + lint (recommended before commit)
 make quick-check                       # Fast tests + mypy + lint
 ```

@@ -16,6 +16,7 @@ from domain.repositories.manual_assignment_repository import ManualAssignmentRep
 from domain.repositories.regexp_repository import RegexpRepository
 from domain.repositories.session_repository import SessionRepository
 from domain.repositories.transaction_repository import TransactionRepository
+from domain.repositories.mcp_api_key_repository import MCPApiKeyRepository
 from domain.repositories.user_settings_repository import UserSettingsRepository
 
 
@@ -110,4 +111,13 @@ class DataSourceFactory(ABC):
 
         Returns:
             EncryptionRepository implementation
+        """
+
+    @abstractmethod
+    def get_mcp_api_key_datasource(self) -> MCPApiKeyRepository:
+        """
+        Get MCP API key datasource instance.
+
+        Returns:
+            MCPApiKeyRepository implementation
         """

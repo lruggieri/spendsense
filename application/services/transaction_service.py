@@ -81,6 +81,7 @@ class TransactionService(BaseService):
         to_date: Optional[str] = None,
         category_source: Optional[str] = None,
         transaction_source: Optional[str] = None,
+        group_id: Optional[str] = None,
         transactions: Optional[List[Transaction]] = None,
     ) -> List[Transaction]:
         """
@@ -93,6 +94,7 @@ class TransactionService(BaseService):
             to_date: Optional end date filter (YYYY-MM-DD)
             category_source: Optional category source to filter by (manual, regexp, similarity)
             transaction_source: Optional transaction source to filter by (e.g., "Sony Bank", "Amazon")
+            group_id: Optional group ID to filter by (transaction must belong to this group)
             transactions: Optional pre-loaded list (e.g. already-classified). If None, loads from DB.
 
         Returns:
@@ -152,7 +154,18 @@ class TransactionService(BaseService):
         if transaction_source:
             filtered_txs = [tx for tx in filtered_txs if tx.source == transaction_source]
 
+        # Filter by group if specified
+        if group_id:
+            filtered_txs = [tx for tx in filtered_txs if group_id in tx.groups]
+
         return sorted(filtered_txs, key=lambda tx: tx.date, reverse=True)
+
+    def get_transaction_by_id(self, tx_id: str) -> Optional[Transaction]:
+        """Return a single transaction by id, or None."""
+        for t in self._transaction_datasource.get_all_transactions():
+            if t.id == tx_id:
+                return t
+        return None
 
     def get_transaction_sources(self) -> List[str]:
         """
@@ -292,7 +305,7 @@ class TransactionService(BaseService):
             except Exception as e:
                 return False, f"Failed to save manual assignment: {str(e)}"
 
-        return True, ""
+        return True, tx_id
 
     def add_transactions_batch(self, transactions: List[Transaction]) -> int:
         """

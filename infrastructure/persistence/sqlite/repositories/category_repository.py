@@ -3,6 +3,7 @@ SQLite datasource for categories.
 """
 
 import sqlite3
+from infrastructure.persistence.sqlite.connection import get_connection
 from typing import Optional, Dict, List
 
 from domain.entities.category import Category
@@ -31,7 +32,7 @@ class SQLiteCategoryDataSource(CategoryRepository):
         Returns:
             List of Category objects
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -72,7 +73,7 @@ class SQLiteCategoryDataSource(CategoryRepository):
         Returns:
             Category object or None if not found
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -119,7 +120,7 @@ class SQLiteCategoryDataSource(CategoryRepository):
         Returns:
             True on success, False if category ID already exists
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -158,7 +159,7 @@ class SQLiteCategoryDataSource(CategoryRepository):
         Returns:
             True on success, False if category not found
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -200,7 +201,7 @@ class SQLiteCategoryDataSource(CategoryRepository):
         Returns:
             True on success, False if category not found
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -226,7 +227,7 @@ class SQLiteCategoryDataSource(CategoryRepository):
         Returns:
             True if category has transactions, False otherwise
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -252,7 +253,7 @@ class SQLiteCategoryDataSource(CategoryRepository):
         Returns:
             True if category has children, False otherwise
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -278,7 +279,7 @@ class SQLiteCategoryDataSource(CategoryRepository):
         Returns:
             Number of transactions assigned to this category
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -303,7 +304,7 @@ class SQLiteCategoryDataSource(CategoryRepository):
         Returns:
             True if category has regex patterns, False otherwise
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
@@ -329,7 +330,7 @@ class SQLiteCategoryDataSource(CategoryRepository):
         Returns:
             Number of regex patterns assigned to this category
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection(self.db_path)
         cursor = get_logging_cursor(conn)
 
         try:
