@@ -1,14 +1,17 @@
 """SpendSenseOAuthProvider: MCP SDK OAuthAuthorizationServerProvider implementation.
 
-This task covers client registration (`register_client`/`get_client`) and the
-`authorize()` entry point, which starts a pending-authorization transaction
-and redirects to SpendSense's own consent page. The remaining abstract
-methods (`load_authorization_code`, `exchange_authorization_code`,
-`load_refresh_token`, `exchange_refresh_token`, `load_access_token`,
-`revoke_token`) are stubbed here — later tasks implement them one at a time.
+This task covers client registration (`register_client`/`get_client`), the
+`authorize()` entry point (which starts a pending-authorization transaction
+and redirects to SpendSense's own consent page), and code exchange
+(`load_authorization_code`/`exchange_authorization_code`), which recovers the
+DEK across the OAuth back-channel gap and mints the first access/refresh
+token pair. The remaining abstract methods (`load_refresh_token`,
+`exchange_refresh_token`, `load_access_token`, `revoke_token`) are stubbed
+here — later tasks implement them one at a time.
 """
 import json
 import os
+from datetime import datetime
 from typing import Any, Optional
 
 from mcp.server.auth.provider import (
@@ -17,6 +20,7 @@ from mcp.server.auth.provider import (
     AuthorizationParams,
     OAuthAuthorizationServerProvider,
     RefreshToken,
+    TokenError,
 )
 from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
 
@@ -27,12 +31,20 @@ def _base_url() -> str:
     return os.getenv("MCP_BASE_URL", "http://localhost:5000")
 
 
+def _iso_to_epoch(iso_str: str) -> float:
+    return datetime.fromisoformat(iso_str).timestamp()
+
+
 class SpendSenseOAuthProvider(OAuthAuthorizationServerProvider):
     """Delegates OAuth 2.1 authorization-server behavior to `OAuthService`."""
 
     def __init__(self, db_path: str):
         self.db_path = db_path
         self._service = OAuthService(db_path)
+
+    @property
+    def service(self) -> OAuthService:
+        return self._service
 
     # =========================================================================
     # Client registration (implemented this task)
@@ -68,20 +80,49 @@ class SpendSenseOAuthProvider(OAuthAuthorizationServerProvider):
         return f"{base}/mcp-consent?txn={txn_id}"
 
     # =========================================================================
-    # Stubs — implemented by later tasks (4: code exchange, 5: refresh
-    # rotation, 6: access-token verification). Kept here only so this class
-    # is concrete/importable; do not implement real logic in this task.
+    # Code exchange (implemented this task) — the DEK bridge
     # =========================================================================
 
     async def load_authorization_code(
         self, client: OAuthClientInformationFull, authorization_code: str
     ) -> Optional[AuthorizationCode]:
-        raise NotImplementedError
+        assert client.client_id is not None
+        row = self._service.get_code(client.client_id, authorization_code)
+        if row is None:
+            return None
+        return AuthorizationCode(
+            code=authorization_code,
+            scopes=json.loads(row["scopes"]),
+            expires_at=_iso_to_epoch(row["expires_at"]),
+            client_id=row["client_id"],
+            code_challenge=row["code_challenge"],
+            redirect_uri=row["redirect_uri"],
+            redirect_uri_provided_explicitly=bool(row["redirect_uri_explicit"]),
+            resource=row["resource"],
+        )
 
     async def exchange_authorization_code(
         self, client: OAuthClientInformationFull, authorization_code: Any
     ) -> OAuthToken:
-        raise NotImplementedError
+        assert client.client_id is not None
+        result = self._service.exchange_code(client.client_id, authorization_code.code)
+        if result is None:
+            raise TokenError(
+                "invalid_grant", "Authorization code is invalid, expired, or already used"
+            )
+        return OAuthToken(
+            access_token=result["access_token"],
+            token_type="Bearer",
+            expires_in=result["expires_in"],
+            scope=result["scope"],
+            refresh_token=result["refresh_token"],
+        )
+
+    # =========================================================================
+    # Stubs — implemented by later tasks (5: refresh rotation, 6:
+    # access-token verification). Kept here only so this class is
+    # concrete/importable; do not implement real logic in this task.
+    # =========================================================================
 
     async def load_refresh_token(
         self, client: OAuthClientInformationFull, refresh_token: str

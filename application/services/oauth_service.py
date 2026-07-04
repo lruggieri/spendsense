@@ -5,12 +5,14 @@ Covers client registration and the authorization-transaction bootstrap
 tasks add code exchange, refresh-token rotation, and access-token
 verification to this same class.
 """
+import json
 import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from application.services.encryption_service import EncryptionService
+from infrastructure.crypto.encryption import hash_token
 from infrastructure.persistence.sqlite.repositories.encryption_repository import (
     SQLiteEncryptionRepository,
 )
@@ -84,8 +86,6 @@ class OAuthService:
         keyed by a fresh 256-bit txn_id so the consent flow (a later task) can
         look it up and, on approval, complete the authorization-code issuance.
         """
-        import json
-
         txn_id = secrets.token_urlsafe(32)
         now = self._now()
         expires_at = now + timedelta(seconds=PENDING_AUTH_TTL_SECONDS)
@@ -93,3 +93,132 @@ class OAuthService:
             txn_id, client_id, json.dumps(params_dict), now.isoformat(), expires_at.isoformat()
         )
         return txn_id
+
+    # =========================================================================
+    # Authorization code issuance + exchange (the DEK bridge)
+    # =========================================================================
+
+    def issue_code(
+        self, user_id: str, pending: dict, dek_b64: Optional[str]
+    ) -> str:
+        """Mint a fresh authorization code for a consented authorization request.
+
+        `pending` carries the assembled authorization request (client_id plus
+        the AuthorizationParams fields: scopes, code_challenge, redirect_uri,
+        redirect_uri_provided_explicitly, resource). If `dek_b64` is given
+        (the account is encrypted), the DEK is wrapped under a KEK derived
+        from the raw code itself, so it can be recovered on exchange even
+        though the OAuth back-channel carries no user credentials.
+
+        Returns:
+            The raw authorization code (shown once - callers must not log it).
+        """
+        code = secrets.token_urlsafe(32)
+        code_id = hash_token(code)
+        now = self._now()
+        expires_at = now + timedelta(seconds=CODE_TTL_SECONDS)
+        self._authorization_repo.create_code(
+            code_id,
+            pending["client_id"],
+            user_id,
+            json.dumps(pending.get("scopes") or []),
+            pending["code_challenge"],
+            pending["redirect_uri"],
+            1 if pending.get("redirect_uri_provided_explicitly") else 0,
+            pending.get("resource"),
+            expires_at.isoformat(),
+        )
+        if dek_b64:
+            self._encryption.oauth_wrap_dek_for_code(user_id, code, code_id, dek_b64)
+        return code
+
+    def get_code(self, client_id: str, raw_code: str) -> Optional[dict]:
+        """Return the stored code row if it exists, is unexpired, and belongs to `client_id`.
+
+        Returns None otherwise (unknown code, wrong client, or expired) so
+        callers can treat all three the same way - never revealing which one.
+        """
+        row = self._authorization_repo.get_code(hash_token(raw_code))
+        if row is None or row["client_id"] != client_id:
+            return None
+        if self._now() >= datetime.fromisoformat(row["expires_at"]):
+            return None
+        return row
+
+    def exchange_code(self, client_id: str, raw_code: str) -> Optional[dict]:
+        """Exchange a valid authorization code for a fresh access/refresh token pair.
+
+        Bridges the DEK (if the account is encrypted) from the code's
+        envelope to new envelopes keyed on the minted access/refresh tokens,
+        then deletes the code and its envelope so it cannot be replayed.
+
+        Returns:
+            Dict with `access_token`, `refresh_token`, `scope`, `expires_in`,
+            or None if the code is invalid/expired/mismatched-client.
+        """
+        row = self.get_code(client_id, raw_code)
+        if row is None:
+            return None
+
+        code_id = hash_token(raw_code)
+        user_id = row["user_id"]
+        dek_b64 = self._encryption.oauth_unwrap_dek_for_code(user_id, raw_code, code_id)
+
+        grant_id = secrets.token_urlsafe(32)
+        access_token = secrets.token_urlsafe(32)
+        refresh_token = secrets.token_urlsafe(32)
+
+        at_salt_b64, rt_salt_b64 = "", ""
+        if dek_b64:
+            at_salt_b64, rt_salt_b64 = self._encryption.oauth_create_token_envelopes(
+                user_id, grant_id, access_token, refresh_token, dek_b64
+            )
+
+        now = self._now()
+        at_expires_at = now + timedelta(seconds=AT_TTL_SECONDS)
+        rt_expires_at = now + timedelta(seconds=RT_TTL_SECONDS)
+        scope = " ".join(json.loads(row["scopes"]))
+
+        self._grant_repo.create(
+            grant_id,
+            user_id,
+            client_id,
+            scope,
+            hash_token(access_token),
+            at_salt_b64,
+            at_expires_at.isoformat(),
+            hash_token(refresh_token),
+            rt_salt_b64,
+            rt_expires_at.isoformat(),
+            now.isoformat(),
+        )
+
+        self._authorization_repo.delete_code(code_id)
+        self._encryption.oauth_delete_code_envelope(user_id, code_id)
+
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "scope": scope,
+            "expires_in": AT_TTL_SECONDS,
+        }
+
+    # =========================================================================
+    # Access-token resolution (minimal helpers used by the DEK bridge; the
+    # full provider-facing `load_access_token` is completed in a later task)
+    # =========================================================================
+
+    def resolve_access(self, access_token: str) -> Optional[dict]:
+        """Resolve a raw access token to its grant row, or None if invalid/expired/revoked."""
+        row = self._grant_repo.get_by_at_hash(hash_token(access_token))
+        if row is None:
+            return None
+        if self._now() >= datetime.fromisoformat(row["at_expires_at"]):
+            return None
+        return row
+
+    def unwrap_dek(self, access_token: str, resolved: dict) -> Optional[str]:
+        """Return the base64 DEK bridged via this access token, or None if unencrypted."""
+        return self._encryption.oauth_unwrap_dek_for_access_token(
+            resolved["user_id"], resolved["grant_id"], access_token, resolved["at_salt"]
+        )
