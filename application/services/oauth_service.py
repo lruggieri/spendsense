@@ -11,6 +11,8 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
+from cryptography.hazmat.primitives.keywrap import InvalidUnwrap
+
 from application.services.encryption_service import EncryptionService
 from domain.repositories.oauth_repository import OAuthEnvelopeRewrite
 from infrastructure.crypto.encryption import hash_token
@@ -371,9 +373,20 @@ class OAuthService:
         removed: it only ever protected against two THREADS in the same
         process racing (zero protection across the separate gunicorn worker
         processes that actually run this deployment), and the DB-level
-        transaction below now supersedes it for every case it covered,
-        without also serializing (and thereby throttling) every user's
-        refresh through one process-wide bottleneck.
+        transaction below covers the WRITE side (grants-table rotation +
+        envelope rewrite) for every case the lock covered there, without
+        also serializing (and thereby throttling) every user's refresh
+        through one process-wide bottleneck.
+
+        The lock also used to cover the READ + DEK-unwrap step *before* that
+        transaction opens (below). The DB transaction does NOT protect that
+        step: two same-process threads can both read the grant row before
+        either rotates, then one wins the transaction and rewraps the
+        envelope under new secrets while the other - still unwrapping with
+        the salt/envelope shape it read earlier - hits a stale envelope. See
+        the narrow `except InvalidUnwrap` around the unwrap calls below,
+        which turns that into the same clean "lost the race" `None` this
+        method already returns when the CAS below loses.
 
         A truly concurrent pair of calls on the same RT degrades into the
         same well-defined sequential case the plan describes: whichever
@@ -414,14 +427,24 @@ class OAuthService:
 
         user_id = grant["user_id"]
         grant_id = grant["grant_id"]
-        if using_prev:
-            dek_b64 = self._encryption.oauth_unwrap_dek_for_prev_refresh_token(
-                user_id, grant_id, raw_rt
-            )
-        else:
-            dek_b64 = self._encryption.oauth_unwrap_dek_for_refresh_token(
-                user_id, grant_id, raw_rt, grant["rt_salt"]
-            )
+        try:
+            if using_prev:
+                dek_b64 = self._encryption.oauth_unwrap_dek_for_prev_refresh_token(
+                    user_id, grant_id, raw_rt
+                )
+            else:
+                dek_b64 = self._encryption.oauth_unwrap_dek_for_refresh_token(
+                    user_id, grant_id, raw_rt, grant["rt_salt"]
+                )
+        except InvalidUnwrap:
+            # Lost a concurrent same-process rotation race: another thread
+            # already won `rotate_with_envelopes` below and rewrapped this
+            # grant's envelope under new secrets between our read above and
+            # this unwrap, so the salt/envelope shape we're working from no
+            # longer matches. Treat this exactly like losing the CAS further
+            # down (`rotated=False`) - a clean "lost the race" outcome, not
+            # a crypto/programming error.
+            return None
 
         access_token = secrets.token_urlsafe(32)
         refresh_token = secrets.token_urlsafe(32)

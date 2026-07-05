@@ -306,14 +306,28 @@ def test_concurrent_refresh_of_same_rt_never_yields_two_live_pairs():
         rt0 = tok0["refresh_token"]
 
         results = [None, None]
+        errors = [None, None]
 
         def worker(i):
-            results[i] = svc.refresh("cid", rt0, ["read"])
+            # threading.Thread silently swallows exceptions raised inside a
+            # thread target (prints to stderr, doesn't propagate, doesn't
+            # fail .join()) - so an uncaught crash in svc.refresh() would
+            # otherwise leave results[i] at its initial None, indistinguishable
+            # from a clean "lost the race" outcome. Capture it explicitly so
+            # the assertions below can tell the two apart.
+            try:
+                results[i] = svc.refresh("cid", rt0, ["read"])
+            except BaseException as exc:  # noqa: BLE001 - must report, not swallow
+                errors[i] = f"{type(exc).__name__}: {exc}"
 
         t1 = threading.Thread(target=worker, args=(0,))
         t2 = threading.Thread(target=worker, args=(1,))
         t1.start(); t2.start()
         t1.join(); t2.join()
+
+        # No thread may have raised an uncaught exception - a "lost the
+        # race" outcome must show up as a clean None, never a crash.
+        assert errors == [None, None], f"thread(s) raised an uncaught exception: {errors}"
 
         # No crash, and never a totally-silent double failure.
         assert results.count(None) < 2
