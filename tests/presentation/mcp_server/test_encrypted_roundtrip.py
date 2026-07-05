@@ -25,12 +25,14 @@ def test_encrypted_write_then_decrypted_read():
             "2026-06-25", "900", "Secret Cafe", "", "", "JPY"
         )
         assert ok, tx_id
-        rows = [_serialize(t) for t in _classified(enc).values()]
+        default_currency = enc.user_settings.get_default_currency()
+        rows = [_serialize(enc, t, default_currency) for t in _classified(enc).values()]
         assert any(r["description"] == "Secret Cafe" for r in rows)
 
         # Without DEK: description is opaque placeholder
         plain = build_services(path, "u@x.com", None)
-        rows2 = [_serialize(t) for t in _classified(plain).values()]
+        default_currency = plain.user_settings.get_default_currency()
+        rows2 = [_serialize(plain, t, default_currency) for t in _classified(plain).values()]
         assert all(r["description"] != "Secret Cafe" for r in rows2)
 
 

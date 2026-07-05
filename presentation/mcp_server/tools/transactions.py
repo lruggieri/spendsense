@@ -3,21 +3,27 @@ from typing import Any, Dict, List, Optional
 
 from mcp.server.fastmcp.exceptions import ToolError
 
+from domain.services.amount_utils import to_major_units_float
 from presentation.mcp_server.auth import get_tool_context, require_write
 
 _PAGE = 50
 
 
-def _serialize(tx) -> Dict[str, Any]:
+def _serialize(svcs, tx, default_currency: str) -> Dict[str, Any]:
     src = tx.category_source
+    amount_major = to_major_units_float(tx.amount, tx.currency)
     return {
         "id": tx.id,
         "date": tx.date,
-        "amount": tx.amount,
+        "amount": amount_major,
+        "currency": tx.currency,
+        "converted_amount": svcs.user_settings.convert_to_user_currency(
+            amount_major, tx.currency, tx.date
+        ),
+        "converted_currency": default_currency,
         "description": tx.description,
         "source": tx.source,
         "comment": tx.comment,
-        "currency": getattr(tx, "currency", "JPY"),
         "category_id": tx.category,
         "category_source": src.value if src is not None else None,
         "groups": list(getattr(tx, "groups", []) or []),
@@ -34,7 +40,10 @@ def _classified(svcs) -> Dict[str, Any]:
 def _get_transaction(svcs, tx_id: str) -> Optional[Dict[str, Any]]:
     tx_dict = _classified(svcs)
     t = tx_dict.get(tx_id)
-    return _serialize(t) if t else None
+    if t is None:
+        return None
+    default_currency = svcs.user_settings.get_default_currency()
+    return _serialize(svcs, t, default_currency)
 
 
 def register(mcp) -> None:
@@ -57,7 +66,8 @@ def register(mcp) -> None:
             transactions=list(tx_dict.values()),
         )
         start = page * _PAGE
-        return [_serialize(t) for t in txs[start: start + _PAGE]]
+        default_currency = svcs.user_settings.get_default_currency()
+        return [_serialize(svcs, t, default_currency) for t in txs[start: start + _PAGE]]
 
     @mcp.tool()
     def get_transaction(tx_id: str) -> Dict[str, Any]:
