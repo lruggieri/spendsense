@@ -11,6 +11,7 @@ from presentation.web.blueprints.fetchers import fetchers_bp
 from presentation.web.blueprints.gmail import gmail_bp
 from presentation.web.blueprints.groups import groups_bp
 from presentation.web.blueprints.main import main_bp
+from presentation.web.blueprints.mcp_oauth import mcp_oauth_bp
 from presentation.web.blueprints.onboarding import onboarding_bp
 from presentation.web.blueprints.patterns import patterns_bp
 from presentation.web.blueprints.settings import settings_bp
@@ -38,3 +39,4 @@ def register_blueprints(app):
     app.register_blueprint(onboarding_bp)
     app.register_blueprint(webauthn_bp)
     app.register_blueprint(api_keys_bp)
+    app.register_blueprint(mcp_oauth_bp)

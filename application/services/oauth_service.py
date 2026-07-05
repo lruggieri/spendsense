@@ -106,6 +106,32 @@ class OAuthService:
         )
         return txn_id
 
+    def get_pending(self, txn_id: str) -> Optional[dict]:
+        """Return the pending authorization request for `txn_id`, or None if unknown/expired.
+
+        The returned dict is the original AuthorizationParams fields (scopes,
+        code_challenge, redirect_uri, redirect_uri_provided_explicitly,
+        resource, state) merged with `client_id`, matching the `pending` shape
+        `issue_code` expects - so callers (the consent blueprint) can pass
+        this straight through without a second lookup.
+        """
+        row = self._authorization_repo.get_pending(txn_id)
+        if row is None:
+            return None
+        if self._now() >= datetime.fromisoformat(row["expires_at"]):
+            return None
+        pending = json.loads(row["params"])
+        pending["client_id"] = row["client_id"]
+        return pending
+
+    def consume_pending(self, txn_id: str) -> None:
+        """Delete a pending authorization transaction.
+
+        Called once the user has acted on the consent screen (approve or
+        deny) so the txn_id cannot be replayed to re-trigger issuance.
+        """
+        self._authorization_repo.delete_pending(txn_id)
+
     # =========================================================================
     # Authorization code issuance + exchange (the DEK bridge)
     # =========================================================================

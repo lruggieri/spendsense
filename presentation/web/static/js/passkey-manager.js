@@ -302,7 +302,13 @@
       triggerAutoMigration();
 
       showStatus(statusId, 'Data unlocked! Redirecting...', 'success');
-      setTimeout(() => { window.location.href = '/'; }, 1000);
+      // Pages that need to resume where they were (e.g. the OAuth consent
+      // screen, which must re-render itself with the now-unlocked DEK
+      // instead of losing the pending authorization) can opt in by setting
+      // window.PRF_REDIRECT_TARGET before this fires. Defaults to '/' for
+      // every existing caller (login, passkey unlock banner) that doesn't.
+      const redirectTarget = window.PRF_REDIRECT_TARGET || '/';
+      setTimeout(() => { window.location.href = redirectTarget; }, 1000);
     } catch (err) {
       console.error('Passkey authentication error:', err);
       showStatus(statusId, 'Authentication failed: ' + err.message, 'error');

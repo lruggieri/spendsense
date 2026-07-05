@@ -57,6 +57,51 @@ def test_begin_authorization_generates_unique_txn_ids(svc):
 
 
 # =============================================================================
+# get_pending / consume_pending: consent-screen lookup + single-use cleanup
+# =============================================================================
+
+
+def test_get_pending_returns_params_merged_with_client_id(svc):
+    params = {"state": "st", "scopes": ["read"], "redirect_uri": "http://localhost:9/callback"}
+    txn_id = svc.begin_authorization("cid", params)
+
+    pending = svc.get_pending(txn_id)
+    assert pending == {**params, "client_id": "cid"}
+
+
+def test_get_pending_unknown_txn_returns_none(svc):
+    assert svc.get_pending("does-not-exist") is None
+
+
+def test_get_pending_expired_txn_returns_none(svc, monkeypatch):
+    txn_id = svc.begin_authorization("cid", {"scopes": ["read"]})
+
+    from datetime import datetime, timedelta, timezone
+    import application.services.oauth_service as oauth_service_module
+
+    future = datetime.now(timezone.utc) + timedelta(
+        seconds=oauth_service_module.PENDING_AUTH_TTL_SECONDS + 1
+    )
+    monkeypatch.setattr(svc, "_now", lambda: future)
+
+    assert svc.get_pending(txn_id) is None
+
+
+def test_consume_pending_deletes_the_transaction(svc):
+    txn_id = svc.begin_authorization("cid", {"scopes": ["read"]})
+    assert svc.get_pending(txn_id) is not None
+
+    svc.consume_pending(txn_id)
+
+    assert svc.get_pending(txn_id) is None
+    assert svc._authorization_repo.get_pending(txn_id) is None
+
+
+def test_consume_pending_unknown_txn_is_a_noop(svc):
+    svc.consume_pending("does-not-exist")  # must not raise
+
+
+# =============================================================================
 # resolve_access / unwrap_dek / revoke: unify OAuth grants + legacy API keys
 # =============================================================================
 

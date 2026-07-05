@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Authorize Access - SpendSense{% endblock %}
+{% block page_title %}Authorize Access{% endblock %}
+
+{% block extra_head %}
+<style>
+    .mcp-consent-card {
+        background-color: var(--bg-primary);
+        border-radius: var(--radius-lg);
+        padding: var(--spacing-xl);
+        box-shadow: var(--shadow-md);
+        max-width: 500px;
+        margin: var(--spacing-xl) auto;
+        text-align: center;
+    }
+
+    .mcp-consent-card h2 {
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-sm);
+    }
+
+    .mcp-consent-card p {
+        color: var(--text-secondary);
+        line-height: 1.6;
+    }
+
+    .mcp-consent__icon {
+        font-size: 3rem;
+        margin-bottom: var(--spacing-md);
+    }
+
+    .mcp-consent__scopes {
+        list-style: none;
+        padding: 0;
+        margin: var(--spacing-md) 0;
+        text-align: left;
+    }
+
+    .mcp-consent__scopes li {
+        background-color: var(--bg-secondary, #f5f5f5);
+        border-radius: var(--radius-sm);
+        padding: var(--spacing-sm) var(--spacing-md);
+        margin-bottom: var(--spacing-sm);
+        color: var(--text-primary);
+    }
+
+    .mcp-consent__actions {
+        display: flex;
+        gap: var(--spacing-md);
+        justify-content: center;
+        margin-top: var(--spacing-lg);
+    }
+
+    .mcp-consent__actions form {
+        flex: 1;
+    }
+
+    .mcp-consent__actions .btn {
+        width: 100%;
+    }
+
+    #unlock-status {
+        margin-top: var(--spacing-md);
+        padding: var(--spacing-md);
+        border-radius: var(--radius-sm);
+        display: none;
+    }
+
+    #unlock-status.success {
+        background-color: var(--bg-success, #e8f5e9);
+        color: #2e7d32;
+        display: block;
+        margin-bottom: var(--spacing-md);
+    }
+
+    #unlock-status.error {
+        background-color: var(--bg-danger, #ffebee);
+        color: #c62828;
+        display: block;
+        margin-bottom: var(--spacing-md);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if needs_unlock %}
+<div class="mcp-consent-card" id="mcp-consent-page" data-redirect-target="{{ url_for('mcp_oauth.consent', txn=txn) }}">
+    <div class="mcp-consent__icon">&#x1f512;</div>
+    <h2>Unlock Encryption Key</h2>
+    <p>
+        This client wants to access your SpendSense data. Since your account
+        is encrypted, authenticate with your passkey first to continue.
+    </p>
+
+    <div id="unlock-status"></div>
+
+    <button class="btn btn-primary" id="unlock-btn" onclick="authenticateWithPRF()">
+        Authenticate with Passkey
+    </button>
+</div>
+{% else %}
+<div class="mcp-consent-card" id="mcp-consent-page">
+    <div class="mcp-consent__icon">&#x1f50c;</div>
+    <h2>{{ client_name }} would like to access your SpendSense data</h2>
+    <p>This will allow {{ client_name }} to:</p>
+
+    <ul class="mcp-consent__scopes">
+        {% for scope in scopes %}
+        <li>{{ scope }}</li>
+        {% endfor %}
+    </ul>
+
+    <div class="mcp-consent__actions">
+        <form method="post" action="{{ url_for('mcp_oauth.consent_submit') }}">
+            <input type="hidden" name="txn" value="{{ txn }}">
+            <input type="hidden" name="action" value="deny">
+            <button type="submit" class="btn btn-secondary">Deny</button>
+        </form>
+        <form method="post" action="{{ url_for('mcp_oauth.consent_submit') }}">
+            <input type="hidden" name="txn" value="{{ txn }}">
+            <input type="hidden" name="action" value="approve">
+            <button type="submit" class="btn btn-primary">Approve</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/mcp-consent.js') }}"></script>
+{% endblock %}
