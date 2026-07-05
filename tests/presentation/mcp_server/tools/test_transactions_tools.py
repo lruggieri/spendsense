@@ -1,4 +1,21 @@
-from presentation.mcp_server.tools.transactions import _classified, _serialize
+from presentation.mcp_server.tools import transactions as tx_tools
+from presentation.mcp_server.tools.transactions import _classified, _get_transaction, _serialize
+
+
+class _FakeMCP:
+    """Minimal stand-in for FastMCP's `@mcp.tool()` decorator: captures the
+    decorated function by name instead of registering it with a real server,
+    so registered tool bodies can be invoked directly in tests."""
+
+    def __init__(self):
+        self.tools = {}
+
+    def tool(self):
+        def decorator(fn):
+            self.tools[fn.__name__] = fn
+            return fn
+
+        return decorator
 
 
 def test_add_and_list(svcs_and_path):
@@ -73,6 +90,32 @@ def test_converted_amount_same_currency_matches_amount(svcs_and_path):
     row = _serialize(svcs, tx_dict[tx_id], default_currency)
     assert row["converted_amount"] == row["amount"]
     assert row["converted_currency"] == row["currency"] == default_currency
+
+
+def test_get_transaction_returns_none_for_missing_id(svcs_and_path):
+    svcs, _ = svcs_and_path
+    assert _get_transaction(svcs, "does-not-exist") is None
+
+
+def test_list_transactions_tool_returns_converted_fields(svcs_and_path, monkeypatch):
+    """Exercise the actual registered `list_transactions` tool body (not just
+    the `_serialize`/`_classified` helpers), confirming it fetches the
+    default currency once and returns the new fields end-to-end."""
+    svcs, _ = svcs_and_path
+    ok, tx_id = svcs.transaction.add_new_transaction(
+        "2026-06-25", "5.99", "Coffee", "", "", "USD"
+    )
+    assert ok, tx_id
+
+    fake_mcp = _FakeMCP()
+    tx_tools.register(fake_mcp)
+    monkeypatch.setattr(tx_tools, "get_tool_context", lambda: (svcs, "read"))
+
+    rows = fake_mcp.tools["list_transactions"]()
+    row = next(r for r in rows if r["id"] == tx_id)
+    assert row["amount"] == 5.99
+    assert row["currency"] == "USD"
+    assert row["converted_currency"] == svcs.user_settings.get_default_currency()
 
 
 def test_converted_amount_cross_currency(svcs_and_path):
