@@ -445,83 +445,15 @@ class EncryptionService:
         self._encryption_repo.delete_wrapped_dek(user_id, f"oauthrt:{grant_id}")
         self._encryption_repo.delete_wrapped_dek(user_id, f"oauthrt:{grant_id}:prev")
 
-    def oauth_rewrap_for_rotation(
-        self,
-        user_id: str,
-        grant_id: str,
-        new_at: str,
-        new_rt: str,
-        dek_b64: str,
-        keep_prev_rt: Optional[str] = None,
-    ) -> tuple[str, str]:
-        """Rotate access/refresh token envelopes to new secrets.
-
-        If `keep_prev_rt` (the outgoing raw refresh token) is given, the
-        current `oauthrt:{grant_id}` envelope - already wrapped under that
-        old refresh token - is preserved verbatim under
-        `oauthrt:{grant_id}:prev` (a reuse-detection grace window) before
-        being replaced. `keep_prev_rt` itself is only used to select this
-        code path; the envelope being moved is already wrapped under it, so
-        no re-wrap is needed for the "prev" copy.
-
-        Returns:
-            (new_at_salt_b64, new_rt_salt_b64)
-        """
-        from infrastructure.crypto.encryption import hkdf_derive_kek, wrap_key
-
-        dek = base64.b64decode(dek_b64)
-
-        # Access token envelope: delete old, store new.
-        self._encryption_repo.delete_wrapped_dek(user_id, f"oauthat:{grant_id}")
-        new_at_salt = os.urandom(16)
-        new_at_kek = hkdf_derive_kek(new_at, new_at_salt)
-        new_at_wrapped = wrap_key(dek, new_at_kek)
-        new_at_salt_b64 = base64.b64encode(new_at_salt).decode("ascii")
-        self._encryption_repo.store_wrapped_dek(
-            user_id, f"oauthat:{grant_id}", new_at_wrapped, new_at_salt_b64, wrapper_type="oauth_at"
-        )
-
-        if keep_prev_rt is not None:
-            # Copy the current rt envelope (still wrapped under the old RT) to
-            # the ":prev" slot verbatim, before it is deleted below.
-            current_rt_wrapped = self._encryption_repo.get_wrapped_dek(
-                user_id, f"oauthrt:{grant_id}"
-            )
-            current_rt_salt_b64 = self._encryption_repo.get_prf_salt(
-                user_id, f"oauthrt:{grant_id}"
-            )
-            if current_rt_wrapped is not None and current_rt_salt_b64 is not None:
-                self._encryption_repo.delete_wrapped_dek(user_id, f"oauthrt:{grant_id}:prev")
-                self._encryption_repo.store_wrapped_dek(
-                    user_id,
-                    f"oauthrt:{grant_id}:prev",
-                    current_rt_wrapped,
-                    current_rt_salt_b64,
-                    wrapper_type="oauth_rt_prev",
-                )
-
-        # Refresh token envelope: delete old, store new.
-        self._encryption_repo.delete_wrapped_dek(user_id, f"oauthrt:{grant_id}")
-        new_rt_salt = os.urandom(16)
-        new_rt_kek = hkdf_derive_kek(new_rt, new_rt_salt)
-        new_rt_wrapped = wrap_key(dek, new_rt_kek)
-        new_rt_salt_b64 = base64.b64encode(new_rt_salt).decode("ascii")
-        self._encryption_repo.store_wrapped_dek(
-            user_id, f"oauthrt:{grant_id}", new_rt_wrapped, new_rt_salt_b64, wrapper_type="oauth_rt"
-        )
-
-        return new_at_salt_b64, new_rt_salt_b64
-
     def oauth_prepare_rewrap(
         self, new_at: str, new_rt: str, dek_b64: str
     ) -> tuple[bytes, str, bytes, str]:
         """Compute new AT/RT envelope bytes for a rotation, without touching the DB.
 
         Pure crypto (derive a KEK from each new token secret, wrap the DEK
-        under it) factored out of the DB-writing steps in
-        `oauth_rewrap_for_rotation` above, so a caller that needs the writes
-        to happen inside a single cross-process-atomic transaction
-        (`OAuthGrantRepository.rotate_with_envelopes`, used by
+        under it), kept separate from any DB-writing step so a caller that
+        needs the writes to happen inside a single cross-process-atomic
+        transaction (`OAuthGrantRepository.rotate_with_envelopes`, used by
         `OAuthService.refresh()`) can do this computation BEFORE opening
         that transaction - it needs no DB access and so shouldn't hold any
         lock while it runs - and pass the results in to be persisted

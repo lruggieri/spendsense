@@ -153,7 +153,7 @@ class SQLiteOAuthGrantRepository(OAuthGrantRepository):
         This method - not `rotate()` - is what `OAuthService.refresh()` uses.
         `rotate()` alone is safe on its own (a single atomic UPDATE), but the
         DEK envelope rewrite historically happened as several *separate*,
-        unprotected reads/writes against `encryption_keys` (see
+        unprotected reads/writes against `encryption_keys` (the now-removed
         `EncryptionService.oauth_rewrap_for_rotation`), each opening and
         committing its own connection. Two racing processes could interleave
         those envelope writes independently of which one's grants-row CAS

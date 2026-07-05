@@ -3,6 +3,7 @@ import os
 import time
 from typing import Optional
 
+from cryptography.hazmat.primitives.keywrap import InvalidUnwrap
 from mcp.server.auth.provider import AccessToken, TokenVerifier
 from mcp.server.auth.middleware.auth_context import get_access_token
 from mcp.server.fastmcp.exceptions import ToolError
@@ -81,5 +82,14 @@ def get_tool_context() -> "tuple[MCPServices, str]":
         dek = svc.unwrap_dek(raw, resolved)
     except ValueError as e:
         raise ToolError(f"unauthorized: {e}") from e
+    except InvalidUnwrap as e:
+        # oauth_unwrap_dek_for_access_token's AES key-unwrap raises this (not
+        # ValueError) when the envelope no longer matches this access token -
+        # e.g. a concurrent refresh() rewrapped the DEK under a new token
+        # between this request resolving the grant row and unwrapping its
+        # envelope. Same "lost the race"/stale-token class of failure as an
+        # invalid token; map it to the same clean unauthorized ToolError
+        # instead of letting it propagate as an uncaught 500.
+        raise ToolError("unauthorized: invalid token") from e
     services = build_services(_db_path(), resolved["user_id"], dek)
     return services, resolved["scope"]

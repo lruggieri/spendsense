@@ -64,6 +64,46 @@ def test_get_tool_context_resolves_oauth_token_user_id_and_scope_and_dek(db_path
     assert services.transaction.user_id == "real-user@example.com"
 
 
+def test_get_tool_context_maps_invalid_unwrap_to_unauthorized_tool_error(db_path, monkeypatch):
+    """A concurrent refresh() can rewrap the DEK envelope under new AT/RT
+    secrets between this request resolving the grant row and unwrapping its
+    envelope, so `unwrap_dek` -> `oauth_unwrap_dek_for_access_token` ->
+    `unwrap_key` can raise `cryptography.hazmat.primitives.keywrap.InvalidUnwrap`
+    for an otherwise-resolvable token. get_tool_context() must map that to the
+    same clean "unauthorized: invalid token" ToolError it raises for any other
+    unresolvable/invalid token, not let it propagate as an uncaught 500."""
+    import presentation.mcp_server.auth as auth
+
+    svc = auth._oauth_service()
+    dek_b64 = base64.b64encode(generate_dek()).decode("ascii")
+    pending = {
+        "client_id": "cid",
+        "scopes": ["readwrite"],
+        "code_challenge": "chal",
+        "redirect_uri": "http://localhost:9/callback",
+        "redirect_uri_provided_explicitly": True,
+        "resource": None,
+    }
+    raw_code = svc.issue_code("real-user@example.com", pending, dek_b64)
+    result = svc.exchange_code("cid", raw_code)
+    assert result is not None
+    access_token = result["access_token"]
+
+    def _raise_invalid_unwrap(*_args, **_kwargs):
+        from cryptography.hazmat.primitives.keywrap import InvalidUnwrap
+        raise InvalidUnwrap()
+
+    monkeypatch.setattr(auth.OAuthService, "unwrap_dek", _raise_invalid_unwrap)
+
+    token_obj = AccessToken(
+        token=access_token, client_id="cid", scopes=["readwrite"], expires_at=None
+    )
+    with patch.object(auth, "get_access_token", lambda: token_obj):
+        with _embedding_patch():
+            with pytest.raises(ToolError, match="unauthorized: invalid token"):
+                auth.get_tool_context()
+
+
 def test_get_tool_context_still_resolves_legacy_api_key(db_path):
     import presentation.mcp_server.auth as auth
 
