@@ -421,7 +421,7 @@ class OAuthService:
                 return None
             using_prev = True
             logger.info(
-                "OAuth refresh used grace-period previous refresh token for grant %s",
+                "OAuth refresh reused the pre-rotation grant %s within its grace window",
                 grant["grant_id"],
             )
         else:

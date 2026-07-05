@@ -41,3 +41,29 @@ class TestLoginRequiredNextPreservation:
         location = urlparse(response.headers["Location"])
         next_param = parse_qs(location.query)["next"][0]
         assert next_param == "/mcp-consent"
+
+    def test_logged_in_but_not_onboarded_stashes_next_for_after_onboarding(
+        self, client, mock_session_datasource
+    ):
+        """A logged-in user who hasn't finished onboarding must have their
+        original destination (e.g. an MCP OAuth consent screen) preserved
+        across the onboarding detour, not silently dropped."""
+        settings_obj = MagicMock()
+        settings_obj.browser_settings = {"onboarding_step": 1}
+        settings_svc = MagicMock()
+        settings_svc.get_user_settings.return_value = settings_obj
+
+        with patch(
+            "presentation.web.decorators.get_session_datasource",
+            return_value=mock_session_datasource,
+        ), patch(
+            "presentation.web.decorators.get_user_settings_service",
+            return_value=settings_svc,
+        ):
+            client.set_cookie("session_token", "valid_test_token")
+            response = client.get("/mcp-consent?txn=abc123")
+
+        assert response.status_code == 302
+        assert response.headers["Location"] == "/onboarding"
+        with client.session_transaction() as sess:
+            assert sess["oauth_next"] == "/mcp-consent?txn=abc123"

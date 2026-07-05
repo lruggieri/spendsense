@@ -95,7 +95,7 @@ class SQLiteOAuthGrantRepository(OAuthGrantRepository):
         conn = get_connection(self.db_filepath)
         try:
             row = conn.execute(
-                f"SELECT {_SELECT_COLUMNS} FROM oauth_grants "
+                f"SELECT {_SELECT_COLUMNS} FROM oauth_grants "  # nosec B608 - column list is a fixed constant, not user input
                 "WHERE at_hash = ? AND revoked = 0",
                 (at_hash,),
             ).fetchone()
@@ -107,7 +107,7 @@ class SQLiteOAuthGrantRepository(OAuthGrantRepository):
         conn = get_connection(self.db_filepath)
         try:
             row = conn.execute(
-                f"SELECT {_SELECT_COLUMNS} FROM oauth_grants "
+                f"SELECT {_SELECT_COLUMNS} FROM oauth_grants "  # nosec B608 - column list is a fixed constant, not user input
                 "WHERE revoked = 0 AND (rt_hash = ? OR prev_rt_hash = ?)",
                 (rt_hash, rt_hash),
             ).fetchone()

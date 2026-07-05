@@ -351,7 +351,7 @@ def test_grace_period_reuse_is_logged(provider, caplog):
     svc.refresh("cid", tok0.refresh_token, ["read"])  # first rotation, not the grace path
     with caplog.at_level(logging.INFO, logger="application.services.oauth_service"):
         svc.refresh("cid", tok0.refresh_token, ["read"])  # grace-window reuse
-    assert any("grace-period" in r.message for r in caplog.records)
+    assert any("grace window" in r.message for r in caplog.records)
 
 def test_refresh_invalid_unwrap_logs_and_returns_none(provider, caplog, monkeypatch):
     """A stale/corrupted envelope unwrap (InvalidUnwrap, not ValueError) during

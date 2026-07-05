@@ -69,8 +69,8 @@
         </div>
 
         <div class="complete-actions">
-            <a href="{{ url_for('main.index') }}" class="btn btn-primary btn-lg">
-                Go to Dashboard
+            <a href="{{ continue_url }}" class="btn btn-primary btn-lg">
+                {{ 'Continue' if has_pending_destination else 'Go to Dashboard' }}
             </a>
             <a href="{{ url_for('gmail.fetch_gmail_page') }}" class="btn btn-secondary">
                 Fetch Emails Now

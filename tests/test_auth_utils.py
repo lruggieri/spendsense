@@ -24,3 +24,15 @@ class TestSafeNextUrl:
 
     def test_path_without_leading_slash_rejected(self):
         assert safe_next_url("evil.com") is None
+
+    def test_embedded_tab_rejected(self):
+        """Browsers strip ASCII tab/newline/CR anywhere in a URL before
+        parsing (WHATWG URL spec), so "/\t/evil.com" would navigate as
+        "//evil.com" despite passing the leading-slash checks literally."""
+        assert safe_next_url("/\t/evil.com") is None
+
+    def test_embedded_newline_rejected(self):
+        assert safe_next_url("/\n/evil.com") is None
+
+    def test_embedded_carriage_return_rejected(self):
+        assert safe_next_url("/\r/evil.com") is None

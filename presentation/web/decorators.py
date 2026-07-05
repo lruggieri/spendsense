@@ -51,7 +51,7 @@ def login_required(f):
         # Enforce onboarding completion (skip for onboarding routes and API calls)
         # API calls are skipped because they return JSON - the UI enforcement is sufficient
         if request.blueprint != "onboarding" and not request.path.startswith("/api/"):
-            redirect_response = _check_onboarding_required(request.user_id)
+            redirect_response = _check_onboarding_required(request.user_id, next_url)
             if redirect_response:
                 return redirect_response
 
@@ -60,10 +60,16 @@ def login_required(f):
     return decorated_function
 
 
-def _check_onboarding_required(user_id: str):
+def _check_onboarding_required(user_id: str, next_url: str | None = None):
     """
     Check if user needs to complete onboarding.
     Uses session caching with versioning for performance.
+
+    Args:
+        next_url: the page the user was trying to reach (e.g. an MCP OAuth
+            consent screen) - stashed in the session so onboarding
+            completion can return here instead of always landing on the
+            dashboard.
 
     Returns:
         Redirect response if onboarding needed, None otherwise.
@@ -76,6 +82,8 @@ def _check_onboarding_required(user_id: str):
     # Note: request.user_id is already set by the login_required decorator at this point
     settings_service = get_user_settings_service()
     if needs_onboarding(settings_service):
+        if next_url:
+            session["oauth_next"] = next_url
         return redirect(url_for("onboarding.onboarding_index"))
 
     # Cache completion in session
