@@ -26,6 +26,27 @@ from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
 
 from application.services.oauth_service import OAuthService
 
+# The full set of scopes SpendSense supports. Every client is registered
+# with this as its ceiling (see `register_client()` below) regardless of
+# what its registration request specified - some OAuth clients (e.g. Claude
+# Code's `oauth.scopes` config) only pin the scope requested at the
+# `/authorize` step, never at Dynamic Client Registration, so gating
+# `/authorize` requests against a narrower per-client registered scope would
+# reject a legitimate "readwrite" request with "Client was not registered
+# with scope readwrite". The actual per-authorization grant is still fully
+# gated by what's requested at `/authorize` (or DEFAULT_SCOPES below when
+# omitted) plus the user's consent approval - this ceiling only controls
+# what a client is allowed to *ask* for.
+VALID_SCOPES = ["read", "readwrite"]
+
+# Fallback used when a client's `/authorize` request omits `scope` entirely
+# (RFC 6749 §3.3: the server MUST substitute a pre-defined default rather
+# than silently granting none). Deliberately NOT derived from the client's
+# registered scope (see VALID_SCOPES above) - that's just a ceiling on what
+# can be requested, not a safe default to fall back to when nothing was
+# requested at all.
+DEFAULT_SCOPES = ["read"]
+
 
 def _base_url() -> str:
     return os.getenv("MCP_BASE_URL", "http://localhost:5000")
@@ -59,6 +80,11 @@ class SpendSenseOAuthProvider(OAuthAuthorizationServerProvider):
     async def register_client(self, client_info: OAuthClientInformationFull) -> None:
         assert client_info.client_id is not None
         redirect_uris = client_info.redirect_uris or []
+        # Widen the registered scope to the server's full valid set (see
+        # VALID_SCOPES) regardless of what the registration request asked
+        # for - it's only a ceiling for what a client may request later at
+        # `/authorize`, not what actually gets granted.
+        client_info.scope = " ".join(VALID_SCOPES)
         self._service.register_client(
             client_info.client_id,
             [str(uri) for uri in redirect_uris],
@@ -74,9 +100,19 @@ class SpendSenseOAuthProvider(OAuthAuthorizationServerProvider):
     ) -> str:
         assert client.client_id is not None
         base = _base_url()
-        txn_id = self._service.begin_authorization(
-            client.client_id, params.model_dump(mode="json")
-        )
+        params_dict = params.model_dump(mode="json")
+        if not params_dict.get("scopes"):
+            # RFC 6749 §3.3: if the client's authorization request omits
+            # `scope` entirely (the SDK's `validate_scope(None)` returns
+            # `None`, so `params.scopes` is empty here), the server MUST
+            # substitute a pre-defined default rather than silently granting
+            # none. Always DEFAULT_SCOPES here, never the client's
+            # registered scope (VALID_SCOPES, "read readwrite" for every
+            # client) - that's a ceiling on what CAN be requested, not a
+            # safe assumption for what SHOULD be granted when nothing was
+            # explicitly asked for.
+            params_dict["scopes"] = DEFAULT_SCOPES
+        txn_id = self._service.begin_authorization(client.client_id, params_dict)
         return f"{base}/mcp-consent?txn={txn_id}"
 
     # =========================================================================
@@ -178,7 +214,7 @@ class SpendSenseOAuthProvider(OAuthAuthorizationServerProvider):
             # back to the user id (matching the pre-existing legacy verifier
             # in presentation/mcp_server/auth.py).
             client_id=resolved.get("client_id") or resolved["user_id"],
-            scopes=[resolved["scope"]],
+            scopes=resolved["scope"].split() if resolved["scope"] else [],
             expires_at=None,
             resource=None,
         )

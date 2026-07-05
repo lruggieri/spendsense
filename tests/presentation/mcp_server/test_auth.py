@@ -1,4 +1,3 @@
-import asyncio
 import base64
 import os
 import tempfile
@@ -20,24 +19,20 @@ def _make_key(scope, encrypted, monkeypatch):
     return auth, raw, path
 
 
-def test_verify_token_valid_and_invalid(monkeypatch):
-    auth, raw, path = _make_key("read", True, monkeypatch)
-    try:
-        v = auth.SpendSenseTokenVerifier()
-        tok = asyncio.run(v.verify_token(raw))
-        assert tok is not None
-        assert tok.client_id == "u@x.com"
-        assert "read" in tok.scopes
-        assert asyncio.run(v.verify_token("ssk_bad")) is None
-    finally:
-        os.remove(path)
-
-
 def test_require_write_rejects_read():
     import presentation.mcp_server.auth as auth
     with pytest.raises(Exception):
         auth.require_write("read")
     auth.require_write("readwrite")  # should not raise
+
+
+def test_require_write_accepts_multi_scope_grant():
+    """A grant with scope "read readwrite" (space-joined, e.g. a client that
+    requested both scopes at once) must be treated as having write access -
+    require_write must check membership, not do an exact-string match."""
+    import presentation.mcp_server.auth as auth
+    auth.require_write("read readwrite")  # should not raise
+    auth.require_write("readwrite read")  # order must not matter
 
 
 def test_get_tool_context_no_token_raises(monkeypatch):

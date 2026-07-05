@@ -27,6 +27,11 @@ logger = logging.getLogger(__name__)
 
 mcp_oauth_bp = Blueprint("mcp_oauth", __name__)
 
+_SCOPE_DESCRIPTIONS = {
+    "read": "View your transactions, categories, patterns, and groups",
+    "readwrite": "Add and edit your transactions, categories, patterns, and groups",
+}
+
 
 def _client_display_name(client_row: "dict | None", fallback_client_id: str) -> str:
     """Best-effort human-readable client name from its registered metadata."""
@@ -37,6 +42,16 @@ def _client_display_name(client_row: "dict | None", fallback_client_id: str) -> 
     except (KeyError, TypeError, ValueError):
         return fallback_client_id
     return metadata.get("client_name") or fallback_client_id
+
+
+def _describe_scopes(scopes: "list[str]") -> "list[dict[str, str]]":
+    """Pair each requested scope with a human-readable description for the
+    consent screen, falling back to the raw scope name for anything not in
+    `_SCOPE_DESCRIPTIONS` (e.g. a future scope added to valid_scopes)."""
+    return [
+        {"name": scope, "description": _SCOPE_DESCRIPTIONS.get(scope, scope)}
+        for scope in scopes
+    ]
 
 
 @mcp_oauth_bp.route("/mcp-consent", methods=["GET"])
@@ -63,7 +78,7 @@ def consent():
         txn=txn,
         needs_unlock=False,
         client_name=_client_display_name(client_row, pending["client_id"]),
-        scopes=pending.get("scopes") or [],
+        scopes=_describe_scopes(pending.get("scopes") or []),
     )
 
 

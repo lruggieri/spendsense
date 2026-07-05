@@ -8,7 +8,7 @@ from functools import wraps
 
 from flask import flash, g, make_response, redirect, request, session, url_for
 
-from presentation.web.auth_utils import ONBOARDING_VERSION, needs_onboarding
+from presentation.web.auth_utils import ONBOARDING_VERSION, needs_onboarding, safe_next_url
 from presentation.web.extensions import get_session_datasource
 from presentation.web.utils import get_user_settings_service
 
@@ -25,15 +25,17 @@ def login_required(f):
         session_datasource = get_session_datasource()
         session_token = request.cookies.get("session_token")
 
+        next_url = safe_next_url(request.full_path.rstrip("?"))
+
         if not session_token:
             flash("Please sign in to access this page.", "error")
-            return redirect(url_for("auth.login"))
+            return redirect(url_for("auth.login", next=next_url))
 
         session_data = session_datasource.get_session(session_token)
         if not session_data:
             # Session invalid or expired
             flash("Your session has expired. Please sign in again.", "error")
-            response = make_response(redirect(url_for("auth.login")))
+            response = make_response(redirect(url_for("auth.login", next=next_url)))
             response.set_cookie("session_token", "", expires=0)  # Clear invalid cookie
             return response
 

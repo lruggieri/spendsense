@@ -107,7 +107,7 @@
 
     <ul class="mcp-consent__scopes">
         {% for scope in scopes %}
-        <li>{{ scope }}</li>
+        <li><strong>{{ scope.name }}</strong> &mdash; {{ scope.description }}</li>
         {% endfor %}
     </ul>
 

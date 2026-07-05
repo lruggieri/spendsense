@@ -48,6 +48,23 @@ class TestLoginPage:
             response = client.get("/login")
         assert response.status_code == 302
 
+    def test_redirects_to_next_when_already_authenticated(self, client):
+        """GET /login?next=... with a valid session should redirect straight
+        to the safe next target instead of always going home."""
+        with patch("presentation.web.blueprints.auth.get_session_datasource") as mock_ds:
+            mock_ds.return_value.get_session.return_value = MagicMock()
+            client.set_cookie("session_token", "valid_token")
+            response = client.get("/login?next=/mcp-consent%3Ftxn%3Dabc123")
+        assert response.headers["Location"] == "/mcp-consent?txn=abc123"
+
+    def test_ignores_unsafe_next_when_already_authenticated(self, client):
+        """An absolute-URL next param must not be honored (open-redirect guard)."""
+        with patch("presentation.web.blueprints.auth.get_session_datasource") as mock_ds:
+            mock_ds.return_value.get_session.return_value = MagicMock()
+            client.set_cookie("session_token", "valid_token")
+            response = client.get("/login?next=https://evil.com")
+        assert "evil.com" not in response.headers["Location"]
+
 
 class TestLoginStart:
     def test_redirects_to_google(self, client):
@@ -95,6 +112,29 @@ class TestLoginStart:
             client.get("/login/start")
         with client.session_transaction() as sess:
             assert "oauth_code_verifier" not in sess
+
+    def test_saves_next_to_session(self, client):
+        """A safe ?next=... on /login/start must be persisted so the callback
+        can return the user to the page that required login."""
+        flow = _mock_flow()
+        with patch("presentation.web.blueprints.auth.get_credentials_loader_instance") as mock_cl, \
+             patch("presentation.web.blueprints.auth.Flow") as mock_flow_cls:
+            mock_cl.return_value.get_credentials.return_value = {"web": {}}
+            mock_flow_cls.from_client_config.return_value = flow
+            client.get("/login/start?next=/mcp-consent%3Ftxn%3Dabc123")
+        with client.session_transaction() as sess:
+            assert sess["oauth_next"] == "/mcp-consent?txn=abc123"
+
+    def test_unsafe_next_not_saved_to_session(self, client):
+        """An absolute-URL next param must not be persisted (open-redirect guard)."""
+        flow = _mock_flow()
+        with patch("presentation.web.blueprints.auth.get_credentials_loader_instance") as mock_cl, \
+             patch("presentation.web.blueprints.auth.Flow") as mock_flow_cls:
+            mock_cl.return_value.get_credentials.return_value = {"web": {}}
+            mock_flow_cls.from_client_config.return_value = flow
+            client.get("/login/start?next=https://evil.com")
+        with client.session_transaction() as sess:
+            assert "oauth_next" not in sess
 
 
 class TestLoginCallback:
@@ -194,6 +234,46 @@ class TestLoginCallback:
             response = client.get("/login/callback?state=test_state&code=auth_code")
         assert response.status_code == 302
         assert "session_token" in response.headers.get("Set-Cookie", "")
+
+    def test_redirects_to_oauth_next_when_onboarding_complete(self, client):
+        """When onboarding is already complete and a pending oauth_next exists
+        (e.g. from an MCP consent redirect through login), the callback must
+        return the user there instead of always going to main.index."""
+        self._setup_session(client, code_verifier="verifier_abc")
+        with client.session_transaction() as sess:
+            sess["oauth_next"] = "/mcp-consent?txn=abc123"
+        flow = _mock_flow(email="user@example.com")
+        patches = self._patch_callback(flow, onboarding_step=0)
+        with patches[0], patches[1] as mock_flow_cls, patches[2], patches[3], patches[4], patches[5]:
+            mock_flow_cls.from_client_config.return_value = flow
+            response = client.get("/login/callback?state=test_state&code=auth_code")
+        assert response.headers["Location"] == "/mcp-consent?txn=abc123"
+
+    def test_oauth_next_cleared_from_session_after_use(self, client):
+        """oauth_next must not survive past the callback that consumed it."""
+        self._setup_session(client, code_verifier="verifier_abc")
+        with client.session_transaction() as sess:
+            sess["oauth_next"] = "/mcp-consent?txn=abc123"
+        flow = _mock_flow(email="user@example.com")
+        patches = self._patch_callback(flow, onboarding_step=0)
+        with patches[0], patches[1] as mock_flow_cls, patches[2], patches[3], patches[4], patches[5]:
+            mock_flow_cls.from_client_config.return_value = flow
+            client.get("/login/callback?state=test_state&code=auth_code")
+        with client.session_transaction() as sess:
+            assert "oauth_next" not in sess
+
+    def test_onboarding_takes_priority_over_oauth_next(self, client):
+        """A user still mid-onboarding must finish onboarding first, even if
+        an oauth_next is pending - never skip onboarding for MCP consent."""
+        self._setup_session(client, code_verifier="verifier_abc")
+        with client.session_transaction() as sess:
+            sess["oauth_next"] = "/mcp-consent?txn=abc123"
+        flow = _mock_flow(email="user@example.com")
+        patches = self._patch_callback(flow, onboarding_step=2)
+        with patches[0], patches[1] as mock_flow_cls, patches[2], patches[3], patches[4], patches[5]:
+            mock_flow_cls.from_client_config.return_value = flow
+            response = client.get("/login/callback?state=test_state&code=auth_code")
+        assert "/mcp-consent" not in response.headers["Location"]
 
 
 class TestLogout:

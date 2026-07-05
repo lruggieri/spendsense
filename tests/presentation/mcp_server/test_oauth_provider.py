@@ -45,6 +45,70 @@ def test_authorize_returns_consent_redirect(provider):
     url = asyncio.run(provider.authorize(ci, params))
     assert url.startswith("https://spendsense.dev/mcp-consent?txn=")
 
+def test_register_client_widens_scope_to_full_valid_set(provider):
+    """Reproduces the reported bug: Claude Code's Dynamic Client Registration
+    request never includes a `scope` (only its later /authorize request does,
+    via oauth.scopes), so the client would register with just
+    default_scopes ("read"). The SDK's own OAuthClientInformationFull.
+    validate_scope() then gates any /authorize request against THIS
+    registered scope, independent of our own code - so requesting "readwrite"
+    failed with "Client was not registered with scope readwrite" even though
+    the server's valid_scopes includes it. register_client() must widen the
+    registered scope to the full valid set so any request within it passes."""
+    ci = OAuthClientInformationFull(client_id="cid", redirect_uris=["http://localhost:9/callback"])
+    asyncio.run(provider.register_client(ci))
+    registered = asyncio.run(provider.get_client("cid"))
+    assert registered is not None
+    assert registered.validate_scope("read readwrite") == ["read", "readwrite"]
+    assert registered.validate_scope("readwrite") == ["readwrite"]
+
+def test_authorize_defaults_to_read_only_when_scope_omitted(provider):
+    """RFC 6749 §3.3: if the client's authorization request omits `scope`
+    entirely, the server MUST substitute a pre-defined default rather than
+    silently granting none. That default must be the safe DEFAULT_SCOPES
+    ("read") - NOT the client's registered scope, which is now always the
+    full "read readwrite" ceiling (see test above) and would silently grant
+    write access to a client that asked for nothing at all."""
+    from presentation.mcp_server.oauth_provider import DEFAULT_SCOPES
+    ci = OAuthClientInformationFull(client_id="cid", redirect_uris=["http://localhost:9/callback"])
+    asyncio.run(provider.register_client(ci))
+    params = AuthorizationParams(state="st", scopes=None, code_challenge="chal",
+        redirect_uri="http://localhost:9/callback", redirect_uri_provided_explicitly=True, resource=None)
+    url = asyncio.run(provider.authorize(ci, params))
+    txn = url.split("txn=")[1]
+    pending = provider.service.get_pending(txn)
+    assert pending["scopes"] == DEFAULT_SCOPES
+    assert pending["scopes"] != ["read", "readwrite"]
+
+def test_authorize_preserves_explicit_scope_request(provider):
+    """When the client DOES request an explicit scope (e.g. via oauth.scopes
+    pinned to just "read"), that request must be honored as-is, not widened
+    to the client's full registered scope."""
+    ci = OAuthClientInformationFull(client_id="cid", redirect_uris=["http://localhost:9/callback"])
+    asyncio.run(provider.register_client(ci))
+    params = AuthorizationParams(state="st", scopes=["read"], code_challenge="chal",
+        redirect_uri="http://localhost:9/callback", redirect_uri_provided_explicitly=True, resource=None)
+    url = asyncio.run(provider.authorize(ci, params))
+    txn = url.split("txn=")[1]
+    pending = provider.service.get_pending(txn)
+    assert pending["scopes"] == ["read"]
+
+def test_authorize_readwrite_request_is_granted(provider):
+    """End-to-end regression for the reported bug: a client explicitly
+    requesting "readwrite" at /authorize (e.g. via oauth.scopes) must have
+    that request both pass the SDK's registered-scope gate and be recorded
+    as the granted scope - not rejected, and not silently downgraded."""
+    ci = OAuthClientInformationFull(client_id="cid", redirect_uris=["http://localhost:9/callback"])
+    asyncio.run(provider.register_client(ci))
+    registered = asyncio.run(provider.get_client("cid"))
+    validated = registered.validate_scope("read readwrite")
+    params = AuthorizationParams(state="st", scopes=validated, code_challenge="chal",
+        redirect_uri="http://localhost:9/callback", redirect_uri_provided_explicitly=True, resource=None)
+    url = asyncio.run(provider.authorize(registered, params))
+    txn = url.split("txn=")[1]
+    pending = provider.service.get_pending(txn)
+    assert pending["scopes"] == ["read", "readwrite"]
+
 def test_full_code_exchange_bridges_dek(provider):
     import base64, os, asyncio
     from mcp.shared.auth import OAuthClientInformationFull
@@ -271,6 +335,46 @@ def test_sequential_refresh_with_same_rt_yields_exactly_one_success_then_grace_s
     # A third attempt with the now-doubly-stale original RT must fail: it
     # is neither the current rt_hash nor the current prev_rt_hash anymore.
     assert svc.refresh("cid", rt0, ["read"]) is None
+
+def test_grace_period_reuse_is_logged(provider, caplog):
+    """Redeeming the just-rotated-away refresh token (grace window) must log
+    a security-relevant event, so this stays observable/alertable instead of
+    being indistinguishable from an ordinary fresh rotation."""
+    import asyncio, logging
+    svc = provider.service
+    pending = {"client_id":"cid","scopes":["read"],"code_challenge":"c","redirect_uri":"http://localhost:9/callback","redirect_uri_provided_explicitly":True,"resource":None}
+    ci = OAuthClientInformationFull(client_id="cid", redirect_uris=["http://localhost:9/callback"])
+    raw_code = svc.issue_code("u@x", pending, None)
+    ac = asyncio.run(provider.load_authorization_code(ci, raw_code))
+    tok0 = asyncio.run(provider.exchange_authorization_code(ci, ac))
+
+    svc.refresh("cid", tok0.refresh_token, ["read"])  # first rotation, not the grace path
+    with caplog.at_level(logging.INFO, logger="application.services.oauth_service"):
+        svc.refresh("cid", tok0.refresh_token, ["read"])  # grace-window reuse
+    assert any("grace-period" in r.message for r in caplog.records)
+
+def test_refresh_invalid_unwrap_logs_and_returns_none(provider, caplog, monkeypatch):
+    """A stale/corrupted envelope unwrap (InvalidUnwrap, not ValueError) during
+    refresh must be logged - not silently indistinguishable from an ordinary
+    race - while still returning None rather than raising a 500."""
+    import asyncio, base64, logging, os
+    from cryptography.hazmat.primitives.keywrap import InvalidUnwrap
+    svc = provider.service
+    dek = base64.b64encode(os.urandom(32)).decode()
+    pending = {"client_id":"cid","scopes":["read"],"code_challenge":"c","redirect_uri":"http://localhost:9/callback","redirect_uri_provided_explicitly":True,"resource":None}
+    ci = OAuthClientInformationFull(client_id="cid", redirect_uris=["http://localhost:9/callback"])
+    raw_code = svc.issue_code("u@x", pending, dek)
+    ac = asyncio.run(provider.load_authorization_code(ci, raw_code))
+    tok0 = asyncio.run(provider.exchange_authorization_code(ci, ac))
+
+    def _boom(*args, **kwargs):
+        raise InvalidUnwrap()
+
+    monkeypatch.setattr(svc._encryption, "oauth_unwrap_dek_for_refresh_token", _boom)
+    with caplog.at_level(logging.WARNING, logger="application.services.oauth_service"):
+        result = svc.refresh("cid", tok0.refresh_token, ["read"])
+    assert result is None
+    assert any("unwrap failed" in r.message for r in caplog.records)
 
 def test_concurrent_refresh_of_same_rt_never_yields_two_live_pairs():
     """Two threads racing refresh() on the SAME refresh token.

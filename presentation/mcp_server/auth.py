@@ -1,10 +1,8 @@
 """MCP authentication: resolve per-user scoped API keys to identity, scope, and DEK."""
 import os
 import time
-from typing import Optional
 
 from cryptography.hazmat.primitives.keywrap import InvalidUnwrap
-from mcp.server.auth.provider import AccessToken, TokenVerifier
 from mcp.server.auth.middleware.auth_context import get_access_token
 from mcp.server.fastmcp.exceptions import ToolError
 
@@ -41,21 +39,8 @@ def _oauth_service() -> OAuthService:
     return OAuthService(_db_path())
 
 
-class SpendSenseTokenVerifier(TokenVerifier):
-    async def verify_token(self, token: str) -> Optional[AccessToken]:
-        resolved = _encryption_service().resolve_mcp_api_key(token)
-        if not resolved:
-            return None
-        return AccessToken(
-            token=token,
-            client_id=resolved["user_id"],
-            scopes=[resolved["scope"]],
-            expires_at=None,
-        )
-
-
 def require_write(scope: str) -> None:
-    if scope != "readwrite":
+    if "readwrite" not in scope.split():
         raise ToolError("permission denied: this API key is read-only")
 
 

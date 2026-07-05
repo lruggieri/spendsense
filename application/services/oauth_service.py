@@ -420,6 +420,10 @@ class OAuthService:
             if now >= datetime.fromisoformat(grant["prev_rt_expires_at"]):
                 return None
             using_prev = True
+            logger.info(
+                "OAuth refresh used grace-period previous refresh token for grant %s",
+                grant["grant_id"],
+            )
         else:
             # get_by_rt_hash only matches rt_hash/prev_rt_hash, so this is
             # unreachable in practice - kept as a defensive fallback.
@@ -444,6 +448,16 @@ class OAuthService:
             # longer matches. Treat this exactly like losing the CAS further
             # down (`rotated=False`) - a clean "lost the race" outcome, not
             # a crypto/programming error.
+            #
+            # This exception cannot actually distinguish a benign race from a
+            # genuinely corrupted/tampered envelope - log so a real
+            # data-integrity fault is at least observable instead of always
+            # silently looking like an ordinary retry.
+            logger.warning(
+                "OAuth refresh envelope unwrap failed for grant %s "
+                "(lost rotation race, or envelope corruption)",
+                grant["grant_id"],
+            )
             return None
 
         access_token = secrets.token_urlsafe(32)

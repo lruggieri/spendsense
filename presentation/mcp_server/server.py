@@ -7,7 +7,11 @@ from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions, Re
 from mcp.server.transport_security import TransportSecuritySettings
 
 from config import get_database_path
-from presentation.mcp_server.oauth_provider import SpendSenseOAuthProvider
+from presentation.mcp_server.oauth_provider import (
+    DEFAULT_SCOPES,
+    VALID_SCOPES,
+    SpendSenseOAuthProvider,
+)
 
 
 def _base_url() -> str:
@@ -21,8 +25,8 @@ def create_mcp_app() -> FastMCP:
         resource_server_url=base,  # type: ignore[arg-type]
         client_registration_options=ClientRegistrationOptions(
             enabled=True,
-            valid_scopes=["read", "readwrite"],
-            default_scopes=["read"],
+            valid_scopes=VALID_SCOPES,
+            default_scopes=DEFAULT_SCOPES,
         ),
         revocation_options=RevocationOptions(enabled=True),
     )
@@ -39,8 +43,9 @@ def create_mcp_app() -> FastMCP:
     # SDK). Passing only `auth_server_provider` is sufficient: FastMCP
     # auto-derives its token verification from the provider's
     # `load_access_token()`, which already resolves both OAuth access tokens
-    # and legacy API keys via `OAuthService.resolve_access()`, so the
-    # standalone `SpendSenseTokenVerifier` is no longer needed here.
+    # and legacy API keys via `OAuthService.resolve_access()` - a standalone
+    # token verifier duplicating that resolution would bypass the rate
+    # limiter and unified resolve_access/unwrap_dek path, so none exists here.
     provider = SpendSenseOAuthProvider(db_path=get_database_path())
     mcp = FastMCP(
         "SpendSense",

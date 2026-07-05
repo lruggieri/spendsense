@@ -50,6 +50,21 @@ def test_get_consent_unencrypted_account_shows_scope(authenticated_client):
     assert "authenticateWithPRF" not in body or "unlock-btn" not in body
 
 
+def test_get_consent_shows_human_readable_scope_descriptions(authenticated_client):
+    """The consent screen must spell out what each requested scope actually
+    grants, not just the raw scope name - a bare "read"/"readwrite" label
+    doesn't tell the user what they're approving."""
+    pending = {**PENDING, "scopes": ["read", "readwrite"]}
+    oauth_svc, encryption_svc = _mock_services(pending=pending, has_encryption=False)
+    with _patched(oauth_svc, encryption_svc):
+        resp = authenticated_client.get("/mcp-consent?txn=abc123")
+
+    assert resp.status_code == 200
+    body = resp.get_data(as_text=True)
+    assert "View your transactions" in body
+    assert "Add and edit your transactions" in body
+
+
 def test_get_consent_encrypted_account_without_dek_shows_unlock_ui(authenticated_client):
     oauth_svc, encryption_svc = _mock_services(has_encryption=True)
     with _patched(oauth_svc, encryption_svc):
