@@ -8,6 +8,7 @@ from mcp.server.auth.middleware.auth_context import get_access_token
 from mcp.server.fastmcp.exceptions import ToolError
 
 from application.services.encryption_service import EncryptionService
+from application.services.oauth_service import OAuthService
 from infrastructure.crypto.encryption import hash_token
 from infrastructure.persistence.sqlite.repositories.encryption_repository import (
     SQLiteEncryptionRepository,
@@ -35,6 +36,10 @@ def _encryption_service() -> EncryptionService:
     )
 
 
+def _oauth_service() -> OAuthService:
+    return OAuthService(_db_path())
+
+
 class SpendSenseTokenVerifier(TokenVerifier):
     async def verify_token(self, token: str) -> Optional[AccessToken]:
         resolved = _encryption_service().resolve_mcp_api_key(token)
@@ -54,18 +59,27 @@ def require_write(scope: str) -> None:
 
 
 def get_tool_context() -> "tuple[MCPServices, str]":
-    """Resolve the current request to (services, scope). Call at the top of every tool."""
+    """Resolve the current request to (services, scope). Call at the top of every tool.
+
+    Resolves both OAuth access tokens and legacy API keys via
+    `OAuthService.resolve_access`/`unwrap_dek`, so the SpendSense user_id is
+    always derived from the resolved identity - never from
+    `AccessToken.client_id` (which, for OAuth tokens, is the registered
+    OAuth client application's id, not the user).
+    """
     token_obj = get_access_token()
     if token_obj is None:
         raise ToolError("unauthorized: no access token")
     raw = token_obj.token
-    user_id = token_obj.client_id
-    scope = token_obj.scopes[0] if token_obj.scopes else "read"
+    svc = _oauth_service()
+    resolved = svc.resolve_access(raw)
+    if resolved is None:
+        raise ToolError("unauthorized: invalid token")
     if not _rate_limiter.check(hash_token(raw), time.monotonic()):
         raise ToolError("rate limit exceeded, retry shortly")
     try:
-        dek = _encryption_service().unwrap_dek_for_api_key(raw)
+        dek = svc.unwrap_dek(raw, resolved)
     except ValueError as e:
         raise ToolError(f"unauthorized: {e}") from e
-    services = build_services(_db_path(), user_id, dek)
-    return services, scope
+    services = build_services(_db_path(), resolved["user_id"], dek)
+    return services, resolved["scope"]
