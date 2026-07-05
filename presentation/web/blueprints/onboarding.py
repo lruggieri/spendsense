@@ -180,8 +180,9 @@ def onboarding_index():
     if step is None:
         step = initialize_onboarding(settings_service)
     elif step == 0:
-        # Completed or skipped - go to main
-        return redirect(url_for("main.index"))
+        # Completed or skipped - return to whatever page required onboarding
+        # (e.g. an MCP OAuth consent screen), or the dashboard otherwise.
+        return redirect(session.pop("oauth_next", None) or url_for("main.index"))
 
     return redirect(url_for("onboarding.step", step_num=step))
 
@@ -442,4 +443,13 @@ def complete():
     pattern_service = get_pattern_service(category_service=category_service)
     counts = _get_step_counts(fetcher_service, category_service, pattern_service)
 
-    return render_template("onboarding/complete.html", counts=counts, hide_header=True)
+    # Return to whatever page required onboarding (e.g. an MCP OAuth consent
+    # screen) instead of always sending the user to the dashboard.
+    continue_url = session.pop("oauth_next", None)
+    return render_template(
+        "onboarding/complete.html",
+        counts=counts,
+        hide_header=True,
+        continue_url=continue_url or url_for("main.index"),
+        has_pending_destination=bool(continue_url),
+    )

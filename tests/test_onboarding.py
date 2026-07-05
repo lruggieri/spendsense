@@ -202,3 +202,91 @@ class TestEncryptionBannerSuppression:
         response = authenticated_client.get("/onboarding/step/1")
         assert response.status_code == 200
         assert b"Protect your data with end-to-end encryption" not in response.data
+
+
+class TestOnboardingReturnsToOauthNext:
+    """Onboarding completion must return to whatever page required it (e.g. an
+    MCP OAuth consent screen) instead of always landing on the dashboard -
+    otherwise a not-yet-onboarded user opening an MCP client connection gets
+    silently bounced to the homepage, orphaning the pending authorization."""
+
+    @pytest.fixture
+    def _mock_completed_settings(self):
+        with patch(
+            "presentation.web.blueprints.onboarding.get_user_settings_service"
+        ) as mock_settings, patch(
+            "presentation.web.blueprints.onboarding.get_fetcher_service"
+        ) as mock_fetcher, patch(
+            "presentation.web.blueprints.onboarding.get_category_service"
+        ) as mock_category, patch(
+            "presentation.web.blueprints.onboarding.get_pattern_service"
+        ) as mock_pattern:
+            settings_svc = MagicMock()
+            settings_obj = MagicMock()
+            settings_obj.browser_settings = {"onboarding_step": 0}
+            settings_svc.get_user_settings.return_value = settings_obj
+            mock_settings.return_value = settings_svc
+
+            fetcher_svc = MagicMock()
+            fetcher_svc.count_fetchers.return_value = 1
+            mock_fetcher.return_value = fetcher_svc
+
+            cat_svc = MagicMock()
+            cat_svc.count_categories.return_value = 5
+            mock_category.return_value = cat_svc
+
+            pattern_svc = MagicMock()
+            pattern_svc.count_patterns.return_value = 3
+            mock_pattern.return_value = pattern_svc
+
+            yield
+
+    def test_onboarding_index_redirects_to_pending_oauth_next(
+        self, authenticated_client, _mock_completed_settings
+    ):
+        with authenticated_client.session_transaction() as sess:
+            sess["oauth_next"] = "/mcp-consent?txn=abc123"
+
+        response = authenticated_client.get("/onboarding")
+
+        assert response.status_code == 302
+        assert response.headers["Location"] == "/mcp-consent?txn=abc123"
+
+    def test_onboarding_index_falls_back_to_dashboard_without_oauth_next(
+        self, authenticated_client, _mock_completed_settings
+    ):
+        response = authenticated_client.get("/onboarding")
+
+        assert response.status_code == 302
+        assert response.headers["Location"] == "/"
+
+    def test_onboarding_index_pops_oauth_next_so_it_is_not_reused(
+        self, authenticated_client, _mock_completed_settings
+    ):
+        with authenticated_client.session_transaction() as sess:
+            sess["oauth_next"] = "/mcp-consent?txn=abc123"
+
+        authenticated_client.get("/onboarding")
+
+        with authenticated_client.session_transaction() as sess:
+            assert "oauth_next" not in sess
+
+    def test_complete_page_links_to_pending_oauth_next(
+        self, authenticated_client, _mock_completed_settings
+    ):
+        with authenticated_client.session_transaction() as sess:
+            sess["oauth_next"] = "/mcp-consent?txn=abc123"
+
+        response = authenticated_client.get("/onboarding/complete")
+
+        assert response.status_code == 200
+        assert b'href="/mcp-consent?txn=abc123"' in response.data
+        assert b"Continue" in response.data
+
+    def test_complete_page_links_to_dashboard_without_oauth_next(
+        self, authenticated_client, _mock_completed_settings
+    ):
+        response = authenticated_client.get("/onboarding/complete")
+
+        assert response.status_code == 200
+        assert b"Go to Dashboard" in response.data

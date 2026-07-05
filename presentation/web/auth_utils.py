@@ -13,6 +13,25 @@ logger = logging.getLogger(__name__)
 ONBOARDING_VERSION = 2
 
 
+def safe_next_url(url: str | None) -> str | None:
+    """Validate a post-login redirect target is a local, relative path.
+
+    Rejects absolute URLs and protocol-relative ones (`//evil.com`) to
+    prevent open-redirect via the `next` parameter. Also rejects any ASCII
+    tab/newline/CR - per the WHATWG URL spec, browsers strip these from
+    anywhere in a URL before parsing it, so e.g. "/\t/evil.com" (which
+    passes the leading-slash checks below) would be navigated to as
+    "//evil.com" once the browser strips the tab.
+    """
+    if not url:
+        return None
+    if any(c in url for c in "\t\n\r"):
+        return None
+    if not url.startswith("/") or url.startswith("//") or url.startswith("/\\"):
+        return None
+    return url
+
+
 def needs_onboarding(settings_service) -> bool:
     """
     Check if user needs to go through onboarding.

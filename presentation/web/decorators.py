@@ -8,7 +8,7 @@ from functools import wraps
 
 from flask import flash, g, make_response, redirect, request, session, url_for
 
-from presentation.web.auth_utils import ONBOARDING_VERSION, needs_onboarding
+from presentation.web.auth_utils import ONBOARDING_VERSION, needs_onboarding, safe_next_url
 from presentation.web.extensions import get_session_datasource
 from presentation.web.utils import get_user_settings_service
 
@@ -25,15 +25,17 @@ def login_required(f):
         session_datasource = get_session_datasource()
         session_token = request.cookies.get("session_token")
 
+        next_url = safe_next_url(request.full_path.rstrip("?"))
+
         if not session_token:
             flash("Please sign in to access this page.", "error")
-            return redirect(url_for("auth.login"))
+            return redirect(url_for("auth.login", next=next_url))
 
         session_data = session_datasource.get_session(session_token)
         if not session_data:
             # Session invalid or expired
             flash("Your session has expired. Please sign in again.", "error")
-            response = make_response(redirect(url_for("auth.login")))
+            response = make_response(redirect(url_for("auth.login", next=next_url)))
             response.set_cookie("session_token", "", expires=0)  # Clear invalid cookie
             return response
 
@@ -49,7 +51,7 @@ def login_required(f):
         # Enforce onboarding completion (skip for onboarding routes and API calls)
         # API calls are skipped because they return JSON - the UI enforcement is sufficient
         if request.blueprint != "onboarding" and not request.path.startswith("/api/"):
-            redirect_response = _check_onboarding_required(request.user_id)
+            redirect_response = _check_onboarding_required(request.user_id, next_url)
             if redirect_response:
                 return redirect_response
 
@@ -58,10 +60,16 @@ def login_required(f):
     return decorated_function
 
 
-def _check_onboarding_required(user_id: str):
+def _check_onboarding_required(user_id: str, next_url: str | None = None):
     """
     Check if user needs to complete onboarding.
     Uses session caching with versioning for performance.
+
+    Args:
+        next_url: the page the user was trying to reach (e.g. an MCP OAuth
+            consent screen) - stashed in the session so onboarding
+            completion can return here instead of always landing on the
+            dashboard.
 
     Returns:
         Redirect response if onboarding needed, None otherwise.
@@ -74,6 +82,8 @@ def _check_onboarding_required(user_id: str):
     # Note: request.user_id is already set by the login_required decorator at this point
     settings_service = get_user_settings_service()
     if needs_onboarding(settings_service):
+        if next_url:
+            session["oauth_next"] = next_url
         return redirect(url_for("onboarding.onboarding_index"))
 
     # Cache completion in session

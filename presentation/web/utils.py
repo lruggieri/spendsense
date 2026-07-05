@@ -23,6 +23,7 @@ from application.services import (
     TransactionService,
     UserSettingsService,
 )
+from application.services.oauth_service import OAuthService
 from config import get_database_path
 from domain.entities.category_tree import CategoryNode
 from domain.entities.transaction import Transaction
@@ -303,6 +304,23 @@ def get_group_service(transaction_service: Optional[TransactionService] = None) 
         transaction_service=transaction_service,
         db_path=get_database_path(),
     )
+
+
+def get_oauth_service() -> OAuthService:
+    """
+    Get OAuthService instance for the current request.
+
+    Unlike the other factories in this module, OAuthService is not scoped to
+    a logged-in user (it only takes a db_path) - it's used by the consent
+    blueprint both before login-scoped state is relevant (looking up a
+    pending authorization by txn_id) and after (issuing a code for the
+    current user). Not reusing `presentation/mcp_server/auth.py`'s private
+    `_oauth_service()` helper here because that module is MCP-server-only
+    (imports FastMCP/ToolError machinery this Flask app has no business
+    depending on) - this factory follows this file's own
+    get_*_service()-from-get_database_path() convention instead.
+    """
+    return OAuthService(get_database_path())
 
 
 def get_encryption_service() -> EncryptionService:

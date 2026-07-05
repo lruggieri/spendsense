@@ -113,7 +113,32 @@ make run     # dev server
 
 SpendSense exposes a [Model Context Protocol](https://modelcontextprotocol.io) server at `/mcp` for LLM clients such as Claude Code.
 
-### Quick setup (Claude Code)
+### Quick setup — OAuth 2.1 (recommended)
+
+SpendSense is an OAuth 2.1 authorization server for its own MCP endpoint. Point a client
+that supports MCP's OAuth flow (Claude Code, claude.ai) at the server URL — no manual key
+to generate or share:
+
+```json
+{
+  "mcpServers": {
+    "spendsense": {
+      "type": "http",
+      "url": "https://your-spendsense-host/mcp"
+    }
+  }
+}
+```
+
+The client discovers the authorization server via RFC 9728/8414 metadata, registers itself
+(RFC 7591 Dynamic Client Registration), and opens your browser to log in (Google) and, for
+passkey-encrypted accounts, unlock your passkey — then approve the requested scope on the
+consent screen. Access tokens are short-lived and refresh automatically. Revocation is
+supported server-side (`/revoke`) for clients that call it when you disconnect on their end;
+there is currently no SpendSense-side page to view or revoke active grants yourself — that's
+tracked as follow-up work, not part of this release.
+
+### Quick setup — manual API key (legacy, still supported)
 
 1. **Generate an API key** — log in to SpendSense and go to **Settings → MCP API Keys**. Choose scope:
    - `read` — list/query transactions, categories, patterns, groups
@@ -159,6 +184,11 @@ If your account uses passkey-based encryption, you must generate MCP keys **whil
 | `get_user_settings` | read | Currency and language settings |
 
 ### Nginx (reverse-proxy) configuration
+
+No new nginx routes are needed for OAuth. `presentation/asgi.py` dispatches `/authorize`,
+`/token`, `/register`, `/revoke`, `/.well-known/oauth-*`, and `/mcp-consent` internally by
+path — the same single upstream (`app:5678`) that already serves everything else handles
+all of them. The only nginx-specific requirement remains the `/mcp` streaming block below.
 
 Add `proxy_buffering off` to the `/mcp` location block to avoid buffering the Streamable HTTP response stream:
 

@@ -1,13 +1,13 @@
 """MCP authentication: resolve per-user scoped API keys to identity, scope, and DEK."""
 import os
 import time
-from typing import Optional
 
-from mcp.server.auth.provider import AccessToken, TokenVerifier
+from cryptography.hazmat.primitives.keywrap import InvalidUnwrap
 from mcp.server.auth.middleware.auth_context import get_access_token
 from mcp.server.fastmcp.exceptions import ToolError
 
 from application.services.encryption_service import EncryptionService
+from application.services.oauth_service import OAuthService
 from infrastructure.crypto.encryption import hash_token
 from infrastructure.persistence.sqlite.repositories.encryption_repository import (
     SQLiteEncryptionRepository,
@@ -35,37 +35,46 @@ def _encryption_service() -> EncryptionService:
     )
 
 
-class SpendSenseTokenVerifier(TokenVerifier):
-    async def verify_token(self, token: str) -> Optional[AccessToken]:
-        resolved = _encryption_service().resolve_mcp_api_key(token)
-        if not resolved:
-            return None
-        return AccessToken(
-            token=token,
-            client_id=resolved["user_id"],
-            scopes=[resolved["scope"]],
-            expires_at=None,
-        )
+def _oauth_service() -> OAuthService:
+    return OAuthService(_db_path())
 
 
 def require_write(scope: str) -> None:
-    if scope != "readwrite":
+    if "readwrite" not in scope.split():
         raise ToolError("permission denied: this API key is read-only")
 
 
 def get_tool_context() -> "tuple[MCPServices, str]":
-    """Resolve the current request to (services, scope). Call at the top of every tool."""
+    """Resolve the current request to (services, scope). Call at the top of every tool.
+
+    Resolves both OAuth access tokens and legacy API keys via
+    `OAuthService.resolve_access`/`unwrap_dek`, so the SpendSense user_id is
+    always derived from the resolved identity - never from
+    `AccessToken.client_id` (which, for OAuth tokens, is the registered
+    OAuth client application's id, not the user).
+    """
     token_obj = get_access_token()
     if token_obj is None:
         raise ToolError("unauthorized: no access token")
     raw = token_obj.token
-    user_id = token_obj.client_id
-    scope = token_obj.scopes[0] if token_obj.scopes else "read"
     if not _rate_limiter.check(hash_token(raw), time.monotonic()):
         raise ToolError("rate limit exceeded, retry shortly")
+    svc = _oauth_service()
+    resolved = svc.resolve_access(raw)
+    if resolved is None:
+        raise ToolError("unauthorized: invalid token")
     try:
-        dek = _encryption_service().unwrap_dek_for_api_key(raw)
+        dek = svc.unwrap_dek(raw, resolved)
     except ValueError as e:
         raise ToolError(f"unauthorized: {e}") from e
-    services = build_services(_db_path(), user_id, dek)
-    return services, scope
+    except InvalidUnwrap as e:
+        # oauth_unwrap_dek_for_access_token's AES key-unwrap raises this (not
+        # ValueError) when the envelope no longer matches this access token -
+        # e.g. a concurrent refresh() rewrapped the DEK under a new token
+        # between this request resolving the grant row and unwrapping its
+        # envelope. Same "lost the race"/stale-token class of failure as an
+        # invalid token; map it to the same clean unauthorized ToolError
+        # instead of letting it propagate as an uncaught 500.
+        raise ToolError("unauthorized: invalid token") from e
+    services = build_services(_db_path(), resolved["user_id"], dek)
+    return services, resolved["scope"]

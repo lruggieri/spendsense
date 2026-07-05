@@ -25,6 +25,7 @@ from presentation.web.blueprints.onboarding import (
     _get_onboarding_status_for_user,
     initialize_onboarding,
 )
+from presentation.web.auth_utils import safe_next_url
 from presentation.web.extensions import (
     SCOPES,
     get_allowed_emails_list,
@@ -41,25 +42,27 @@ auth_bp = Blueprint("auth", __name__)
 def login():
     """Display login page."""
     session_datasource = get_session_datasource()
+    next_url = safe_next_url(request.args.get("next"))
 
-    # If already logged in, redirect to home
+    # If already logged in, redirect to home (or the originally requested page)
     session_token = request.cookies.get("session_token")
     if session_token:
         session_data = session_datasource.get_session(session_token)
         if session_data:
-            return redirect(url_for("main.index"))
+            return redirect(next_url or url_for("main.index"))
 
     # Debug: Show what redirect URI will be used
     debug_redirect_uri = url_for("auth.login_callback", _external=True)  # nosemgrep: python.flask.security.audit.flask-url-for-external-true.flask-url-for-external-true
     logger.debug(f"Generated redirect URI: {debug_redirect_uri}")
 
-    return render_template("login.html")
+    return render_template("login.html", next=next_url)
 
 
 @auth_bp.route("/login/start")
 def login_start():
     """Initiate Google OAuth login flow."""
     credentials_loader = get_credentials_loader_instance()
+    next_url = safe_next_url(request.args.get("next"))
 
     try:
         # Create flow instance with updated scopes
@@ -84,6 +87,8 @@ def login_start():
         # persist it here since a new Flow instance is created in the callback.
         session["oauth_state"] = state
         session["oauth_flow"] = "login"  # Mark this as login flow
+        if next_url:
+            session["oauth_next"] = next_url
         if flow.code_verifier:
             session["oauth_code_verifier"] = flow.code_verifier
 
@@ -204,6 +209,7 @@ def login_callback():
         # Clear OAuth session data
         session.pop("oauth_state", None)
         session.pop("oauth_flow", None)
+        oauth_next = session.pop("oauth_next", None)
 
         # Determine redirect destination based on onboarding status
         # Temporarily set request.user_id so service factory can work
@@ -219,6 +225,10 @@ def login_callback():
         elif onboarding_status["step"] > 0:
             # User in progress - continue from where they left off
             redirect_url = url_for("onboarding.step", step_num=onboarding_status["step"])
+        elif oauth_next:
+            # Onboarding complete - return to the page that required login
+            # (e.g. the MCP OAuth consent screen), instead of always going home
+            redirect_url = oauth_next
         else:
             # Onboarding complete or skipped
             redirect_url = url_for("main.index")
