@@ -1,6 +1,27 @@
 """Abstract repositories for OAuth 2.1 clients, authorizations, and grants."""
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import List, Optional
+
+
+@dataclass(frozen=True)
+class OAuthEnvelopeRewrite:
+    """Already-computed DEK envelope bytes for an encrypted-account rotation.
+
+    Carries only inert bytes/strings, never raw token secrets or the DEK
+    itself. The crypto (deriving a KEK from the new access/refresh token
+    and wrapping the DEK under it) is pure computation with no DB
+    dependency, so it happens BEFORE `rotate_with_envelopes`'s transaction
+    opens - the transaction only persists these precomputed values, plus
+    preserves whatever the CURRENT `oauthrt:{grant_id}` envelope is (read
+    fresh inside that same transaction) under a `:prev` slot.
+    """
+
+    user_id: str
+    new_at_wrapped: bytes
+    new_at_salt_b64: str
+    new_rt_wrapped: bytes
+    new_rt_salt_b64: str
 
 
 class OAuthClientRepository(ABC):
@@ -69,6 +90,38 @@ class OAuthGrantRepository(ABC):
         Returns:
             True if the row was updated, False if a concurrent rotation had
             already moved the row out from under this call.
+        """
+        ...
+
+    @abstractmethod
+    def rotate_with_envelopes(
+        self, grant_id: str, at_hash: str, at_salt: str, at_expires_at: str,
+        rt_hash: str, rt_salt: str, rt_expires_at: str,
+        prev_rt_hash: str, prev_rt_expires_at: str,
+        envelopes: Optional[OAuthEnvelopeRewrite] = None,
+    ) -> bool:
+        """Atomically rotate the grant row AND (for encrypted accounts) its
+        DEK envelopes, as ONE single database transaction.
+
+        Same CAS semantics as `rotate()` for the grants-table update
+        (`prev_rt_hash` is both the WHERE-clause guard and the new
+        `prev_rt_hash` column value). Additionally, when `envelopes` is
+        given, the DEK envelope rewrite (backing up the current
+        `oauthrt:{grant_id}` envelope to `oauthrt:{grant_id}:prev`, then
+        writing the new `oauthat:{grant_id}` / `oauthrt:{grant_id}`
+        envelopes) happens inside the SAME transaction as the grants-table
+        CAS, so a competing process's rotate attempt on the same grant is
+        genuinely serialized (blocked until this transaction commits or
+        rolls back) rather than merely racing to a wrong-but-plausible
+        final state. Either the whole rotation (grant row + all envelope
+        writes) commits, or none of it does - there is no window where a
+        partial rotation is visible to another connection.
+
+        Returns:
+            True if the row was updated (and envelopes, if given, written).
+            False if a concurrent rotation had already moved the row out
+            from under this call - the entire transaction (including any
+            envelope writes) is rolled back, so nothing partial persists.
         """
         ...
 

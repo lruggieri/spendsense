@@ -1,7 +1,8 @@
 """SQLite implementation of the OAuth grant repository (access/refresh token pairs)."""
+from datetime import datetime, timezone
 from typing import Optional
 
-from domain.repositories.oauth_repository import OAuthGrantRepository
+from domain.repositories.oauth_repository import OAuthEnvelopeRewrite, OAuthGrantRepository
 from infrastructure.persistence.sqlite.connection import get_connection
 
 _SELECT_COLUMNS = (
@@ -138,6 +139,120 @@ class SQLiteOAuthGrantRepository(OAuthGrantRepository):
             )
             conn.commit()
             return cursor.rowcount == 1
+        finally:
+            conn.close()
+
+    def rotate_with_envelopes(
+        self, grant_id: str, at_hash: str, at_salt: str, at_expires_at: str,
+        rt_hash: str, rt_salt: str, rt_expires_at: str,
+        prev_rt_hash: str, prev_rt_expires_at: str,
+        envelopes: Optional[OAuthEnvelopeRewrite] = None,
+    ) -> bool:
+        """Cross-process-atomic rotation of the grant row + DEK envelopes.
+
+        This method - not `rotate()` - is what `OAuthService.refresh()` uses.
+        `rotate()` alone is safe on its own (a single atomic UPDATE), but the
+        DEK envelope rewrite historically happened as several *separate*,
+        unprotected reads/writes against `encryption_keys` (see
+        `EncryptionService.oauth_rewrap_for_rotation`), each opening and
+        committing its own connection. Two racing processes could interleave
+        those envelope writes independently of which one's grants-row CAS
+        ultimately "won", producing a live grant row whose envelope no
+        longer contains the DEK wrapped under the tokens that row claims are
+        current - a silent, unrecoverable-DEK bug, not just an auth failure.
+
+        The fix used here: do EVERYTHING - the grants-table CAS and all
+        envelope writes - inside one `BEGIN IMMEDIATE` transaction on one
+        connection. `BEGIN IMMEDIATE` acquires SQLite's RESERVED lock
+        up front, so a second process's `BEGIN IMMEDIATE` against the same
+        file genuinely blocks (until this transaction commits or rolls
+        back, or its own `busy_timeout` elapses) rather than being merely a
+        best-effort compare-and-swap that a differently-ordered writer could
+        still race past. Because the grants-table CAS and the envelope
+        writes share this one transaction, there is no way for one process's
+        envelope writes to land while a *different* process's grants-row
+        update is the one that ends up committed: whichever transaction
+        commits first serializes completely (envelopes AND grant row) before
+        the second transaction's own CAS re-reads the row and (correctly)
+        finds it changed.
+
+        The `encryption_keys` table lives in the same SQLite file as
+        `oauth_grants` (both repositories are constructed from the same
+        `db_filepath` by `OAuthService`), so a single connection can span
+        both without any cross-database coordination. Raw SQL against
+        `encryption_keys` is used directly here (mirroring
+        `SQLiteEncryptionRepository`'s schema/queries) rather than calling
+        through `EncryptionRepository`, because that repository's methods
+        each open and commit their own connection - exactly the pattern
+        this method exists to avoid.
+        """
+        conn = get_connection(self.db_filepath)
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+
+            cursor = conn.execute(
+                "UPDATE oauth_grants SET "
+                "at_hash = ?, at_salt = ?, at_expires_at = ?, "
+                "rt_hash = ?, rt_salt = ?, rt_expires_at = ?, "
+                "prev_rt_hash = ?, prev_rt_expires_at = ? "
+                "WHERE grant_id = ? AND rt_hash = ?",
+                (at_hash, at_salt, at_expires_at, rt_hash, rt_salt, rt_expires_at,
+                 prev_rt_hash, prev_rt_expires_at, grant_id, prev_rt_hash),
+            )
+            if cursor.rowcount != 1:
+                # Lost the race (or grant_id/rt_hash simply doesn't match
+                # any row): roll back so nothing - not even envelope writes,
+                # which haven't happened yet at this point - persists.
+                conn.rollback()
+                return False
+
+            if envelopes is not None:
+                user_id = envelopes.user_id
+                created_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+                def _replace(credential_id: str, wrapped_dek: bytes, prf_salt: str,
+                             wrapper_type: str) -> None:
+                    conn.execute(
+                        "DELETE FROM encryption_keys "
+                        "WHERE user_id = ? AND credential_id = ?",
+                        (user_id, credential_id),
+                    )
+                    conn.execute(
+                        "INSERT INTO encryption_keys "
+                        "(user_id, credential_id, wrapped_dek, prf_salt, wrapper_type, created_at) "
+                        "VALUES (?, ?, ?, ?, ?, ?)",
+                        (user_id, credential_id, wrapped_dek, prf_salt, wrapper_type, created_at),
+                    )
+
+                # Preserve whatever the CURRENT oauthrt envelope is - read
+                # fresh, inside this same exclusive transaction, so it
+                # reflects the true latest committed state - under ":prev"
+                # before it gets overwritten below.
+                current_rt = conn.execute(
+                    "SELECT wrapped_dek, prf_salt FROM encryption_keys "
+                    "WHERE user_id = ? AND credential_id = ?",
+                    (user_id, f"oauthrt:{grant_id}"),
+                ).fetchone()
+                if current_rt is not None:
+                    _replace(
+                        f"oauthrt:{grant_id}:prev",
+                        bytes(current_rt[0]), current_rt[1], "oauth_rt_prev",
+                    )
+
+                _replace(
+                    f"oauthat:{grant_id}",
+                    envelopes.new_at_wrapped, envelopes.new_at_salt_b64, "oauth_at",
+                )
+                _replace(
+                    f"oauthrt:{grant_id}",
+                    envelopes.new_rt_wrapped, envelopes.new_rt_salt_b64, "oauth_rt",
+                )
+
+            conn.commit()
+            return True
+        except BaseException:
+            conn.rollback()
+            raise
         finally:
             conn.close()
 

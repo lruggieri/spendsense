@@ -511,3 +511,38 @@ class EncryptionService:
         )
 
         return new_at_salt_b64, new_rt_salt_b64
+
+    def oauth_prepare_rewrap(
+        self, new_at: str, new_rt: str, dek_b64: str
+    ) -> tuple[bytes, str, bytes, str]:
+        """Compute new AT/RT envelope bytes for a rotation, without touching the DB.
+
+        Pure crypto (derive a KEK from each new token secret, wrap the DEK
+        under it) factored out of the DB-writing steps in
+        `oauth_rewrap_for_rotation` above, so a caller that needs the writes
+        to happen inside a single cross-process-atomic transaction
+        (`OAuthGrantRepository.rotate_with_envelopes`, used by
+        `OAuthService.refresh()`) can do this computation BEFORE opening
+        that transaction - it needs no DB access and so shouldn't hold any
+        lock while it runs - and pass the results in to be persisted
+        atomically alongside the grants-table rotation.
+
+        Returns:
+            (new_at_wrapped, new_at_salt_b64, new_rt_wrapped, new_rt_salt_b64)
+        """
+        from infrastructure.crypto.encryption import hkdf_derive_kek, wrap_key
+
+        dek = base64.b64decode(dek_b64)
+
+        new_at_salt = os.urandom(16)
+        new_at_wrapped = wrap_key(dek, hkdf_derive_kek(new_at, new_at_salt))
+
+        new_rt_salt = os.urandom(16)
+        new_rt_wrapped = wrap_key(dek, hkdf_derive_kek(new_rt, new_rt_salt))
+
+        return (
+            new_at_wrapped,
+            base64.b64encode(new_at_salt).decode("ascii"),
+            new_rt_wrapped,
+            base64.b64encode(new_rt_salt).decode("ascii"),
+        )
