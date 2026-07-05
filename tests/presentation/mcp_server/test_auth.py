@@ -65,6 +65,26 @@ def test_get_tool_context_rate_limited_raises(monkeypatch):
         os.remove(path)
 
 
+def test_get_tool_context_rate_limited_before_resolving_invalid_token(monkeypatch):
+    """Rate limiting must be checked before the token is resolved against the DB,
+    so a garbage/invalid token still gets throttled instead of skipping straight
+    to an "invalid token" error via a full DB round-trip."""
+    from mcp.server.auth.provider import AccessToken
+    from mcp.server.fastmcp.exceptions import ToolError
+    import presentation.mcp_server.auth as auth
+
+    monkeypatch.setattr(
+        auth,
+        "get_access_token",
+        lambda: AccessToken(
+            token="ssk_totally_garbage", client_id="whatever", scopes=[], expires_at=None
+        ),
+    )
+    monkeypatch.setattr(auth._rate_limiter, "check", lambda *_a, **_k: False)
+    with pytest.raises(ToolError, match="rate limit"):
+        auth.get_tool_context()
+
+
 def test_get_tool_context_revoked_key_raises_tool_error(monkeypatch):
     from mcp.server.auth.provider import AccessToken
     from mcp.server.fastmcp.exceptions import ToolError

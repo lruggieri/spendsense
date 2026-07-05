@@ -71,12 +71,12 @@ def get_tool_context() -> "tuple[MCPServices, str]":
     if token_obj is None:
         raise ToolError("unauthorized: no access token")
     raw = token_obj.token
+    if not _rate_limiter.check(hash_token(raw), time.monotonic()):
+        raise ToolError("rate limit exceeded, retry shortly")
     svc = _oauth_service()
     resolved = svc.resolve_access(raw)
     if resolved is None:
         raise ToolError("unauthorized: invalid token")
-    if not _rate_limiter.check(hash_token(raw), time.monotonic()):
-        raise ToolError("rate limit exceeded, retry shortly")
     try:
         dek = svc.unwrap_dek(raw, resolved)
     except ValueError as e:
