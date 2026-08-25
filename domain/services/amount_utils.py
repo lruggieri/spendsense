@@ -29,7 +29,7 @@ def to_minor_units(amount_str: str, currency: str) -> int:
     Convert amount string to minor currency units (cents).
 
     Uses Decimal for precision to avoid floating point errors.
-    Rounds to nearest integer using ROUND_HALF_UP (banker's rounding).
+    Rounds to nearest integer using ROUND_HALF_UP (exact halves round away from zero).
 
     Args:
         amount_str: Amount as string (e.g., "5.99", "1234.567")
