@@ -1,4 +1,4 @@
-"""Registers all MCP tool modules onto the FastMCP instance."""
+"""Registers all MCP tool modules onto the MCPServer instance."""
 
 
 def register_all(mcp) -> None:

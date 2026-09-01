@@ -4,7 +4,7 @@ import time
 
 from cryptography.hazmat.primitives.keywrap import InvalidUnwrap
 from mcp.server.auth.middleware.auth_context import get_access_token
-from mcp.server.fastmcp.exceptions import ToolError
+from mcp.server.mcpserver.exceptions import ToolError
 
 from application.services.encryption_service import EncryptionService
 from application.services.oauth_service import OAuthService
