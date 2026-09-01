@@ -1,7 +1,7 @@
 """MCP tools: group read and write."""
 from typing import Any, Dict, List
 
-from mcp.server.fastmcp.exceptions import ToolError
+from mcp.server.mcpserver.exceptions import ToolError
 
 from presentation.mcp_server.auth import get_tool_context, require_write
 

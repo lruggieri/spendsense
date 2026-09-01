@@ -3,7 +3,7 @@ from presentation.mcp_server.tools.transactions import _classified, _get_transac
 
 
 class _FakeMCP:
-    """Minimal stand-in for FastMCP's `@mcp.tool()` decorator: captures the
+    """Minimal stand-in for MCPServer's `@mcp.tool()` decorator: captures the
     decorated function by name instead of registering it with a real server,
     so registered tool bodies can be invoked directly in tests."""
 

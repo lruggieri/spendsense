@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import pytest
 from mcp.server.auth.provider import AccessToken
-from mcp.server.fastmcp.exceptions import ToolError
+from mcp.server.mcpserver.exceptions import ToolError
 
 from infrastructure.crypto.encryption import generate_dek
 from tests.presentation.mcp_server.tools.conftest import make_db

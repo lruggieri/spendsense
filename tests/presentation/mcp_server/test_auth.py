@@ -37,7 +37,7 @@ def test_require_write_accepts_multi_scope_grant():
 
 def test_get_tool_context_no_token_raises(monkeypatch):
     import presentation.mcp_server.auth as auth
-    from mcp.server.fastmcp.exceptions import ToolError
+    from mcp.server.mcpserver.exceptions import ToolError
     monkeypatch.setattr(auth, "get_access_token", lambda: None)
     with pytest.raises(ToolError, match="unauthorized"):
         auth.get_tool_context()
@@ -45,7 +45,7 @@ def test_get_tool_context_no_token_raises(monkeypatch):
 
 def test_get_tool_context_rate_limited_raises(monkeypatch):
     from mcp.server.auth.provider import AccessToken
-    from mcp.server.fastmcp.exceptions import ToolError
+    from mcp.server.mcpserver.exceptions import ToolError
     auth, raw, path = _make_key("read", False, monkeypatch)
     try:
         monkeypatch.setattr(
@@ -65,7 +65,7 @@ def test_get_tool_context_rate_limited_before_resolving_invalid_token(monkeypatc
     so a garbage/invalid token still gets throttled instead of skipping straight
     to an "invalid token" error via a full DB round-trip."""
     from mcp.server.auth.provider import AccessToken
-    from mcp.server.fastmcp.exceptions import ToolError
+    from mcp.server.mcpserver.exceptions import ToolError
     import presentation.mcp_server.auth as auth
 
     monkeypatch.setattr(
@@ -82,7 +82,7 @@ def test_get_tool_context_rate_limited_before_resolving_invalid_token(monkeypatc
 
 def test_get_tool_context_revoked_key_raises_tool_error(monkeypatch):
     from mcp.server.auth.provider import AccessToken
-    from mcp.server.fastmcp.exceptions import ToolError
+    from mcp.server.mcpserver.exceptions import ToolError
     auth, raw, path = _make_key("read", False, monkeypatch)
     try:
         monkeypatch.setattr(

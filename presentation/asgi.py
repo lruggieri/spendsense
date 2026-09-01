@@ -9,11 +9,17 @@ from asgiref.wsgi import WsgiToAsgi
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from presentation.web.app import app as flask_app
-from presentation.mcp_server.server import mcp
+from presentation.mcp_server.server import build_transport_security, mcp
 
-mcp_app = mcp.streamable_http_app()
+# Transport settings (stateless HTTP, DNS-rebinding allowlist) are applied
+# here rather than on the MCPServer constructor - they belong to the
+# transport, not the server instance.
+mcp_app = mcp.streamable_http_app(
+    stateless_http=True,
+    transport_security=build_transport_security(),
+)
 
-# Collect the exact paths FastMCP registered (e.g. "/mcp", "/.well-known/...")
+# Collect the exact paths the MCP server registered (e.g. "/mcp", "/.well-known/...")
 _mcp_paths = frozenset(
     r.path for r in mcp_app.routes if hasattr(r, "path")
 )
@@ -22,7 +28,7 @@ _flask_asgi: ASGIApp = WsgiToAsgi(flask_app)
 
 
 class _Dispatcher:
-    """Route to FastMCP (preserving its full middleware stack) or Flask by path."""
+    """Route to the MCP app (preserving its full middleware stack) or Flask by path."""
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "lifespan":

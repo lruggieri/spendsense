@@ -1,4 +1,4 @@
-"""Smoke test: verify expected tools are registered on the FastMCP instance."""
+"""Smoke test: verify expected tools are registered on the MCPServer instance."""
 
 
 def test_expected_tools_registered():
@@ -7,7 +7,7 @@ def test_expected_tools_registered():
     import os
     import tempfile
 
-    # FastMCP reads pydantic-settings from .env on import — run in a scratch dir to skip it
+    # The MCP server reads pydantic-settings from .env on import — run in a scratch dir to skip it
     orig_cwd = os.getcwd()
     with tempfile.TemporaryDirectory() as tmp_dir:
         try:

@@ -316,7 +316,7 @@ def get_oauth_service() -> OAuthService:
     pending authorization by txn_id) and after (issuing a code for the
     current user). Not reusing `presentation/mcp_server/auth.py`'s private
     `_oauth_service()` helper here because that module is MCP-server-only
-    (imports FastMCP/ToolError machinery this Flask app has no business
+    (imports MCPServer/ToolError machinery this Flask app has no business
     depending on) - this factory follows this file's own
     get_*_service()-from-get_database_path() convention instead.
     """

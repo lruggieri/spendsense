@@ -3,7 +3,7 @@ registered @mcp.tool() functions, not just the underlying service calls."""
 from unittest.mock import patch
 
 import pytest
-from mcp.server.fastmcp.exceptions import ToolError
+from mcp.server.mcpserver.exceptions import ToolError
 
 from presentation.mcp_server.tools import transactions
 

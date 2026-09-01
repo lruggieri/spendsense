@@ -1,7 +1,7 @@
 """MCP tools: transaction read and write."""
 from typing import Any, Dict, List, Optional
 
-from mcp.server.fastmcp.exceptions import ToolError
+from mcp.server.mcpserver.exceptions import ToolError
 
 from domain.services.amount_utils import to_major_units_float
 from presentation.mcp_server.auth import get_tool_context, require_write

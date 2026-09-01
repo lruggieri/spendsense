@@ -28,7 +28,7 @@ The MCP server lives under `presentation/mcp_server/`. Today it is a bearer-toke
   `AccessToken(client_id=user_id, scopes=[scope])`.
 - `get_tool_context()` (same file) then unwraps the DEK and builds services.
 
-The FastMCP instance is created in `presentation/mcp_server/server.py`
+The MCPServer instance is created in `presentation/mcp_server/server.py`
 (`create_mcp_app()`), configured with `token_verifier=SpendSenseTokenVerifier()`
 and `AuthSettings(issuer_url=..., resource_server_url=...)`. It does **not**
 currently implement an OAuth authorization server.
@@ -221,7 +221,7 @@ already is an OAuth *client* to Google (for login) — that's unrelated and stay
 **VERIFIED against the installed SDK** (`lib/python3.13/site-packages/mcp`,
 inspected during design double-check):
 
-- `FastMCP.__init__` accepts `auth_server_provider=` (alongside `token_verifier=`,
+- `MCPServer.__init__` accepts `auth_server_provider=` (alongside `token_verifier=`,
   `auth=`, `transport_security=`).
 - `mcp.server.auth.provider.OAuthAuthorizationServerProvider` methods (exact):
   `authorize`, `exchange_authorization_code`, `exchange_refresh_token`,
@@ -241,7 +241,7 @@ inspected during design double-check):
 
 **Corrected topology — the SDK owns the OAuth endpoints, NOT Flask:**
 
-- **FastMCP (Starlette/ASGI) serves:** `/mcp`, `/authorize`, `/token`, `/register`,
+- **The MCP server (Starlette/ASGI) serves:** `/mcp`, `/authorize`, `/token`, `/register`,
   `/revoke`, `/.well-known/oauth-authorization-server`,
   `/.well-known/oauth-protected-resource`. We do **not** hand-write these in Flask.
 - **Flask serves the consent/unlock page** that `provider.authorize()` redirects
@@ -258,8 +258,8 @@ inspected during design double-check):
 (pre-dating the OAuth implementation) that already implements the single-ASGI-server
 option: it builds `mcp.streamable_http_app()`, wraps the Flask app via
 `asgiref.wsgi.WsgiToAsgi`, and dispatches every request by path — anything matching a
-FastMCP-registered route (`/mcp`, `/authorize`, `/token`, `/register`, `/revoke`,
-`/.well-known/oauth-*` once `auth_server_provider` is wired in) goes to the FastMCP app;
+MCP-registered route (`/mcp`, `/authorize`, `/token`, `/register`, `/revoke`,
+`/.well-known/oauth-*` once `auth_server_provider` is wired in) goes to the MCP app;
 everything else (`/mcp-consent`, Google login, passkeys) falls through to Flask. Both are
 same-origin on `spendsense.dev`, one process type, no nginx path-routing needed. Deployed
 as `gunicorn -k uvicorn.workers.UvicornWorker -w 4 presentation.asgi:app` — **4 separate
@@ -381,7 +381,7 @@ manual API key in the already-unlocked web session. Graceful degradation.
 ## 8. Suggested build order
 
 0. **Decide the serving topology** (nginx path-routing vs single ASGI + WSGI
-   mount — §4). Everything below assumes AS routes reach the FastMCP app at root
+   mount — §4). Everything below assumes AS routes reach the MCP app at root
    paths on `spendsense.dev`, same-origin as Flask.
 1. Persistence: registered clients, pending-authorizations, auth codes,
    tokens/grants repositories (+ tests).
