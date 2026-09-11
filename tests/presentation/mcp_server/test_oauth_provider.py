@@ -293,8 +293,43 @@ def test_refresh_expired_rt_refuses(provider, monkeypatch):
     ac = asyncio.run(provider.load_authorization_code(ci, raw_code))
     tok1 = asyncio.run(provider.exchange_authorization_code(ci, ac))
 
-    monkeypatch.setattr(svc, "_now", lambda: datetime.now(timezone.utc) + timedelta(days=31))
+    from application.services.oauth_service import RT_TTL_SECONDS
+
+    past_ttl = datetime.now(timezone.utc) + timedelta(seconds=RT_TTL_SECONDS + 1)
+    monkeypatch.setattr(svc, "_now", lambda: past_ttl)
     assert svc.refresh("cid", tok1.refresh_token, ["read"]) is None
+
+
+def test_refresh_survives_a_monthly_cadence_across_31_day_months(provider, monkeypatch):
+    """A client that only refreshes once a month must not expire.
+
+    The monthly report automation connects on the 1st of each month, so the
+    gap between two refreshes is as long as the longest month (31 days).
+    Under the old 30-day RT TTL the grant expired about a day before every
+    run that followed a 31-day month, surfacing as a dead connector that
+    needed a manual re-consent. Walk a year of month-boundary refreshes,
+    each one rotating the token the previous call handed back.
+    """
+    import asyncio
+    from datetime import datetime, timedelta, timezone
+
+    svc = provider.service
+    pending = {"client_id": "cid", "scopes": ["read"], "code_challenge": "c",
+               "redirect_uri": "http://localhost:9/callback",
+               "redirect_uri_provided_explicitly": True, "resource": None}
+    ci = OAuthClientInformationFull(client_id="cid", redirect_uris=["http://localhost:9/callback"])
+    raw_code = svc.issue_code("u@x", pending, None)
+    ac = asyncio.run(provider.load_authorization_code(ci, raw_code))
+    tok = asyncio.run(provider.exchange_authorization_code(ci, ac))
+
+    rt = tok.refresh_token
+    now = datetime.now(timezone.utc)
+    for _ in range(12):
+        now += timedelta(days=31)  # worst-case month-to-month gap
+        monkeypatch.setattr(svc, "_now", lambda t=now: t)
+        result = svc.refresh("cid", rt, ["read"])
+        assert result is not None, "monthly-cadence refresh must not expire the grant"
+        rt = result["refresh_token"]
 
 def test_sequential_refresh_with_same_rt_yields_exactly_one_success_then_grace_success(provider):
     """Two refresh() calls presenting the SAME refresh token, one after another.

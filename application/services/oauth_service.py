@@ -38,7 +38,17 @@ logger = logging.getLogger(__name__)
 # code exchange / refresh / access-token verification are later tasks — but
 # they're defined here as the single source of truth for those tasks.
 AT_TTL_SECONDS = 3600
-RT_TTL_SECONDS = 30 * 24 * 3600
+# The RT window is a sliding one: it only moves forward when the client
+# actually refreshes. So it has to comfortably exceed the longest gap a
+# legitimate client may leave between two uses, or the grant dies of old age
+# and the user has to re-consent for no reason.
+#
+# 30 days was too tight: a monthly-scheduled client (the canonical case - an
+# automation that connects once a month to pull the previous month's data)
+# leaves a gap of up to 31 days between refreshes, so any 31-day month
+# expired the grant roughly a day before its next run. 90 days leaves room
+# for a monthly cadence to miss two cycles and still recover.
+RT_TTL_SECONDS = 90 * 24 * 3600
 CODE_TTL_SECONDS = 60
 RT_GRACE_SECONDS = 30
 
