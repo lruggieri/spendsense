@@ -1,4 +1,4 @@
-.PHONY: help test test-js test-verbose test-coverage test-fast test-watch test-specific clean install lint lint-strict mypy check quick-check format run
+.PHONY: help test test-js test-e2e test-e2e-headed test-verbose test-coverage test-fast test-watch test-specific clean install lint lint-strict mypy check quick-check format run
 
 # Default Python command
 PYTHON := python3
@@ -23,6 +23,12 @@ test: ## Run all tests (Python + JS)
 
 test-js: ## Run JS unit tests (FetcherEngine, parseAmount, etc.)
 	npx vitest run
+
+test-e2e: ## Run Playwright end-to-end UI tests (desktop + mobile viewports)
+	npx playwright test
+
+test-e2e-headed: ## Run Playwright UI tests in a visible browser (debugging)
+	npx playwright test --headed --project=desktop
 
 test-coverage: ## Run tests with coverage report (minimum 80%)
 	$(PYTHON) -m pytest tests/ --cov=domain --cov=application --cov=infrastructure --cov=presentation --cov-report=html --cov-report=term --cov-report=xml --cov-fail-under=80

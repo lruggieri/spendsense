@@ -31,7 +31,17 @@ make test-specific FILE=test_file.py   # Run specific test
 make test-coverage                     # Coverage report, fails under 80%
 make check                             # Run tests + mypy + lint (recommended before commit)
 make quick-check                       # Fast tests + mypy + lint
+make test-e2e                          # Playwright end-to-end UI tests
 ```
+
+### End-to-End UI Tests (Playwright)
+
+**CRITICAL: Run `make test-e2e` after any change to templates, static JS/CSS, or blueprints, and add/update specs in `tests/e2e/` for every UI feature or fix.**
+
+- `tests/e2e/server.py` boots the real Flask app on a temp SQLite DB with fakes for SentenceTransformer, the LLM provider and the currency updater, plus a test-only `/__e2e__` blueprint (sessions, seed data, MCP OAuth helpers). Never register that blueprint in the production app.
+- `tests/e2e/fixtures.js` provides `login()`/`seeded` (a fresh user per test, so specs run in parallel), stubs Chart.js/Google Identity, a `gmail` fake mailbox, a WebAuthn virtual authenticator helper, and helpers for toasts, confirm dialogs and the FAB.
+- Two projects: `desktop` runs everything; `mobile` (Pixel 7) runs specs tagged `@mobile`. Tag `@mobile-only` for phone-only specs.
+- Prefer user-visible locators and IDs; wait on UI state (toasts, URLs, `clickAndWaitForReload`) rather than timeouts.
 
 ## Architecture: Domain-Driven Design (DDD)
 

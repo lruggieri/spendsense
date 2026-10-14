@@ -99,11 +99,17 @@ See [`.env.example`](.env.example) for the full list. For OAuth setup instructio
 ## Development
 
 ```bash
-make test    # all tests (Python + JS)
-make mypy    # type checking
-make check   # tests + mypy + lint
-make run     # dev server
+make test      # all tests (Python + JS)
+make test-e2e  # Playwright end-to-end UI tests
+make mypy      # type checking
+make check     # tests + mypy + lint
+make run       # dev server
 ```
+
+The end-to-end suite (`tests/e2e/`) boots the real app on a throw-away SQLite
+database via `tests/e2e/server.py`, with the ML model, LLM, Google sign-in and
+Gmail API replaced by local fakes, so it needs no credentials or network.
+First-time setup: `npm ci && npx playwright install chromium`.
 
 ## License
 
