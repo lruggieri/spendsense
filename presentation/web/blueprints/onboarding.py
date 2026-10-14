@@ -11,6 +11,7 @@ from typing import Any, Dict, List, NotRequired, TypedDict
 
 from flask import Blueprint, jsonify, redirect, render_template, request, session, url_for
 
+from domain.entities.category_tree import ALL_CATEGORY_ID, UNKNOWN_CATEGORY_ID
 from presentation.web.auth_utils import ONBOARDING_VERSION
 from presentation.web.decorators import login_required
 from presentation.web.utils import (
@@ -261,8 +262,14 @@ def step(step_num: int):
     elif step_num == 2:
         # Categories step - use service layer for consistency
         all_categories = category_service.get_categories_hierarchical()
-        # Extract simple list for display, full list for parent dropdown
-        context["categories"] = [{"id": c.id, "name": c.name} for c, _ in all_categories]
+        # Extract simple list for display, full list for parent dropdown.
+        # System categories are excluded so the list (whose length the wizard
+        # uses to enable "Continue") matches count_categories().
+        context["categories"] = [
+            {"id": c.id, "name": c.name}
+            for c, _ in all_categories
+            if c.id not in (UNKNOWN_CATEGORY_ID, ALL_CATEGORY_ID)
+        ]
         context["all_categories"] = all_categories
 
     elif step_num == 3:

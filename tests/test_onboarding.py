@@ -133,6 +133,48 @@ class TestOnboardingStep4:
         assert b"Register Passkey" in response.data
 
 
+class TestOnboardingStep2Categories:
+    """Test step 2 (categories) page rendering."""
+
+    def test_system_categories_are_not_listed_as_user_items(self, authenticated_client):
+        """The wizard list must not include 'unknown', or "Continue" is enabled with no categories."""
+        from domain.entities.category import Category
+
+        unknown = Category("unknown", "Unknown", "Uncategorized transactions", "")
+        food = Category("food-id", "Food", "", "")
+
+        with patch(
+            "presentation.web.blueprints.onboarding.get_user_settings_service"
+        ) as mock_settings, patch(
+            "presentation.web.blueprints.onboarding.get_fetcher_service"
+        ) as mock_fetcher, patch(
+            "presentation.web.blueprints.onboarding.get_category_service"
+        ) as mock_category, patch(
+            "presentation.web.blueprints.onboarding.get_pattern_service"
+        ) as mock_pattern, patch(
+            "presentation.web.blueprints.onboarding.get_encryption_service"
+        ) as mock_enc:
+            settings_obj = MagicMock()
+            settings_obj.browser_settings = {"onboarding_step": 2}
+            mock_settings.return_value.get_user_settings.return_value = settings_obj
+            mock_fetcher.return_value.count_fetchers.return_value = 1
+            mock_category.return_value.count_categories.return_value = 1
+            mock_pattern.return_value.count_patterns.return_value = 0
+            mock_category.return_value.get_categories_hierarchical.return_value = [
+                (food, 0),
+                (unknown, 0),
+            ]
+            mock_enc.return_value.has_encryption.return_value = False
+
+            response = authenticated_client.get("/onboarding/step/2")
+
+        assert response.status_code == 200
+        html = response.get_data(as_text=True)
+        assert '"name": "Food"' in html
+        assert '"id": "unknown"' not in html
+        assert "Unknown" not in html
+
+
 class TestEncryptionBannerSuppression:
     """Test that encryption banners are hidden during onboarding."""
 

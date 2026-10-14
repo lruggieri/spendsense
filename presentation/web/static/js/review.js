@@ -54,7 +54,7 @@ function initLiveSearch() {
         defaultCurrency = firstCard.getAttribute('data-currency') || 'JPY';
         const amountEl = firstCard.querySelector('.info-value[data-amount]');
         if (amountEl) {
-            const symbolMatch = amountEl.textContent.match(/^[^\d\s.,]+/);
+            const symbolMatch = amountEl.textContent.trim().match(/^[^\d\s.,]+/);
             if (symbolMatch) {
                 currencySymbol = symbolMatch[0];
             }

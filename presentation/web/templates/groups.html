@@ -137,7 +137,7 @@
         </div>
         <div class="summary-stat">
             <span class="summary-stat-label">Total Amount</span>
-            <span class="summary-stat-value highlight" id="total-amount">{{ currency_symbol }}{{ "{:,}".format(total_amount) }}</span>
+            <span class="summary-stat-value highlight" id="total-amount">{{ currency_symbol }}{{ total_amount|format_major_amount(default_currency) }}</span>
         </div>
     </div>
 
