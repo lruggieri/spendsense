@@ -1,7 +1,7 @@
 """Tests for the FetcherService application service."""
 
 import unittest
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from unittest.mock import MagicMock, patch
 
 from application.services.fetcher_service import FetcherService
@@ -311,3 +311,75 @@ class TestFetcherService(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestFetcherServiceLastFetched(unittest.TestCase):
+    """Tests for last-fetch tracking in FetcherService."""
+
+    def setUp(self):
+        self.mock_ds = MagicMock()
+        self.service = FetcherService(
+            user_id="test_user",
+            fetcher_datasource=self.mock_ds,
+            user_settings_service=MagicMock(),
+        )
+        self.mock_ds.get_enabled_fetchers.return_value = [
+            Fetcher(id="f1", user_id="test_user", name="A", from_emails=[], group_id="g1"),
+            Fetcher(id="f2", user_id="test_user", name="B", from_emails=[], group_id="g2"),
+        ]
+        self.mock_ds.set_last_fetched_at.return_value = True
+
+    def test_earliest_last_fetched_at(self):
+        early = datetime(2026, 3, 1, tzinfo=timezone.utc)
+        late = datetime(2026, 4, 1, tzinfo=timezone.utc)
+        self.mock_ds.get_last_fetched_at_by_group.return_value = {"g1": late, "g2": early}
+        self.assertEqual(self.service.get_earliest_last_fetched_at(), early)
+
+    def test_earliest_uses_fallback_for_never_fetched(self):
+        late = datetime(2026, 4, 1, tzinfo=timezone.utc)
+        fallback = datetime(2026, 2, 1, tzinfo=timezone.utc)
+        self.mock_ds.get_last_fetched_at_by_group.return_value = {"g1": late}
+        self.assertEqual(self.service.get_earliest_last_fetched_at(fallback), fallback)
+
+    def test_earliest_none_when_never_fetched_and_no_fallback(self):
+        self.mock_ds.get_last_fetched_at_by_group.return_value = {
+            "g1": datetime(2026, 4, 1, tzinfo=timezone.utc)
+        }
+        self.assertIsNone(self.service.get_earliest_last_fetched_at())
+
+    def test_earliest_no_enabled_fetchers_returns_fallback(self):
+        self.mock_ds.get_enabled_fetchers.return_value = []
+        self.mock_ds.get_last_fetched_at_by_group.return_value = {}
+        fallback = datetime(2026, 2, 1, tzinfo=timezone.utc)
+        self.assertEqual(self.service.get_earliest_last_fetched_at(fallback), fallback)
+
+    def test_record_fetch_completed_updates_groups(self):
+        self.mock_ds.get_last_fetched_at_by_group.return_value = {}
+        when = datetime(2026, 5, 1, tzinfo=timezone.utc)
+        updated = self.service.record_fetch_completed(["f1", "f2"], date(2026, 4, 1), when)
+        self.assertEqual(updated, 2)
+        self.mock_ds.set_last_fetched_at.assert_called_once_with(["g1", "g2"], when)
+
+    def test_record_fetch_completed_ignores_unknown_ids(self):
+        self.mock_ds.get_last_fetched_at_by_group.return_value = {}
+        updated = self.service.record_fetch_completed(["other"], date(2026, 4, 1))
+        self.assertEqual(updated, 0)
+        self.mock_ds.set_last_fetched_at.assert_not_called()
+
+    def test_record_fetch_completed_skips_gap(self):
+        """Fetching from after the previous last fetch must not hide the gap."""
+        self.mock_ds.get_last_fetched_at_by_group.return_value = {
+            "g1": datetime(2026, 3, 1, tzinfo=timezone.utc),
+            "g2": datetime(2026, 4, 10, tzinfo=timezone.utc),
+        }
+        when = datetime(2026, 5, 1, tzinfo=timezone.utc)
+        updated = self.service.record_fetch_completed(["f1", "f2"], date(2026, 4, 1), when)
+        self.assertEqual(updated, 1)
+        self.mock_ds.set_last_fetched_at.assert_called_once_with(["g2"], when)
+
+    def test_record_fetch_completed_same_day_as_previous(self):
+        self.mock_ds.get_last_fetched_at_by_group.return_value = {
+            "g1": datetime(2026, 4, 1, 18, 0, tzinfo=timezone.utc),
+        }
+        updated = self.service.record_fetch_completed(["f1"], date(2026, 4, 1))
+        self.assertEqual(updated, 1)

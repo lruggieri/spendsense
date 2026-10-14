@@ -497,6 +497,15 @@ class TransactionService(BaseService):
         """
         return self._transaction_datasource.get_last_transaction_date()
 
+    def get_last_email_transaction_date(self) -> Optional[datetime]:
+        """
+        Get the date of the most recent email-imported transaction.
+
+        Returns:
+            Datetime of last email-imported transaction or None if none exist
+        """
+        return self._transaction_datasource.get_last_email_transaction_date()
+
     def add_group_to_transaction(self, tx_id: str, group_id: str) -> bool:
         """
         Add a group to a transaction.

@@ -7,7 +7,7 @@ already-extracted transaction data from the browser.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from flask import Blueprint, jsonify, render_template, request
 from uuid6 import uuid7
@@ -34,29 +34,44 @@ gmail_bp = Blueprint("gmail", __name__)
 _MAX_IMPORT_BATCH = 500
 
 
-def _calculate_fetch_start_date(transaction_service=None) -> str:
+# Days of overlap before the last fetch time.  Gmail's after: filter is
+# day-granular and timezone-dependent, so re-scan the previous day too;
+# already-imported emails are skipped by /api/email/check-imported.
+_FETCH_OVERLAP_DAYS = 1
+
+
+def _calculate_fetch_start_date(transaction_service=None, fetcher_service=None) -> str:
     """
     Calculate the start date for Gmail fetch.
 
-    Returns last transaction date if exists, otherwise January 1st of last year.
+    Uses the last time the enabled fetchers completed a fetch (minus a small
+    overlap), not the last transaction date: manually added transactions say
+    nothing about which emails were fetched.  Fetchers never fetched before
+    fall back to the last email-imported transaction date for
+    backward-compatibility.  With no history at all, returns January 1st of
+    last year.
 
     Args:
         transaction_service: Optional TransactionService instance.
                             If not provided, creates one from request context.
+        fetcher_service: Optional FetcherService instance.
+                        If not provided, creates one from request context.
 
     Returns:
         Date string in YYYY-MM-DD format
     """
     if transaction_service is None:
         transaction_service = get_transaction_service()
+    if fetcher_service is None:
+        fetcher_service = get_fetcher_service()
 
-    last_transaction_date = transaction_service.get_last_transaction_date()
+    fallback = transaction_service.get_last_email_transaction_date()
+    last_fetched_at = fetcher_service.get_earliest_last_fetched_at(fallback)
 
-    if last_transaction_date:
-        # Use last transaction date (included)
-        return last_transaction_date.strftime("%Y-%m-%d")
+    if last_fetched_at:
+        return (last_fetched_at - timedelta(days=_FETCH_OVERLAP_DAYS)).strftime("%Y-%m-%d")
     else:
-        # No transactions, use January 1st of last year
+        # No fetch history, use January 1st of last year
         today = datetime.now()
         return datetime(today.year - 1, 1, 1).strftime("%Y-%m-%d")
 
@@ -85,8 +100,8 @@ def fetch_gmail_page():
     # Sort alphabetically by name (case-insensitive)
     fetchers.sort(key=lambda f: f["name"].lower())
 
-    # Calculate default date based on last transaction date
-    default_date = _calculate_fetch_start_date(transaction_service)
+    # Calculate default date based on last completed fetch
+    default_date = _calculate_fetch_start_date(transaction_service, fetcher_service)
 
     return render_template("fetch_gmail.html", fetchers=fetchers, default_date=default_date)
 
@@ -151,7 +166,7 @@ def api_email_config():
         for f in fetchers_data
     ]
 
-    default_fetch_date = _calculate_fetch_start_date(transaction_service)
+    default_fetch_date = _calculate_fetch_start_date(transaction_service, fetcher_service)
 
     return jsonify(
         {
@@ -182,6 +197,36 @@ def api_email_check_imported():
     imported_ids = transaction_service.filter_imported_mail_ids(mail_ids)
 
     return jsonify({"imported_ids": list(imported_ids)})
+
+
+@gmail_bp.route("/api/email/fetch-completed", methods=["POST"])
+@login_required
+def api_email_fetch_completed():
+    """
+    Record that a Gmail fetch completed for the given fetchers.
+
+    The next fetch defaults to starting from this point instead of the last
+    transaction date.
+
+    Request JSON:  { "fetcher_ids": ["uuid7", ...], "after_date": "YYYY-MM-DD" }
+    Response JSON: { "updated": 1 }
+    """
+    data = request.get_json(silent=True) or {}
+    fetcher_ids = data.get("fetcher_ids")
+    after_date_str = data.get("after_date")
+
+    if not isinstance(fetcher_ids, list) or not all(isinstance(f, str) for f in fetcher_ids):
+        return jsonify({"error": "fetcher_ids must be a list of strings"}), 400
+
+    try:
+        after_date = date.fromisoformat(after_date_str)
+    except (TypeError, ValueError):
+        return jsonify({"error": "after_date must be YYYY-MM-DD"}), 400
+
+    fetcher_service = get_fetcher_service()
+    updated = fetcher_service.record_fetch_completed(fetcher_ids, after_date)
+
+    return jsonify({"updated": updated})
 
 
 @gmail_bp.route("/api/email/import", methods=["POST"])

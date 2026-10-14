@@ -428,3 +428,74 @@ describe('resolveMessageId', () => {
     vi.unstubAllGlobals();
   });
 });
+
+// =========================================================================
+// runImport — records completed fetchers so the next fetch starts from here
+// =========================================================================
+
+describe('runImport fetch-completed reporting', () => {
+  function stubServer(fetcherIds, { failListingFor = null } = {}) {
+    const calls = [];
+    const mockFetch = vi.fn(async (url, opts) => {
+      calls.push({ url, opts });
+      if (url === '/api/email/config') {
+        return {
+          ok: true,
+          json: async () => ({
+            client_id: 'cid',
+            user_email: 'u@example.com',
+            fetchers: fetcherIds.map(id => ({
+              id, name: id, from_emails: [`${id}@example.com`], subject_filter: '',
+              amount_pattern: '', merchant_pattern: null, currency_pattern: null,
+              default_currency: 'USD', negate_amount: false,
+            })),
+          }),
+        };
+      }
+      if (url.includes('gmail.googleapis.com')) {
+        if (failListingFor && decodeURIComponent(url).includes(`${failListingFor}@example.com`)) {
+          return { ok: false, status: 500, statusText: 'err', json: async () => ({}) };
+        }
+        return { ok: true, json: async () => ({ messages: [] }) };
+      }
+      return { ok: true, json: async () => ({ updated: 1 }) };
+    });
+    vi.stubGlobal('fetch', mockFetch);
+    return calls;
+  }
+
+  function stubToken() {
+    const original = window.emailTokenManager;
+    window.emailTokenManager = { init: () => {}, getOrRequestToken: async () => 'token' };
+    return () => { window.emailTokenManager = original; };
+  }
+
+  it('posts successfully fetched fetcher ids with the after date', async () => {
+    const calls = stubServer(['a', 'b']);
+    const restore = stubToken();
+
+    await window.gmailFetch.runImport(null, '2026-01-10', () => {});
+
+    const completed = calls.find(c => c.url === '/api/email/fetch-completed');
+    expect(completed).toBeDefined();
+    expect(JSON.parse(completed.opts.body)).toEqual({
+      fetcher_ids: ['a', 'b'], after_date: '2026-01-10',
+    });
+
+    restore();
+    vi.unstubAllGlobals();
+  });
+
+  it('omits fetchers that failed', async () => {
+    const calls = stubServer(['a', 'b'], { failListingFor: 'b' });
+    const restore = stubToken();
+
+    await window.gmailFetch.runImport(null, '2026-01-10', () => {});
+
+    const completed = calls.find(c => c.url === '/api/email/fetch-completed');
+    expect(JSON.parse(completed.opts.body).fetcher_ids).toEqual(['a']);
+
+    restore();
+    vi.unstubAllGlobals();
+  });
+});

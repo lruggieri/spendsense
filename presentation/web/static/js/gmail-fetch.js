@@ -538,14 +538,30 @@
     }
 
     const allResults = [];
+    const completedFetcherIds = [];
 
     for (const fetcher of fetchers) {
       try {
         const result = await _runFetcherImport(fetcher, afterDate, token, cb);
         allResults.push(result);
+        completedFetcherIds.push(fetcher.id);
       } catch (err) {
         cb({ phase: 'error', fetcher: fetcher.name, message: err.message });
         allResults.push({ fetcher: fetcher.name, imported: 0, skipped: 0, error: err.message });
+      }
+    }
+
+    // Remember the fetch time so the next fetch starts from here instead of
+    // the last transaction date. Best-effort: a failure only affects the default date.
+    if (completedFetcherIds.length > 0) {
+      try {
+        await fetch('/api/email/fetch-completed', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fetcher_ids: completedFetcherIds, after_date: afterDate }),
+        });
+      } catch (err) {
+        cb({ phase: 'warning', message: `Could not record fetch time: ${err.message}` });
       }
     }
 

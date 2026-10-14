@@ -731,6 +731,33 @@ class TestTransactionServiceDDD(unittest.TestCase):
         last_date = self.service.get_last_transaction_date()
         self.assertIsNone(last_date)
 
+    def test_get_last_email_transaction_date_ignores_manual(self):
+        """Manually added transactions (no mail_id) are ignored."""
+        self._add_sample_transactions()
+        self.tx_ds.add_transactions_batch(
+            [
+                Transaction(
+                    id="tx_mail",
+                    date=datetime(2025, 2, 1, 8, 0, 0, tzinfo=timezone.utc),
+                    amount=300,
+                    description="Email purchase",
+                    category="",
+                    source="Bank",
+                    currency="JPY",
+                    mail_id="mail123",
+                    created_at=datetime.now(timezone.utc),
+                )
+            ]
+        )
+        last_date = self.service.get_last_email_transaction_date()
+        self.assertIsNotNone(last_date)
+        self.assertEqual((last_date.year, last_date.month, last_date.day), (2025, 2, 1))
+
+    def test_get_last_email_transaction_date_none(self):
+        """Returns None when only manual transactions exist."""
+        self._add_sample_transactions()
+        self.assertIsNone(self.service.get_last_email_transaction_date())
+
     # --- categories property ---
 
     def test_categories_property(self):

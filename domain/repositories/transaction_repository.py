@@ -183,6 +183,17 @@ class TransactionRepository(ABC):
         """
 
     @abstractmethod
+    def get_last_email_transaction_date(self) -> Optional[datetime]:
+        """
+        Get the date of the most recent transaction imported from email.
+
+        Manually added transactions (no mail_id) are ignored.
+
+        Returns:
+            Date of the most recent email-imported transaction, or None if none exist
+        """
+
+    @abstractmethod
     def add_group_to_transaction(self, tx_id: str, group_id: str) -> bool:
         """
         Add a group to a single transaction.

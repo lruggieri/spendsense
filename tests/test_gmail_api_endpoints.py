@@ -1,5 +1,6 @@
 """Tests for the 3 new client-side Gmail REST API endpoints."""
 
+from datetime import date, datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -32,9 +33,10 @@ class TestEmailConfig:
         mock_fetcher.default_currency = "USD"
         mock_fetcher.negate_amount = False
         mock_fetcher_svc.get_enabled_fetchers.return_value = [mock_fetcher]
+        mock_fetcher_svc.get_earliest_last_fetched_at.return_value = None
 
         mock_tx_svc = MagicMock()
-        mock_tx_svc.get_last_transaction_date.return_value = None
+        mock_tx_svc.get_last_email_transaction_date.return_value = None
 
         mock_creds_loader = MagicMock()
         mock_creds_loader.get_client_config.return_value = {"client_id": "test-client-id"}
@@ -123,6 +125,91 @@ class TestEmailCheckImported:
         assert response.status_code == 200
         data = response.get_json()
         assert data["imported_ids"] == []
+
+
+class TestFetchStartDate:
+    """Tests for the default Gmail fetch start date."""
+
+    def _calculate(self, app, last_fetched_at, last_email_tx=None):
+        from presentation.web.blueprints.gmail import _calculate_fetch_start_date
+
+        mock_tx_svc = MagicMock()
+        mock_tx_svc.get_last_email_transaction_date.return_value = last_email_tx
+        mock_fetcher_svc = MagicMock()
+        mock_fetcher_svc.get_earliest_last_fetched_at.return_value = last_fetched_at
+        result = _calculate_fetch_start_date(mock_tx_svc, mock_fetcher_svc)
+        return result, mock_tx_svc, mock_fetcher_svc
+
+    def test_uses_last_fetch_time_with_overlap(self, app):
+        """Starts one day before the last completed fetch."""
+        result, mock_tx_svc, mock_fetcher_svc = self._calculate(
+            app, datetime(2026, 10, 14, 9, 0, tzinfo=timezone.utc)
+        )
+        assert result == "2026-10-13"
+        mock_tx_svc.get_last_transaction_date.assert_not_called()
+
+    def test_passes_email_transaction_date_as_fallback(self, app):
+        fallback = datetime(2026, 9, 1, tzinfo=timezone.utc)
+        _, _, mock_fetcher_svc = self._calculate(app, None, fallback)
+        mock_fetcher_svc.get_earliest_last_fetched_at.assert_called_once_with(fallback)
+
+    def test_no_history_defaults_to_start_of_last_year(self, app):
+        result, _, _ = self._calculate(app, None)
+        assert result == f"{datetime.now().year - 1}-01-01"
+
+
+class TestEmailFetchCompleted:
+    """Tests for POST /api/email/fetch-completed"""
+
+    def test_returns_302_when_unauthenticated(self, client, mock_session_datasource):
+        with patch(
+            "presentation.web.decorators.get_session_datasource",
+            return_value=mock_session_datasource,
+        ):
+            response = client.post(
+                "/api/email/fetch-completed",
+                json={"fetcher_ids": ["f1"], "after_date": "2026-01-01"},
+            )
+        assert response.status_code == 302
+
+    def test_records_completed_fetchers(self, authenticated_client):
+        mock_fetcher_svc = MagicMock()
+        mock_fetcher_svc.record_fetch_completed.return_value = 2
+
+        with patch(
+            "presentation.web.blueprints.gmail.get_fetcher_service",
+            return_value=mock_fetcher_svc,
+        ):
+            response = authenticated_client.post(
+                "/api/email/fetch-completed",
+                json={"fetcher_ids": ["f1", "f2"], "after_date": "2026-01-10"},
+            )
+
+        assert response.status_code == 200
+        assert response.get_json() == {"updated": 2}
+        mock_fetcher_svc.record_fetch_completed.assert_called_once_with(
+            ["f1", "f2"], date(2026, 1, 10)
+        )
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {"fetcher_ids": "f1", "after_date": "2026-01-10"},
+            {"fetcher_ids": [1], "after_date": "2026-01-10"},
+            {"fetcher_ids": ["f1"]},
+            {"fetcher_ids": ["f1"], "after_date": "not-a-date"},
+            {"fetcher_ids": ["f1"], "after_date": ""},
+        ],
+    )
+    def test_returns_400_for_invalid_input(self, authenticated_client, payload):
+        mock_fetcher_svc = MagicMock()
+        with patch(
+            "presentation.web.blueprints.gmail.get_fetcher_service",
+            return_value=mock_fetcher_svc,
+        ):
+            response = authenticated_client.post("/api/email/fetch-completed", json=payload)
+        assert response.status_code == 400
+        mock_fetcher_svc.record_fetch_completed.assert_not_called()
 
 
 class TestEmailImport:
