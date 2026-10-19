@@ -13,6 +13,7 @@ from typing import Dict, Optional
 
 from domain.repositories.manual_assignment_repository import ManualAssignmentRepository
 from infrastructure.db_query_logger import get_logging_cursor
+from infrastructure.persistence.sqlite.schema import ensure_core_tables
 
 
 class SQLiteManualAssignmentDataSource(ManualAssignmentRepository):
@@ -31,25 +32,8 @@ class SQLiteManualAssignmentDataSource(ManualAssignmentRepository):
         self._ensure_db_exists()
 
     def _ensure_db_exists(self):
-        """Create database and manual_assignments table if they don't exist."""
-        conn = get_connection(self.db_filepath)
-        cursor = get_logging_cursor(conn)
-
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS manual_assignments (
-                tx_id TEXT PRIMARY KEY,
-                category_id TEXT NOT NULL,
-                user_id TEXT NOT NULL
-            )
-        """)
-
-        # Create index on category_id for faster reverse lookups
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_category_id ON manual_assignments(category_id)
-        """)
-
-        conn.commit()
-        conn.close()
+        """Create the database and manual_assignments (and other core) tables if missing."""
+        ensure_core_tables(self.db_filepath)
 
     def get_assignments(self) -> Dict[str, str]:
         """

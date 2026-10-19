@@ -12,6 +12,7 @@ from typing import List, Optional
 from domain.entities.fetcher import Fetcher
 from domain.repositories.fetcher_repository import FetcherRepository
 from infrastructure.db_query_logger import get_logging_cursor
+from infrastructure.persistence.sqlite.schema import ensure_core_tables
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ class SQLiteFetcherDataSource(FetcherRepository):
         """
         self.db_path = db_path
         self.user_id = user_id
+        ensure_core_tables(db_path)
 
     def get_all_fetchers(self) -> List[Fetcher]:
         """

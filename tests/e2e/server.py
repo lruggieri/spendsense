@@ -21,7 +21,6 @@ import hashlib
 import json
 import logging
 import os
-import sqlite3
 import sys
 import tempfile
 from datetime import datetime, timedelta, timezone
@@ -40,53 +39,6 @@ os.environ.setdefault("GOOGLE_CLIENT_ID", "e2e-client-id.apps.googleusercontent.
 os.environ.setdefault("GOOGLE_CLIENT_SECRET", "e2e-client-secret")
 os.environ.setdefault("LOG_LEVEL", "WARNING")
 os.environ.pop("ALLOWED_EMAILS", None)
-
-
-# --- Schema -------------------------------------------------------------------
-# Most repositories create their own tables on first use, but these four are
-# expected to already exist (created historically by scripts in migrations/).
-_BOOTSTRAP_SCHEMA = """
-CREATE TABLE IF NOT EXISTS categories (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    description TEXT NOT NULL,
-    parent_id TEXT DEFAULT '',
-    user_id TEXT
-);
-CREATE TABLE IF NOT EXISTS regexps (
-    id TEXT PRIMARY KEY,
-    raw TEXT NOT NULL,
-    name TEXT NOT NULL,
-    internal_category TEXT NOT NULL,
-    user_id TEXT,
-    order_index INTEGER NOT NULL DEFAULT 0,
-    visual_description TEXT
-);
-CREATE TABLE IF NOT EXISTS groups (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    user_id TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS fetchers (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    name TEXT NOT NULL,
-    from_emails TEXT NOT NULL DEFAULT '[]',
-    subject_filter TEXT DEFAULT '',
-    amount_pattern TEXT NOT NULL,
-    merchant_pattern TEXT NOT NULL,
-    currency_pattern TEXT DEFAULT '',
-    default_currency TEXT DEFAULT 'JPY',
-    negate_amount INTEGER DEFAULT 0,
-    enabled INTEGER DEFAULT 1,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    group_id TEXT NOT NULL,
-    version INTEGER NOT NULL DEFAULT 1
-);
-"""
-with sqlite3.connect(os.environ["DATABASE_PATH"]) as _conn:
-    _conn.executescript(_BOOTSTRAP_SCHEMA)
 
 
 # --- Fakes ------------------------------------------------------------------

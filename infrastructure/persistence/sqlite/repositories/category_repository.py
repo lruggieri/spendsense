@@ -9,6 +9,7 @@ from typing import Optional, Dict, List
 from domain.entities.category import Category
 from domain.repositories.category_repository import CategoryRepository
 from infrastructure.db_query_logger import get_logging_cursor
+from infrastructure.persistence.sqlite.schema import ensure_core_tables
 
 
 class SQLiteCategoryDataSource(CategoryRepository):
@@ -24,6 +25,7 @@ class SQLiteCategoryDataSource(CategoryRepository):
         """
         self.db_path = db_path
         self.user_id = user_id
+        ensure_core_tables(db_path)
 
     def get_all_categories(self) -> List[Category]:
         """

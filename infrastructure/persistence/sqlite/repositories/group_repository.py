@@ -9,6 +9,7 @@ from typing import List, Optional
 from domain.entities.group import Group
 from domain.repositories.group_repository import GroupRepository
 from infrastructure.db_query_logger import get_logging_cursor
+from infrastructure.persistence.sqlite.schema import ensure_core_tables
 
 
 class SQLiteGroupDataSource(GroupRepository):
@@ -24,6 +25,7 @@ class SQLiteGroupDataSource(GroupRepository):
         """
         self.db_path = db_path
         self.user_id = user_id
+        ensure_core_tables(db_path)
 
     def get_all_groups(self) -> List[Group]:
         """
