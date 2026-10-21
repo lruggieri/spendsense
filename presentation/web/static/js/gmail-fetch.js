@@ -538,14 +538,38 @@
     }
 
     const allResults = [];
+    const completedFetcherIds = [];
+    // Captured before listing so emails arriving during a long run are not hidden.
+    const startedAt = new Date().toISOString();
 
     for (const fetcher of fetchers) {
       try {
         const result = await _runFetcherImport(fetcher, afterDate, token, cb);
         allResults.push(result);
+        // A fetcher whose message downloads failed must not move the default
+        // start date past them.  Server-side skips are deterministic, so
+        // re-scanning would not fix them.
+        if (!result.incomplete) completedFetcherIds.push(fetcher.id);
       } catch (err) {
         cb({ phase: 'error', fetcher: fetcher.name, message: err.message });
         allResults.push({ fetcher: fetcher.name, imported: 0, skipped: 0, error: err.message });
+      }
+    }
+
+    // Remember the fetch time so the next fetch starts from here instead of
+    // the last transaction date. Best-effort: a failure only affects the default date.
+    if (completedFetcherIds.length > 0) {
+      try {
+        const resp = await fetch('/api/email/fetch-completed', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fetcher_ids: completedFetcherIds, after_date: afterDate, started_at: startedAt,
+          }),
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      } catch (err) {
+        cb({ phase: 'warning', message: `Could not record fetch time: ${err.message}` });
       }
     }
 
@@ -614,8 +638,10 @@
 
     // d. Extract transactions
     const transactions = [];
+    let incomplete = false;
     msgResults.forEach((settled, idx) => {
       if (settled.status !== 'fulfilled') {
+        incomplete = true;
         cb({ phase: 'warning', fetcher: fetcher.name,
              message: `Could not fetch message ${newMailIds[idx]}: ${settled.reason}` });
         return;
@@ -676,7 +702,7 @@
     cb({ phase: 'done', fetcher: fetcher.name, imported: totalImported, skipped: totalSkipped,
          message: `"${fetcher.name}": ${totalImported} imported, ${totalSkipped} skipped` });
 
-    return { fetcher: fetcher.name, imported: totalImported, skipped: totalSkipped };
+    return { fetcher: fetcher.name, imported: totalImported, skipped: totalSkipped, incomplete };
   }
 
   // =========================================================================

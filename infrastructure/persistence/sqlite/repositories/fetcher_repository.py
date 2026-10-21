@@ -7,7 +7,7 @@ import logging
 import sqlite3
 from infrastructure.persistence.sqlite.connection import get_connection
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from domain.entities.fetcher import Fetcher
 from domain.repositories.fetcher_repository import FetcherRepository
@@ -29,6 +29,101 @@ class SQLiteFetcherDataSource(FetcherRepository):
         """
         self.db_path = db_path
         self.user_id = user_id
+        self._ensure_fetch_state_table_exists()
+
+    def _ensure_fetch_state_table_exists(self):
+        """Create the fetcher_fetch_state table if it doesn't exist.
+
+        Keyed by group_id so the last fetch time survives fetcher versioning.
+        """
+        conn = get_connection(self.db_path)
+        cursor = get_logging_cursor(conn)
+
+        try:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS fetcher_fetch_state (
+                    user_id TEXT NOT NULL,
+                    group_id TEXT NOT NULL,
+                    last_fetched_at TEXT NOT NULL,
+                    PRIMARY KEY (user_id, group_id)
+                )
+            """)
+            conn.commit()
+        finally:
+            conn.close()
+
+    def get_last_fetched_at_by_group(self) -> Dict[str, datetime]:
+        """
+        Get when each fetcher group last completed an email fetch.
+
+        Returns:
+            Mapping of group_id to the UTC datetime of its last completed fetch.
+            Groups that were never fetched are absent.
+        """
+        conn = get_connection(self.db_path)
+        cursor = get_logging_cursor(conn)
+
+        try:
+            cursor.execute(
+                """
+                SELECT group_id, last_fetched_at
+                FROM fetcher_fetch_state
+                WHERE user_id = ?
+            """,
+                (self.user_id,),
+            )
+            result = {}
+            for group_id, last_fetched_at_str in cursor.fetchall():
+                dt = datetime.fromisoformat(last_fetched_at_str)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                result[group_id] = dt
+            return result
+
+        finally:
+            conn.close()
+
+    def set_last_fetched_at(self, group_ids: List[str], fetched_at: datetime) -> bool:
+        """
+        Record that the given fetcher groups completed an email fetch.
+
+        Args:
+            group_ids: Fetcher group IDs that were fetched
+            fetched_at: When the fetch completed
+
+        Returns:
+            True if successful, False otherwise
+        """
+        if not group_ids:
+            return True
+
+        if fetched_at.tzinfo is None:
+            fetched_at = fetched_at.replace(tzinfo=timezone.utc)
+        fetched_at_str = fetched_at.astimezone(timezone.utc).isoformat()
+
+        conn = get_connection(self.db_path)
+        cursor = get_logging_cursor(conn)
+
+        try:
+            cursor.executemany(
+                """
+                INSERT INTO fetcher_fetch_state (user_id, group_id, last_fetched_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(user_id, group_id) DO UPDATE SET last_fetched_at = excluded.last_fetched_at
+            """,
+                [(self.user_id, group_id, fetched_at_str) for group_id in group_ids],
+            )
+            conn.commit()
+            logger.info(f"Recorded last fetch for {len(group_ids)} fetcher group(s)")
+            return True
+
+        except Exception as e:
+            logger.error(f"Error recording last fetch time: {e}", exc_info=True)
+            conn.rollback()
+            return False
+
+        finally:
+            conn.close()
 
     def get_all_fetchers(self) -> List[Fetcher]:
         """

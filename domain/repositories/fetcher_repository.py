@@ -5,7 +5,8 @@ This module provides an abstract interface for fetcher configuration storage, al
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from datetime import datetime
+from typing import Dict, List, Optional
 
 from domain.entities.fetcher import Fetcher
 
@@ -141,6 +142,29 @@ class FetcherRepository(ABC):
 
         Args:
             fetcher_id: ID of fetcher to delete
+
+        Returns:
+            True if successful, False otherwise
+        """
+
+    @abstractmethod
+    def get_last_fetched_at_by_group(self) -> Dict[str, datetime]:
+        """
+        Get when each fetcher group last completed an email fetch.
+
+        Returns:
+            Mapping of group_id to the UTC datetime of its last completed fetch.
+            Groups that were never fetched are absent.
+        """
+
+    @abstractmethod
+    def set_last_fetched_at(self, group_ids: List[str], fetched_at: datetime) -> bool:
+        """
+        Record that the given fetcher groups completed an email fetch.
+
+        Args:
+            group_ids: Fetcher group IDs that were fetched
+            fetched_at: When the fetch completed
 
         Returns:
             True if successful, False otherwise
