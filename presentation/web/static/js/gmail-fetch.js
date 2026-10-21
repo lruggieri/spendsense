@@ -546,8 +546,9 @@
       try {
         const result = await _runFetcherImport(fetcher, afterDate, token, cb);
         allResults.push(result);
-        // A fetcher that dropped messages or rows must not move the default
-        // start date past them.
+        // A fetcher whose message downloads failed must not move the default
+        // start date past them.  Server-side skips are deterministic, so
+        // re-scanning would not fix them.
         if (!result.incomplete) completedFetcherIds.push(fetcher.id);
       } catch (err) {
         cb({ phase: 'error', fetcher: fetcher.name, message: err.message });
@@ -687,7 +688,6 @@
       totalImported += importData.imported || 0;
       totalSkipped  += importData.skipped  || 0;
       if (importData.warnings && importData.warnings.length) {
-        incomplete = true;
         importData.warnings.forEach(w =>
           cb({ phase: 'warning', fetcher: fetcher.name, message: w })
         );
