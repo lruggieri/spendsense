@@ -65,15 +65,16 @@ def _calculate_fetch_start_date(transaction_service=None, fetcher_service=None) 
     if fetcher_service is None:
         fetcher_service = get_fetcher_service()
 
-    fallback = transaction_service.get_last_email_transaction_date()
-    last_fetched_at = fetcher_service.get_earliest_last_fetched_at(fallback)
+    today = datetime.now()
+    baseline = transaction_service.get_last_email_transaction_date() or datetime(
+        today.year - 1, 1, 1, tzinfo=timezone.utc
+    )
+    # Freeze the baseline for fetchers never fetched, so later imports by other
+    # fetchers cannot move their default past emails they have not fetched.
+    fetcher_service.seed_fetch_baseline(baseline)
+    last_fetched_at = fetcher_service.get_earliest_last_fetched_at(baseline)
 
-    if last_fetched_at:
-        return (last_fetched_at - timedelta(days=_FETCH_OVERLAP_DAYS)).strftime("%Y-%m-%d")
-    else:
-        # No fetch history, use January 1st of last year
-        today = datetime.now()
-        return datetime(today.year - 1, 1, 1).strftime("%Y-%m-%d")
+    return (last_fetched_at - timedelta(days=_FETCH_OVERLAP_DAYS)).strftime("%Y-%m-%d")
 
 
 @gmail_bp.route("/fetch-gmail")
@@ -208,10 +209,13 @@ def api_email_fetch_completed():
     The next fetch defaults to starting from this point instead of the last
     transaction date.
 
-    Request JSON:  { "fetcher_ids": ["uuid7", ...], "after_date": "YYYY-MM-DD" }
+    Request JSON:  { "fetcher_ids": ["uuid7", ...], "after_date": "YYYY-MM-DD",
+                     "started_at": "ISO datetime (optional, when the run began)" }
     Response JSON: { "updated": 1 }
     """
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "JSON object expected"}), 400
     fetcher_ids = data.get("fetcher_ids")
     after_date_str = data.get("after_date")
 
@@ -223,8 +227,16 @@ def api_email_fetch_completed():
     except (TypeError, ValueError):
         return jsonify({"error": "after_date must be YYYY-MM-DD"}), 400
 
+    started_at = None
+    started_at_str = data.get("started_at")
+    if started_at_str is not None:
+        try:
+            started_at = datetime.fromisoformat(str(started_at_str).replace("Z", "+00:00"))
+        except ValueError:
+            return jsonify({"error": "started_at must be an ISO datetime"}), 400
+
     fetcher_service = get_fetcher_service()
-    updated = fetcher_service.record_fetch_completed(fetcher_ids, after_date)
+    updated = fetcher_service.record_fetch_completed(fetcher_ids, after_date, started_at)
 
     return jsonify({"updated": updated})
 
@@ -286,7 +298,7 @@ def api_email_import():
             continue
 
         try:
-            date = datetime.fromisoformat(item["date_iso"].replace("Z", "+00:00"))
+            tx_date = datetime.fromisoformat(item["date_iso"].replace("Z", "+00:00"))
         except (KeyError, ValueError) as e:
             skipped += 1
             warnings.append(f"Invalid date_iso: {e}")
@@ -309,7 +321,7 @@ def api_email_import():
 
         tx = Transaction(
             id=str(uuid7()),
-            date=date,
+            date=tx_date,
             amount=amount_minor,
             description=item.get("description") or "Unknown",
             category=None,

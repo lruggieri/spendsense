@@ -309,10 +309,6 @@ class TestFetcherService(unittest.TestCase):
         self.assertEqual(created.default_currency, "JPY")
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class TestFetcherServiceLastFetched(unittest.TestCase):
     """Tests for last-fetch tracking in FetcherService."""
 
@@ -377,9 +373,46 @@ class TestFetcherServiceLastFetched(unittest.TestCase):
         self.assertEqual(updated, 1)
         self.mock_ds.set_last_fetched_at.assert_called_once_with(["g2"], when)
 
-    def test_record_fetch_completed_same_day_as_previous(self):
+    def test_record_fetch_completed_same_day_as_previous_does_not_advance(self):
+        """Gmail reads after: as Pacific midnight, so a same-day start may miss emails."""
         self.mock_ds.get_last_fetched_at_by_group.return_value = {
-            "g1": datetime(2026, 4, 1, 18, 0, tzinfo=timezone.utc),
+            "g1": datetime(2026, 4, 1, 2, 0, tzinfo=timezone.utc),
         }
         updated = self.service.record_fetch_completed(["f1"], date(2026, 4, 1))
+        self.assertEqual(updated, 0)
+        self.mock_ds.set_last_fetched_at.assert_not_called()
+
+    def test_record_fetch_completed_day_before_previous_advances(self):
+        self.mock_ds.get_last_fetched_at_by_group.return_value = {
+            "g1": datetime(2026, 4, 1, 2, 0, tzinfo=timezone.utc),
+        }
+        updated = self.service.record_fetch_completed(["f1"], date(2026, 3, 31))
         self.assertEqual(updated, 1)
+
+    def test_record_fetch_completed_caps_future_start_time(self):
+        self.mock_ds.get_last_fetched_at_by_group.return_value = {}
+        self.service.record_fetch_completed(
+            ["f1"], date(2026, 4, 1), datetime(2999, 1, 1, tzinfo=timezone.utc)
+        )
+        stored = self.mock_ds.set_last_fetched_at.call_args[0][1]
+        self.assertLessEqual(stored, datetime.now(timezone.utc))
+
+    def test_seed_fetch_baseline_only_for_unrecorded_groups(self):
+        self.mock_ds.get_last_fetched_at_by_group.return_value = {
+            "g1": datetime(2026, 4, 1, tzinfo=timezone.utc),
+        }
+        baseline = datetime(2026, 2, 1, tzinfo=timezone.utc)
+        self.assertEqual(self.service.seed_fetch_baseline(baseline), 1)
+        self.mock_ds.set_last_fetched_at.assert_called_once_with(["g2"], baseline)
+
+    def test_seed_fetch_baseline_noop_when_all_recorded(self):
+        self.mock_ds.get_last_fetched_at_by_group.return_value = {
+            "g1": datetime(2026, 4, 1, tzinfo=timezone.utc),
+            "g2": datetime(2026, 4, 1, tzinfo=timezone.utc),
+        }
+        self.assertEqual(self.service.seed_fetch_baseline(datetime(2026, 2, 1, tzinfo=timezone.utc)), 0)
+        self.mock_ds.set_last_fetched_at.assert_not_called()
+
+
+if __name__ == "__main__":
+    unittest.main()

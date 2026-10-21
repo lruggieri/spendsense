@@ -33,7 +33,9 @@ class TestEmailConfig:
         mock_fetcher.default_currency = "USD"
         mock_fetcher.negate_amount = False
         mock_fetcher_svc.get_enabled_fetchers.return_value = [mock_fetcher]
-        mock_fetcher_svc.get_earliest_last_fetched_at.return_value = None
+        mock_fetcher_svc.get_earliest_last_fetched_at.return_value = datetime(
+            2026, 1, 1, tzinfo=timezone.utc
+        )
 
         mock_tx_svc = MagicMock()
         mock_tx_svc.get_last_email_transaction_date.return_value = None
@@ -148,14 +150,18 @@ class TestFetchStartDate:
         assert result == "2026-10-13"
         mock_tx_svc.get_last_transaction_date.assert_not_called()
 
-    def test_passes_email_transaction_date_as_fallback(self, app):
-        fallback = datetime(2026, 9, 1, tzinfo=timezone.utc)
-        _, _, mock_fetcher_svc = self._calculate(app, None, fallback)
-        mock_fetcher_svc.get_earliest_last_fetched_at.assert_called_once_with(fallback)
+    def test_seeds_and_uses_email_transaction_date_as_baseline(self, app):
+        baseline = datetime(2026, 9, 1, tzinfo=timezone.utc)
+        _, _, mock_fetcher_svc = self._calculate(app, baseline, baseline)
+        mock_fetcher_svc.seed_fetch_baseline.assert_called_once_with(baseline)
+        mock_fetcher_svc.get_earliest_last_fetched_at.assert_called_once_with(baseline)
 
-    def test_no_history_defaults_to_start_of_last_year(self, app):
-        result, _, _ = self._calculate(app, None)
-        assert result == f"{datetime.now().year - 1}-01-01"
+    def test_no_history_baseline_is_start_of_last_year(self, app):
+        _, _, mock_fetcher_svc = self._calculate(
+            app, datetime(2025, 1, 1, tzinfo=timezone.utc)
+        )
+        seeded = mock_fetcher_svc.seed_fetch_baseline.call_args[0][0]
+        assert (seeded.year, seeded.month, seeded.day) == (datetime.now().year - 1, 1, 1)
 
 
 class TestEmailFetchCompleted:
@@ -188,7 +194,29 @@ class TestEmailFetchCompleted:
         assert response.status_code == 200
         assert response.get_json() == {"updated": 2}
         mock_fetcher_svc.record_fetch_completed.assert_called_once_with(
-            ["f1", "f2"], date(2026, 1, 10)
+            ["f1", "f2"], date(2026, 1, 10), None
+        )
+
+    def test_passes_started_at(self, authenticated_client):
+        mock_fetcher_svc = MagicMock()
+        mock_fetcher_svc.record_fetch_completed.return_value = 1
+
+        with patch(
+            "presentation.web.blueprints.gmail.get_fetcher_service",
+            return_value=mock_fetcher_svc,
+        ):
+            response = authenticated_client.post(
+                "/api/email/fetch-completed",
+                json={
+                    "fetcher_ids": ["f1"],
+                    "after_date": "2026-01-10",
+                    "started_at": "2026-01-12T03:04:05.000Z",
+                },
+            )
+
+        assert response.status_code == 200
+        mock_fetcher_svc.record_fetch_completed.assert_called_once_with(
+            ["f1"], date(2026, 1, 10), datetime(2026, 1, 12, 3, 4, 5, tzinfo=timezone.utc)
         )
 
     @pytest.mark.parametrize(
@@ -199,6 +227,10 @@ class TestEmailFetchCompleted:
             {"fetcher_ids": ["f1"]},
             {"fetcher_ids": ["f1"], "after_date": "not-a-date"},
             {"fetcher_ids": ["f1"], "after_date": ""},
+            {"fetcher_ids": ["f1"], "after_date": "2026-01-10", "started_at": "garbage"},
+            ["invalid"],
+            "invalid",
+            42,
         ],
     )
     def test_returns_400_for_invalid_input(self, authenticated_client, payload):

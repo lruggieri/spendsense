@@ -434,7 +434,7 @@ describe('resolveMessageId', () => {
 // =========================================================================
 
 describe('runImport fetch-completed reporting', () => {
-  function stubServer(fetcherIds, { failListingFor = null } = {}) {
+  function stubServer(fetcherIds, { failListingFor = null, failMessages = false, completedStatus = 200 } = {}) {
     const calls = [];
     const mockFetch = vi.fn(async (url, opts) => {
       calls.push({ url, opts });
@@ -452,7 +452,19 @@ describe('runImport fetch-completed reporting', () => {
           }),
         };
       }
+      if (url === '/api/email/check-imported') {
+        return { ok: true, json: async () => ({ imported_ids: [] }) };
+      }
+      if (url === '/api/email/fetch-completed') {
+        return { ok: completedStatus < 400, status: completedStatus, json: async () => ({}) };
+      }
       if (url.includes('gmail.googleapis.com')) {
+        if (failMessages) {
+          if (/\/messages\/[^?]/.test(url)) {
+            return { ok: false, status: 500, statusText: 'err', json: async () => ({}) };
+          }
+          return { ok: true, json: async () => ({ messages: [{ id: 'abc123def456' }] }) };
+        }
         if (failListingFor && decodeURIComponent(url).includes(`${failListingFor}@example.com`)) {
           return { ok: false, status: 500, statusText: 'err', json: async () => ({}) };
         }
@@ -480,7 +492,35 @@ describe('runImport fetch-completed reporting', () => {
     expect(completed).toBeDefined();
     expect(JSON.parse(completed.opts.body)).toEqual({
       fetcher_ids: ['a', 'b'], after_date: '2026-01-10',
+      started_at: expect.any(String),
     });
+
+    restore();
+    vi.unstubAllGlobals();
+  });
+
+  it('omits fetchers whose message downloads failed', async () => {
+    const calls = stubServer(['a'], { failMessages: true });
+    const restore = stubToken();
+    const events = [];
+
+    await window.gmailFetch.runImport(null, '2026-01-10', e => events.push(e));
+
+    expect(calls.find(c => c.url === '/api/email/fetch-completed')).toBeUndefined();
+    expect(events.some(e => e.phase === 'warning')).toBe(true);
+
+    restore();
+    vi.unstubAllGlobals();
+  });
+
+  it('warns when recording the fetch is rejected by the server', async () => {
+    stubServer(['a'], { completedStatus: 500 });
+    const restore = stubToken();
+    const events = [];
+
+    await window.gmailFetch.runImport(null, '2026-01-10', e => events.push(e));
+
+    expect(events.some(e => e.phase === 'warning' && /record fetch time/.test(e.message))).toBe(true);
 
     restore();
     vi.unstubAllGlobals();

@@ -300,10 +300,6 @@ class TestSQLiteFetcherRepository(unittest.TestCase):
         self.assertTrue(stored.negate_amount)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class TestSQLiteFetcherFetchState(unittest.TestCase):
     """Tests for last-fetch tracking in SQLiteFetcherDataSource."""
 
@@ -345,3 +341,7 @@ class TestSQLiteFetcherFetchState(unittest.TestCase):
     def test_empty_group_list_is_noop(self):
         self.assertTrue(self.ds.set_last_fetched_at([], datetime.now(timezone.utc)))
         self.assertEqual(self.ds.get_last_fetched_at_by_group(), {})
+
+
+if __name__ == "__main__":
+    unittest.main()
