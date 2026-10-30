@@ -681,6 +681,36 @@ class SQLiteTransactionDataSource(TransactionRepository):
             return self._parse_date(row[0])
         return None
 
+    def get_last_email_transaction_date(self) -> Optional[datetime]:
+        """
+        Get the date of the most recent transaction imported from email.
+
+        Manually added transactions (no mail_id) are ignored.
+
+        Returns:
+            Date of the most recent email-imported transaction, or None if none exist
+        """
+        conn = get_connection(self.db_filepath)
+        cursor = get_logging_cursor(conn)
+
+        cursor.execute(
+            """
+            SELECT date
+            FROM transactions
+            WHERE user_id = ? AND mail_id IS NOT NULL AND mail_id != ''
+            ORDER BY date DESC
+            LIMIT 1
+        """,
+            (self.user_id,),
+        )
+
+        row = cursor.fetchone()
+        conn.close()
+
+        if row:
+            return self._parse_date(row[0])
+        return None
+
     def get_transactions_by_date_range(
         self, from_date: Optional[datetime] = None, to_date: Optional[datetime] = None
     ) -> List[Transaction]:

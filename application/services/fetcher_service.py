@@ -5,8 +5,8 @@ Handles fetcher CRUD operations including versioning.
 """
 
 import logging
-from datetime import datetime, timezone
-from typing import List, Optional, Tuple
+from datetime import date, datetime, timezone
+from typing import Iterable, List, Optional, Tuple
 
 from uuid6 import uuid7
 
@@ -116,6 +116,102 @@ class FetcherService(BaseService):
             The enabled Fetcher version or None if no enabled version
         """
         return self._fetcher_datasource.get_enabled_version(group_id)
+
+    def get_earliest_last_fetched_at(
+        self, fallback: Optional[datetime] = None
+    ) -> Optional[datetime]:
+        """
+        Get the earliest last-fetch time across enabled fetchers.
+
+        This is the point up to which every enabled fetcher is known to have
+        fetched its emails. Fetchers without a recorded fetch use ``fallback``.
+
+        Args:
+            fallback: Datetime to use for fetchers that were never fetched
+
+        Returns:
+            Earliest last-fetch datetime, or None if any enabled fetcher has
+            no recorded fetch and no fallback was given
+        """
+        last_fetched = self._fetcher_datasource.get_last_fetched_at_by_group()
+        fetchers = self._fetcher_datasource.get_enabled_fetchers()
+        if not fetchers:
+            return fallback
+
+        dates = [last_fetched.get(f.group_id or f.id, fallback) for f in fetchers]
+        if any(d is None for d in dates):
+            return None
+        return min(d for d in dates if d is not None)
+
+    def seed_fetch_baseline(self, baseline: datetime) -> int:
+        """
+        Record ``baseline`` as the last fetch of enabled fetchers with none on record.
+
+        Freezes where an unfetched fetcher's history starts, so it does not
+        drift forward when other fetchers import newer transactions.
+
+        Returns:
+            Number of fetcher groups seeded
+        """
+        last_fetched = self._fetcher_datasource.get_last_fetched_at_by_group()
+        group_ids = []
+        for fetcher in self._fetcher_datasource.get_enabled_fetchers():
+            group_id = fetcher.group_id or fetcher.id
+            if group_id not in last_fetched and group_id not in group_ids:
+                group_ids.append(group_id)
+
+        if not group_ids:
+            return 0
+        if not self._fetcher_datasource.set_last_fetched_at(group_ids, baseline):
+            return 0
+        return len(group_ids)
+
+    def record_fetch_completed(
+        self,
+        fetcher_ids: Iterable[str],
+        after_date: date,
+        fetched_at: Optional[datetime] = None,
+    ) -> int:
+        """
+        Record that an email fetch completed for the given fetchers.
+
+        A fetcher's last-fetch time only advances when the fetch started before
+        its previous last-fetch date.  Gmail reads ``after:`` dates as midnight
+        Pacific time, so a same-day start could miss part of that day.
+
+        Args:
+            fetcher_ids: IDs of enabled fetchers whose fetch completed
+            after_date: Start date the fetch was run from
+            fetched_at: When the fetch began (defaults to now); capped at now
+
+        Returns:
+            Number of fetcher groups updated
+        """
+        now = datetime.now(timezone.utc)
+        if fetched_at is None:
+            fetched_at = now
+        elif fetched_at.tzinfo is None:
+            fetched_at = fetched_at.replace(tzinfo=timezone.utc)
+        fetched_at = min(fetched_at, now)
+
+        wanted = set(fetcher_ids)
+        last_fetched = self._fetcher_datasource.get_last_fetched_at_by_group()
+        group_ids = []
+        for fetcher in self._fetcher_datasource.get_enabled_fetchers():
+            if fetcher.id not in wanted:
+                continue
+            group_id = fetcher.group_id or fetcher.id
+            previous = last_fetched.get(group_id)
+            if previous is not None and after_date >= previous.date():
+                continue
+            if group_id not in group_ids:
+                group_ids.append(group_id)
+
+        if not group_ids:
+            return 0
+        if not self._fetcher_datasource.set_last_fetched_at(group_ids, fetched_at):
+            return 0
+        return len(group_ids)
 
     def create_fetcher(
         self,

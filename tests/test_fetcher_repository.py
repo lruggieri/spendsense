@@ -300,5 +300,48 @@ class TestSQLiteFetcherRepository(unittest.TestCase):
         self.assertTrue(stored.negate_amount)
 
 
+class TestSQLiteFetcherFetchState(unittest.TestCase):
+    """Tests for last-fetch tracking in SQLiteFetcherDataSource."""
+
+    def setUp(self):
+        self.temp_db = tempfile.NamedTemporaryFile(delete=False, suffix=".db")
+        self.db_path = self.temp_db.name
+        self.temp_db.close()
+        self.ds = SQLiteFetcherDataSource(self.db_path, "user_a")
+
+    def tearDown(self):
+        if os.path.exists(self.db_path):
+            os.remove(self.db_path)
+
+    def test_empty_by_default(self):
+        self.assertEqual(self.ds.get_last_fetched_at_by_group(), {})
+
+    def test_set_and_get(self):
+        when = datetime(2026, 3, 1, 12, 0, tzinfo=timezone.utc)
+        self.assertTrue(self.ds.set_last_fetched_at(["g1", "g2"], when))
+        self.assertEqual(self.ds.get_last_fetched_at_by_group(), {"g1": when, "g2": when})
+
+    def test_set_overwrites(self):
+        self.ds.set_last_fetched_at(["g1"], datetime(2026, 3, 1, tzinfo=timezone.utc))
+        later = datetime(2026, 4, 1, tzinfo=timezone.utc)
+        self.ds.set_last_fetched_at(["g1"], later)
+        self.assertEqual(self.ds.get_last_fetched_at_by_group(), {"g1": later})
+
+    def test_naive_datetime_treated_as_utc(self):
+        self.ds.set_last_fetched_at(["g1"], datetime(2026, 3, 1, 12, 0))
+        result = self.ds.get_last_fetched_at_by_group()["g1"]
+        self.assertEqual(result, datetime(2026, 3, 1, 12, 0, tzinfo=timezone.utc))
+
+    def test_isolated_per_user(self):
+        when = datetime(2026, 3, 1, tzinfo=timezone.utc)
+        self.ds.set_last_fetched_at(["g1"], when)
+        other = SQLiteFetcherDataSource(self.db_path, "user_b")
+        self.assertEqual(other.get_last_fetched_at_by_group(), {})
+
+    def test_empty_group_list_is_noop(self):
+        self.assertTrue(self.ds.set_last_fetched_at([], datetime.now(timezone.utc)))
+        self.assertEqual(self.ds.get_last_fetched_at_by_group(), {})
+
+
 if __name__ == "__main__":
     unittest.main()
