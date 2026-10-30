@@ -1,0 +1,18 @@
+# Security floors for transitive dependencies.
+# Constraints only bound versions: a package listed here is not installed
+# unless something in requirements.txt pulls it in.
+
+# CVE-2026-111497 (Brotli decoder out-of-bounds write). Optional decoder
+# for urllib3/httpx; not installed today, but must never resolve to a
+# vulnerable build if an extra starts pulling it in.
+brotli>=1.2.1
+brotlicffi>=1.2.1.0
+
+PyJWT>=2.15.0
+urllib3>=2.8.0
+oauthlib>=4.0.0
+pyasn1>=0.6.4
+anyio>=4.14.2
+opentelemetry-api>=1.45.1
+filelock>=4.2.1
+setuptools>=84.1.0

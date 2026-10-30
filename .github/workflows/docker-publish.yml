@@ -65,5 +65,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: APP_VERSION=${{ steps.version.outputs.value }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Release builds re-resolve dependencies from scratch: a cached pip
+          # layer is keyed only on requirements.txt, so it would keep shipping
+          # stale transitive packages after upstream security fixes.
+          no-cache: true
