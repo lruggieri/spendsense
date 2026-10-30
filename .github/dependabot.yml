@@ -5,8 +5,13 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Skip releases younger than a week: a hijacked release is usually caught by then.
+    cooldown:
+      default-days: 7
   # Keeps the digest-pinned python base image current.
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
