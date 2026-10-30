@@ -1,5 +1,5 @@
 # Use Python 3.12 slim image as base (pinned digest for stable build cache)
-FROM python:3.12-slim@sha256:9e01bf1ae5db7649a236da7be1e94ffbbbdd7a93f867dd0d8d5720d9e1f89fab
+FROM python:3.12-slim@sha256:aa943ce411423c7582288f18707ff66eddcbaeb510502d747a72aeb34f30d159
 
 # Set working directory
 WORKDIR /app
@@ -15,11 +15,14 @@ RUN apt-get update && apt-get install -y \
 # Override with: docker compose build --build-arg TORCH_VARIANT=cu124
 ARG TORCH_VARIANT=cpu
 
+# Base image ships an outdated pip with known advisories
+RUN pip install --no-cache-dir --upgrade "pip>=26.2"
+
 # Install PyTorch separately so this layer is cached when requirements.txt changes
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/${TORCH_VARIANT}
 
 # Copy requirements file and install the rest of the dependencies
-COPY requirements.txt .
+COPY requirements.txt constraints.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Pre-download the SentenceTransformer model into /app/.cache so it's accessible
