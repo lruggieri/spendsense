@@ -5,7 +5,9 @@ services:
     env_file:
       - .env
     ports:
-      - "5678:5678"
+      # Loopback only: Docker-published ports bypass UFW, so binding 0.0.0.0
+      # would expose the app directly. nginx proxies to 127.0.0.1:5678.
+      - "127.0.0.1:5678:5678"
     volumes:
       # Mount data directory for persistent storage
       - ./data:/app/data
@@ -25,7 +27,9 @@ services:
     env_file:
       - .env
     ports:
-      - "5678:5678"
+      # Loopback only: Docker-published ports bypass UFW, so binding 0.0.0.0
+      # would expose the app directly. nginx proxies to 127.0.0.1:5678.
+      - "127.0.0.1:5678:5678"
     volumes:
       # Mount data directory for persistent storage
       - ./data:/app/data
