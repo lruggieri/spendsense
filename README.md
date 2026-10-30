@@ -187,14 +187,14 @@ If your account uses passkey-based encryption, you must generate MCP keys **whil
 
 No new nginx routes are needed for OAuth. `presentation/asgi.py` dispatches `/authorize`,
 `/token`, `/register`, `/revoke`, `/.well-known/oauth-*`, and `/mcp-consent` internally by
-path — the same single upstream (`app:5678`) that already serves everything else handles
+path — the same single upstream (`127.0.0.1:5678`) that already serves everything else handles
 all of them. The only nginx-specific requirement remains the `/mcp` streaming block below.
 
 Add `proxy_buffering off` to the `/mcp` location block to avoid buffering the Streamable HTTP response stream:
 
 ```nginx
 location /mcp {
-    proxy_pass http://app:5678;
+    proxy_pass http://127.0.0.1:5678;
     proxy_buffering off;
 }
 ```
