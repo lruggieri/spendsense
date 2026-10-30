@@ -15,6 +15,9 @@ RUN apt-get update && apt-get install -y \
 # Override with: docker compose build --build-arg TORCH_VARIANT=cu124
 ARG TORCH_VARIANT=cpu
 
+# Base image ships an outdated pip with known advisories
+RUN pip install --no-cache-dir --upgrade "pip>=26.2"
+
 # Install PyTorch separately so this layer is cached when requirements.txt changes
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/${TORCH_VARIANT}
 

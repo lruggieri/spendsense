@@ -154,6 +154,7 @@ jobs:
       - name: Run TruffleHog
         uses: trufflesecurity/trufflehog@31ce31ee1abbcc7dc8eee5764c17121c3044c8b2  # v3.99.7
         with:
+          version: 3.99.7@sha256:0d003fc3abc4e1565eca8462b992001314de51451e96e3c44de80d116794d5d1  # scanner image; defaults to mutable :latest
           extra_args: --only-verified  # suppress unverified findings to reduce noise
 
   sast-bandit:
